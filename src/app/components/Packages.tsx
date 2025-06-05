@@ -6,19 +6,19 @@ import Image from "next/image";
 const packages = [
   {
     name: "Economy Package",
-    image: "/pkg1.jpg",
+    image: "/package1.webp",
     price: "Starting from ₹85,000",
     features: ["Group Travel", "Standard Hotels", "Economy Flights"],
   },
   {
     name: "Standard Package",
-    image: "/pkg2.jpg",
+    image: "/package2.webp",
     price: "Starting from ₹1,20,000",
     features: ["Private Rooms", "3-star Hotels", "Guided Ziyarat"],
   },
   {
     name: "Premium Package",
-    image: "/pkg3.jpg",
+    image: "/package3.webp",
     price: "Starting from ₹1,75,000",
     features: ["5-star Hotels", "VIP Lounge Access", "Dedicated Guide"],
   },
