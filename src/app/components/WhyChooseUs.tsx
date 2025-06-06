@@ -3,24 +3,26 @@
 import { motion } from "framer-motion";
 import { FaPlane, FaUserTie, FaTags, FaHeadset } from "react-icons/fa";
 
+const iconColor = "#092638";
+
 const features = [
   {
-    icon: <FaPlane size={40} className="text-blue-500" />,
+    icon: <FaPlane size={40} style={{ color: iconColor }} />,
     title: "Booking On The Go",
     desc: "We offer easy and convenient flight bookings with attractive offers.",
   },
   {
-    icon: <FaUserTie size={40} className="text-blue-500" />,
+    icon: <FaUserTie size={40} style={{ color: iconColor }} />,
     title: "Travel Expert",
     desc: "Personalized recommendations and support from experienced travel experts.",
   },
   {
-    icon: <FaTags size={40} className="text-blue-500" />,
+    icon: <FaTags size={40} style={{ color: iconColor }} />,
     title: "Amazing Deals",
     desc: "Exciting deals on flights, hotels, car rentals, and tour packages.",
   },
   {
-    icon: <FaHeadset size={40} className="text-blue-500" />,
+    icon: <FaHeadset size={40} style={{ color: iconColor }} />,
     title: "24/7 Support",
     desc: "Get assistance 24/7 on any kind of travel-related query.",
   },
