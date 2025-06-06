@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { FiMenu, FiX } from "react-icons/fi";
+import { FiMenu, FiX, FiPhone } from "react-icons/fi"; // 🆕 Import phone icon
 
 const Header = () => {
   const [navOpen, setNavOpen] = useState(false);
@@ -16,18 +16,45 @@ const Header = () => {
           <Image
             src="/Logo.png"
             alt="Mufti Travels"
-            width={100}
-            height={120}
-            className="w-20 h-auto"
+            width={130}
+            height={130}
+            className="w-[130px] h-auto"
           />
         </div>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex space-x-6">
-          <Link href="/">Home</Link>
-          <Link href="/packages">Packages</Link>
-          <Link href="/about">About</Link>
-          <Link href="/contact">Contact</Link>
+        <nav className="hidden md:flex space-x-6 items-center">
+          <Link
+            href="/"
+            className="hover:text-white transition-colors duration-200"
+          >
+            Home
+          </Link>
+          <Link
+            href="#packages"
+            className="hover:text-white transition-colors duration-200"
+          >
+            Packages
+          </Link>
+          <Link
+            href="#about"
+            className="hover:text-white transition-colors duration-200"
+          >
+            About
+          </Link>
+          <Link
+            href="#contact"
+            className="hover:text-white transition-colors duration-200"
+          >
+            Contact
+          </Link>
+          <a
+            href="tel:+911234567890"
+            className="flex items-center space-x-1 hover:text-white transition-colors duration-200"
+          >
+            <FiPhone />
+            <span>+91 9323063712</span>
+          </a>
         </nav>
 
         {/* Mobile Burger Icon */}
@@ -41,18 +68,42 @@ const Header = () => {
       {/* Mobile Nav Links */}
       {navOpen && (
         <nav className="md:hidden flex flex-col items-center space-y-4 py-4 bg-[#092638] text-[#f8ac0d]">
-          <Link href="/" onClick={toggleMenu}>
+          <Link
+            href="/"
+            onClick={toggleMenu}
+            className="hover:text-white transition-colors duration-200"
+          >
             Home
           </Link>
-          <Link href="/packages" onClick={toggleMenu}>
+          <Link
+            href="/packages"
+            onClick={toggleMenu}
+            className="hover:text-white transition-colors duration-200"
+          >
             Packages
           </Link>
-          <Link href="/about" onClick={toggleMenu}>
+          <Link
+            href="/about"
+            onClick={toggleMenu}
+            className="hover:text-white transition-colors duration-200"
+          >
             About
           </Link>
-          <Link href="/contact" onClick={toggleMenu}>
+          <Link
+            href="/contact"
+            onClick={toggleMenu}
+            className="hover:text-white transition-colors duration-200"
+          >
             Contact
           </Link>
+          <a
+            href="tel:+919323063712"
+            onClick={toggleMenu}
+            className="flex items-center space-x-1 hover:text-white transition-colors duration-200"
+          >
+            <FiPhone />
+            <span>+91 9323063712</span>
+          </a>
         </nav>
       )}
     </header>

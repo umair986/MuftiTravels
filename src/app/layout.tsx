@@ -1,10 +1,14 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Poppins } from "next/font/google";
 import Header from "./components/header";
 import SetVh from "./components/SetVh"; // import the client-side effect
 
-const inter = Inter({ subsets: ["latin"] });
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-poppins",
+});
 
 export const metadata: Metadata = {
   title: "Mufti Travels",
@@ -17,9 +21,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <SetVh /> {/* now safe to use useEffect */}
+    <html lang="en" className={poppins.variable}>
+      <body className={poppins.className}>
+        <SetVh />
         <Header />
         {children}
       </body>

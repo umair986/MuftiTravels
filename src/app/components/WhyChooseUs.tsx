@@ -32,8 +32,8 @@ const WhyChooseUs = () => {
       <div className="text-center mb-10">
         <h2 className="text-3xl font-bold text-gray-800 mb-2">Why Choose Us</h2>
         <p className="text-gray-600 max-w-xl mx-auto">
-          When you book with us, you know you're booking with the best in the
-          business.
+          When you book with us, you know you&apos;re booking with the best in
+          the business.
         </p>
       </div>
 
