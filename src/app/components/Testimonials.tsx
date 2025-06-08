@@ -55,7 +55,10 @@ const Testimonials = () => {
                 />
               </div>
               <CardContent>
-                <p className="text-gray-700 italic mb-3">"{t.quote}"</p>
+                <p className="text-gray-700 italic mb-3">
+                  {" "}
+                  &ldquo;{t.quote}&rdquo;
+                </p>
                 <h4 className="text-lg font-semibold text-blue-700">
                   {t.name}
                 </h4>
