@@ -12,12 +12,11 @@ const logos = [
 
 const scrollVariants = {
   animate: {
-    x: ["0%", "-100%"],
+    x: ["0%", "-50%"],
     transition: {
       x: {
+        duration: 25,
         repeat: Infinity,
-        repeatType: "loop",
-        duration: 20,
         ease: "linear",
       },
     },
@@ -32,18 +31,22 @@ const AffiliatedPartners = () => {
           Our Affiliated Partners
         </h2>
       </div>
-      <div className="relative w-full overflow-hidden">
+
+      <div className="overflow-hidden w-full">
         <motion.div
-          className="flex gap-10 w-max"
+          className="flex w-[200%]"
           variants={scrollVariants}
           animate="animate"
         >
           {[...logos, ...logos].map((logo, index) => (
-            <div key={index} className="min-w-[150px] flex-shrink-0">
+            <div
+              key={index}
+              className="w-1/4 flex items-center justify-center px-6"
+            >
               <Image
                 src={logo}
                 alt={`Partner ${index + 1}`}
-                width={150}
+                width={140}
                 height={80}
                 className="object-contain"
               />
