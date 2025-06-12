@@ -1,74 +1,99 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Card, CardContent } from "../components/ui/card";
-import Image from "next/image";
+import { motion, useAnimation } from "framer-motion";
+import { FaQuoteLeft, FaStar } from "react-icons/fa";
+import { useEffect, useRef } from "react";
 
 const testimonials = [
   {
     name: "Ahmed Khan",
-    photo: "/user1.jpg",
-    quote:
-      "Mufti Travels gave us the best Hajj experience. Everything was smooth and well-organized.",
+    role: "Pilgrim from Mumbai",
+    text: "Mufti Travels made my Umrah journey so peaceful and organized. From visa to ziyarat, everything was perfectly managed.",
   },
   {
-    name: "Fatima Ansari",
-    photo: "/user2.jpg",
-    quote:
-      "Alhamdulillah, it was an amazing Umrah trip. Highly recommend their services.",
+    name: "Fatima Begum",
+    role: "Hajj Group Member",
+    text: "Truly spiritual and stress-free experience. The guides were extremely knowledgeable and caring throughout the Hajj.",
   },
   {
     name: "Imran Sheikh",
-    photo: "/user3.jpg",
-    quote:
-      "Very professional and supportive team. I would travel with them again.",
+    role: "Family Umrah Package",
+    text: "Affordable packages, luxurious stays, and everything as promised. Definitely booking again next year.",
+  },
+  {
+    name: "Zainab Patel",
+    role: "Solo Umrah Traveller",
+    text: "Even as a solo traveler, I felt safe and supported. Highly recommend Mufti Travels for women travelers.",
   },
 ];
 
-const Testimonials = () => {
+export default function Testimonials() {
+  const controls = useAnimation();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const startAnimation = () => {
+    controls.start({
+      x: ["0%", "-50%"], // we show two sets of cards, so scroll only halfway
+      transition: {
+        repeat: Infinity,
+        duration: 30,
+        ease: "linear",
+      },
+    });
+  };
+
+  useEffect(() => {
+    startAnimation();
+  }, []);
+
+  const handleMouseEnter = () => {
+    controls.stop();
+  };
+
+  const handleMouseLeave = () => {
+    startAnimation();
+  };
+
   return (
-    <section className="py-16 bg-blue-50">
-      <div className="text-center mb-12">
-        <h2 className="text-3xl font-bold text-gray-800">
-          What Our Guests Say
-        </h2>
-        <p className="text-gray-600 mt-2">Real stories from happy pilgrims.</p>
-      </div>
+    <div className="relative overflow-hidden bg-blue-50 py-16">
+      <h2 className="text-center text-4xl font-bold text-[#092638]">
+        What Our Clients Say
+      </h2>
+      <p className="text-center text-gray-600 mt-2 mb-10 px-4">
+        See how we helped pilgrims with their spiritual journeys
+      </p>
 
-      <div className="flex flex-wrap justify-center gap-8 px-6">
-        {testimonials.map((t, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.2 }}
-            viewport={{ once: true }}
-          >
-            <Card className="w-80 bg-white shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl p-6 text-center">
-              <div className="flex justify-center mb-4">
-                <Image
-                  src={t.photo}
-                  alt={t.name}
-                  width={64}
-                  height={64}
-                  className="rounded-full object-cover"
-                />
+      <div
+        className="relative w-full overflow-hidden"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        ref={containerRef}
+      >
+        <motion.div className="flex w-max gap-6 px-4" animate={controls}>
+          {[...testimonials, ...testimonials].map((testimonial, idx) => (
+            <div
+              key={idx}
+              className="min-w-[300px] md:min-w-[350px] max-w-[350px] bg-white p-6 rounded-2xl shadow-md border border-blue-100 transform transition-all duration-300 hover:scale-105 hover:bg-gradient-to-br hover:from-blue-100 hover:to-white"
+            >
+              <FaQuoteLeft className="text-blue-500 text-2xl mb-4" />
+              <div className="flex gap-1 mb-2">
+                {Array(5)
+                  .fill(0)
+                  .map((_, i) => (
+                    <FaStar key={i} className="text-yellow-400" />
+                  ))}
               </div>
-              <CardContent>
-                <p className="text-gray-700 italic mb-3">
-                  {" "}
-                  &ldquo;{t.quote}&rdquo;
-                </p>
-                <h4 className="text-lg font-semibold text-blue-700">
-                  {t.name}
-                </h4>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+              <p className="text-gray-700 mb-4">"{testimonial.text}"</p>
+              <div>
+                <h4 className="font-bold text-[#092638]">{testimonial.name}</h4>
+                <span className="text-sm text-gray-500">
+                  {testimonial.role}
+                </span>
+              </div>
+            </div>
+          ))}
+        </motion.div>
       </div>
-    </section>
+    </div>
   );
-};
-
-export default Testimonials;
+}
