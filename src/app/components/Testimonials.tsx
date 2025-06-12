@@ -2,7 +2,7 @@
 
 import { motion, useAnimation } from "framer-motion";
 import { FaQuoteLeft, FaStar } from "react-icons/fa";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 const testimonials = [
   {
@@ -31,7 +31,7 @@ export default function Testimonials() {
   const controls = useAnimation();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const startAnimation = () => {
+  const startAnimation = useCallback(() => {
     controls.start({
       x: ["0%", "-50%"], // we show two sets of cards, so scroll only halfway
       transition: {
@@ -40,11 +40,11 @@ export default function Testimonials() {
         ease: "linear",
       },
     });
-  };
+  }, [controls]);
 
   useEffect(() => {
-    startAnimation();
-  }, []);
+    startAnimation(); // ← if it's defined outside, include it below
+  }, [startAnimation]);
 
   const handleMouseEnter = () => {
     controls.stop();
@@ -83,7 +83,9 @@ export default function Testimonials() {
                     <FaStar key={i} className="text-yellow-400" />
                   ))}
               </div>
-              <p className="text-gray-700 mb-4">"{testimonial.text}"</p>
+              <p className="text-gray-700 mb-4">
+                &quot;{testimonial.text}&quot;
+              </p>
               <div>
                 <h4 className="font-bold text-[#092638]">{testimonial.name}</h4>
                 <span className="text-sm text-gray-500">
