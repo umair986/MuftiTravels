@@ -11,7 +11,7 @@ export default function Footer() {
         {/* Logo */}
         <div className="flex-shrink-0">
           <Image
-            src="/logo.png"
+            src="/Logo.png"
             alt="Mufti Travels"
             height={60}
             width={160}

@@ -13,6 +13,9 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "Mufti Travels",
   description: "Hajj and Umrah travel packages with care and convenience.",
+  icons: {
+    icon: "/favicon.png", // or "/favicon.png" if you prefer PNG
+  },
 };
 
 export default function RootLayout({

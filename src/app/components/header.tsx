@@ -48,13 +48,13 @@ const Header = () => {
           >
             Contact
           </Link>
-          <a
-            href="tel:+911234567890"
-            className="flex items-center space-x-1 hover:text-white transition-colors duration-200"
+          <Link
+            href="#gallery"
+            onClick={toggleMenu}
+            className="hover:text-white transition-colors duration-200"
           >
-            <FiPhone />
-            <span>+91 9323063712</span>
-          </a>
+            Gallery
+          </Link>
         </nav>
 
         {/* Mobile Burger Icon */}
@@ -76,34 +76,33 @@ const Header = () => {
             Home
           </Link>
           <Link
-            href="/packages"
+            href="#packages"
             onClick={toggleMenu}
             className="hover:text-white transition-colors duration-200"
           >
             Packages
           </Link>
           <Link
-            href="/about"
+            href="#about"
             onClick={toggleMenu}
             className="hover:text-white transition-colors duration-200"
           >
             About
           </Link>
           <Link
-            href="/contact"
+            href="#contact"
             onClick={toggleMenu}
             className="hover:text-white transition-colors duration-200"
           >
             Contact
           </Link>
-          <a
-            href="tel:+919323063712"
+          <Link
+            href="#gallery"
             onClick={toggleMenu}
-            className="flex items-center space-x-1 hover:text-white transition-colors duration-200"
+            className="hover:text-white transition-colors duration-200"
           >
-            <FiPhone />
-            <span>+91 9323063712</span>
-          </a>
+            Gallery
+          </Link>
         </nav>
       )}
     </header>
