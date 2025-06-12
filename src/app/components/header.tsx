@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { FiMenu, FiX, FiPhone } from "react-icons/fi"; // 🆕 Import phone icon
+import { FiMenu, FiX } from "react-icons/fi"; // 🆕 Import phone icon
 
 const Header = () => {
   const [navOpen, setNavOpen] = useState(false);
