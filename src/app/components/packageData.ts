@@ -7,9 +7,9 @@ export type CategoryType = "Umrah Fixed Group" | "Umrah Land Package" | "Ziyarat
 
 export interface PackageData {
   name: string;
-  image: string;
+  image: string; // This will now be a local path, e.g., "/package1.webp"
   price: string;
-  originalPrice: string;
+  originalPrice?: string;
   reviews: number;
   rating: 1 | 2 | 3 | 4 | 5;
   features: string[];
@@ -37,144 +37,107 @@ const addSlugsToPackages = (data: Record<CategoryType, Omit<PackageData, 'slug'>
   ) as PackageDataType;
 };
 
+// --- IMPORTANT ---
+// Make sure you have images in your `public` folder named:
+// - package1.webp
+// - package2.webp
+// - package3.webp
+
 export const packageData: PackageDataType  = addSlugsToPackages({
   "Umrah Fixed Group": [
     {
-      name: "Umrah Plus Turkey",
-      image: "/package1.webp",
-      price: "₹230,786",
-      originalPrice: "₹243,000",
-      reviews: 23,
+      name: "15 Days Regular Umrah from Mumbai",
+      image: "/packages/umrah/umrah1.jpeg",
+      price: "₹89,786",
+      reviews: 33,
       rating: 5,
       badges: [
         { text: "-5% Off", color: "bg-red-500" },
         { text: "Popular", color: "bg-green-500" },
       ],
-      features: [
-        "Group Travel",
-        "Standard Hotels",
-        "Economy Flights",
-        "Turkey Extension",
+      features: [ "Group Travel", "Standard Hotels", "Economy Flights" ],
+    },
+    {
+      name: "17 Days Regular Umrah from Lucknow",
+      image: "/packages/umrah/umrah2.jpeg",
+      price: "₹100,786",
+      reviews: 28,
+      rating: 5,
+      badges: [{ text: "Featured", color: "bg-blue-500" }],
+      features: [ "Private Rooms", "3-star Hotels", "Guided Ziyarat" ],
+    },
+    {
+      name: "15 Days Regular Umrah from Delhi",
+      image: "/packages/umrah/umrah4.jpg",
+      price: "₹86,786",
+      reviews: 33,
+      rating: 5,
+      badges: [{ text: "New", color: "bg-yellow-500" }],
+      features: [ "5-star Hotels", "VIP Lounge Access", "Dedicated Guide" ],
+    },
+  ],
+  "Umrah Land Package": [
+    {
+      name: "14 Days Umrah Land Package",
+      image: "/package1.webp",
+      price: "₹64,786",
+      reviews: 35,
+      rating: 5,
+      badges: [
+        { text: "-5% Off", color: "bg-red-500" },
+        { text: "Popular", color: "bg-green-500" },
       ],
+      features: [ "Makkah & Madinah Stay", "Ground Transport", "Visa Assistance" ],
+    },
+    {
+      name: "30 Days Super saver Land Package",
+      image: "/package2.webp",
+      price: "₹62,786",
+      reviews: 28,
+      rating: 5,
+      badges: [{ text: "Featured", color: "bg-blue-500" }],
+      features: ["Extended Stay", "Economy Hotels", "Group Ziyarat"],
+    },
+    {
+      name: "25 Days Super saver Land Package",
+      image: "/package3.webp",
+      price: "₹55,786",
+      reviews: 25,
+      rating: 5,
+      badges: [{ text: "New", color: "bg-yellow-500" }],
+      features: ["Budget Accommodation", "Self-guided Ziyarat", "Visa Included"],
+    },
+  ],
+  Ziyarat: [
+    {
+      name: "Umrah Plus Turkey",
+      image: "/package1.webp",
+      price: "₹230,786",
+      reviews: 26,
+      rating: 5,
+      badges: [
+        { text: "-5% Off", color: "bg-red-500" },
+        { text: "Popular", color: "bg-green-500" },
+      ],
+      features: [ "Umrah Visa", "Turkey Tourist Visa", "Guided Tours" ],
     },
     {
       name: "Umrah Plus Dubai",
       image: "/package2.webp",
       price: "₹149,786",
-      originalPrice: "₹160,000",
-      reviews: 30,
+      reviews: 28,
       rating: 5,
       badges: [{ text: "Featured", color: "bg-blue-500" }],
-      features: [
-        "Private Rooms",
-        "3-star Hotels",
-        "Guided Ziyarat",
-        "Dubai Stopover",
-      ],
+      features: [ "Umrah Visa", "Dubai Excursions", "4-star Hotels" ],
     },
     {
       name: "Umrah Plus Baitul Muqaddas",
       image: "/package3.webp",
       price: "₹175,786",
-      originalPrice: "₹185,000",
-      reviews: 21,
+      reviews: 33,
       rating: 5,
       badges: [{ text: "New", color: "bg-yellow-500" }],
-      features: [
-        "5-star Hotels",
-        "VIP Lounge Access",
-        "Dedicated Guide",
-        "Jerusalem Visit",
-      ],
-    },
-  ],
-  "Umrah Land Package": [
-    {
-      name: "Basic Land Package",
-      image: "/package1.webp",
-      price: "₹95,000",
-      originalPrice: "₹105,000",
-      reviews: 18,
-      rating: 4,
-      badges: [{ text: "Popular", color: "bg-green-500" }],
-      features: [
-        "Land Transport",
-        "3-star Hotels",
-        "Group Ziyarat",
-        "Meals Included",
-      ],
-    },
-    {
-      name: "Deluxe Land Package",
-      image: "/package2.webp",
-      price: "₹125,000",
-      originalPrice: "₹135,000",
-      reviews: 25,
-      rating: 5,
-      badges: [{ text: "Best Value", color: "bg-purple-500" }],
-      features: ["Luxury Bus", "4-star Hotels", "Private Ziyarat", "All Meals"],
-    },
-    {
-      name: "Premium Land Package",
-      image: "/package3.webp",
-      price: "₹155,000",
-      originalPrice: "₹170,000",
-      reviews: 15,
-      rating: 5,
-      badges: [{ text: "Luxury", color: "bg-indigo-500" }],
-      features: [
-        "Private Transport",
-        "5-star Hotels",
-        "Personal Guide",
-        "Premium Meals",
-      ],
-    },
-  ],
-  Ziyarat: [
-    {
-      name: "Makkah Ziyarat Special",
-      image: "/package1.webp",
-      price: "₹45,000",
-      originalPrice: "₹50,000",
-      reviews: 32,
-      rating: 5,
-      badges: [{ text: "Most Popular", color: "bg-green-500" }],
-      features: [
-        "All Makkah Sites",
-        "Expert Guide",
-        "Transportation",
-        "Group Tour",
-      ],
-    },
-    {
-      name: "Madinah Ziyarat Complete",
-      image: "/package2.webp",
-      price: "₹38,000",
-      originalPrice: "₹42,000",
-      reviews: 28,
-      rating: 4,
-      badges: [{ text: "Recommended", color: "bg-blue-500" }],
-      features: [
-        "All Madinah Sites",
-        "Historical Tours",
-        "Transportation",
-        "Lunch Included",
-      ],
-    },
-    {
-      name: "Combined Ziyarat Package",
-      image: "/package3.webp",
-      price: "₹75,000",
-      originalPrice: "₹85,000",
-      reviews: 19,
-      rating: 5,
-      badges: [{ text: "Complete", color: "bg-orange-500" }],
-      features: [
-        "Makkah & Madinah",
-        "Extended Tours",
-        "Private Guide",
-        "All Meals",
-      ],
+      features: ["Historical Ziyarat", "All Visas Included", "Premium Hotels"],
     },
   ],
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "../components/ui/input";
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -13,9 +13,13 @@ export default function ContactForm() {
     date: "",
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<"success" | "error" | null>(
+    null
+  );
+  const [submitMessage, setSubmitMessage] = useState("");
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
@@ -23,12 +27,62 @@ export default function ContactForm() {
   const updateCount = (field: "adults" | "children", change: number) => {
     setFormData((prev) => {
       const newValue = Math.max(0, Number(prev[field]) + change);
+      // Prevent adults from being less than 1
+      if (field === "adults" && newValue < 1) return prev;
       return { ...prev, [field]: newValue };
     });
   };
 
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus(null);
+    setSubmitMessage("");
+
+    try {
+      const response = await fetch("/api/send-enquiry", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+
+      setSubmitStatus("success");
+      setSubmitMessage("Thank you! Your enquiry has been sent.");
+      // Reset form
+      setFormData({
+        name: "",
+        phone: "",
+        email: "",
+        adults: 1,
+        children: 0,
+        date: "",
+      });
+    } catch (error) {
+      console.error("Failed to send enquiry:", error);
+      setSubmitStatus("error");
+      setSubmitMessage("Failed to send enquiry. Please try again later.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (submitStatus === "success") {
+    return (
+      <div className="text-center p-8 bg-green-50 border border-green-200 rounded-lg">
+        <h2 className="text-2xl font-bold text-green-800">Enquiry Sent!</h2>
+        <p className="mt-2 text-green-700">{submitMessage}</p>
+      </div>
+    );
+  }
+
   return (
-    <form className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <h3 className="text-green-600 font-medium">Fill in your details,</h3>
       <h2 className="text-2xl font-bold text-gray-900">
         Our team will get in touch with you!
@@ -46,6 +100,7 @@ export default function ContactForm() {
       <Input
         placeholder="Phone-no"
         name="phone"
+        type="tel"
         value={formData.phone}
         onChange={handleChange}
         className="w-full border border-gray-300 p-3 rounded-md bg-white text-black placeholder-gray-500"
@@ -55,6 +110,7 @@ export default function ContactForm() {
       <Input
         placeholder="Email"
         name="email"
+        type="email"
         value={formData.email}
         onChange={handleChange}
         className="w-full border border-gray-300 p-3 rounded-md bg-white text-black placeholder-gray-500"
@@ -66,7 +122,6 @@ export default function ContactForm() {
           Number of Passengers:
         </label>
         <div className="flex gap-4">
-          {/* Adults */}
           <div className="flex-1">
             <label className="text-sm block mb-1 text-black">Adults</label>
             <div className="flex items-center border border-gray-300 bg-white rounded-md">
@@ -93,8 +148,6 @@ export default function ContactForm() {
               </button>
             </div>
           </div>
-
-          {/* Children */}
           <div className="flex-1">
             <label className="text-sm block mb-1 text-black">
               Children (below 12 years)
@@ -126,7 +179,6 @@ export default function ContactForm() {
         </div>
       </div>
 
-      {/* Date Picker */}
       <Input
         placeholder="dd-mm-yyyy"
         name="date"
@@ -137,12 +189,16 @@ export default function ContactForm() {
         required
       />
 
-      {/* Submit Button */}
+      {submitStatus === "error" && (
+        <p className="text-red-600 text-sm">{submitMessage}</p>
+      )}
+
       <button
         type="submit"
-        className="w-full bg-blue-600 text-white font-medium py-2 rounded-md hover:bg-blue-700 transition"
+        disabled={isSubmitting}
+        className="w-full bg-blue-600 text-white font-medium py-3 rounded-md hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
       >
-        Submit
+        {isSubmitting ? "Submitting..." : "Submit"}
       </button>
     </form>
   );
