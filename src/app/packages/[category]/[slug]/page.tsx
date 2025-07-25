@@ -34,6 +34,7 @@ import {
   inclusions,
   exclusions,
 } from "../../../components/policyData";
+import Footer from "@/app/components/Footer";
 
 // --- Reusable Enquiry Form Component ---
 const EnquiryForm = ({
@@ -197,7 +198,7 @@ const EnquiryForm = ({
   );
 };
 
-// --- Reusable Price Selector Component ---
+// --- Reusable Price Selector Component (Integrated into this file) ---
 const PriceSelector = ({
   pkg,
   onEnquire,
@@ -379,11 +380,12 @@ const OverviewContent = ({ pkg }: { pkg: PackageData }) => (
     </h3>
     <div className="prose prose-sm sm:prose-base max-w-none text-gray-600">
       <p>
-        Explore the rich history and stunning architecture of Istanbul, to
-        stunning landscapes and ancient rock-cut churches of Cappadocia.
-        Experience the mesmerizing Bosphorus cruise, where ancient minarets and
-        modern skyscrapers blend seamlessly along the waterfront, offering a
-        breathtaking journey.
+        Embark on a spiritual journey like no other with Umrah — walk in the
+        footsteps of millions through the sacred streets of Makkah and Madinah.
+        Experience the tranquility of the Haram, the awe of the Kaaba, and the
+        serenity of Prophet Muhammad’s Mosque. Beyond rituals, discover timeless
+        Islamic heritage, peaceful courtyards, and the spiritual calm that
+        envelops every corner of these holy cities.
       </p>
       <ul className="list-disc pl-5 space-y-2 mt-4">
         {pkg.features.map((feature) => (
@@ -403,15 +405,15 @@ const OverviewContent = ({ pkg }: { pkg: PackageData }) => (
           <FaUtensils /> Meals
         </h4>
         <p className="text-sm text-gray-600">
-          Regular Packages will have Meals in Buffet Style. Premium and Prestige
-          Packages will have meals in Parcel Service.
+          Regular Packages will have Meals in Buffet Style. Platinum Packages
+          will have meals in Parcel Service.
         </p>
       </div>
       <div className="bg-gray-50 rounded-lg p-4">
         <h4 className="font-bold text-[#092638] mb-2 flex items-center gap-2">
           <FaPassport /> Visa & Taxes
         </h4>
-        <p className="text-sm text-gray-600">Turkey visa included.</p>
+        <p className="text-sm text-gray-600">Saudi Umrah visa included.</p>
       </div>
     </div>
   </div>
@@ -604,6 +606,7 @@ export default function PackageDetailPage() {
           </div>
         </main>
       </div>
+      <Footer />
     </>
   );
 }
