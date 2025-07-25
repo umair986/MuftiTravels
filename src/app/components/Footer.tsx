@@ -39,7 +39,7 @@ export default function Footer() {
         {/* Contact & Social */}
         <div className="text-center md:text-right space-y-2">
           <p className="font-semibold">+91 93230 63712</p>
-          <p className="text-sm">A/57 Madni Complex Bandra East Mumbai</p>
+          <p className="text-sm">A/57 Madni Complex Bandra East Mumbai India</p>
           <div className="flex justify-center md:justify-end gap-4 pt-2">
             <a
               href="https://www.instagram.com/mufti.travels/"

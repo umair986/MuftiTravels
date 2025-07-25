@@ -1,6 +1,6 @@
 "use client";
 
-import { Timeline } from "../ui/timeline";
+import { Timeline } from "./ui/timeline";
 import React from "react";
 
 const itineraryData = [

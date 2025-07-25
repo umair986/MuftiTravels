@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import PackagePopup from "./PackagePopup";
 
 const packages = [
   {
@@ -25,6 +27,8 @@ const packages = [
 ];
 
 export default function Packages() {
+  const [showPopup, setShowPopup] = useState(false);
+
   return (
     <section className="py-16 px-4 bg-white" id="packages">
       <div className="max-w-7xl mx-auto text-center">
@@ -57,14 +61,20 @@ export default function Packages() {
                     <li key={i}>{feature}</li>
                   ))}
                 </ul>
-                <button className="bg-[#f8ac0d] hover:bg-[#e59a00] text-black font-medium py-2 px-4 rounded">
-                  Enquire Now
+                <button
+                  onClick={() => setShowPopup(true)}
+                  className="bg-[#f8ac0d] hover:bg-[#e59a00] text-black font-medium py-2 px-4 rounded"
+                >
+                  Learn More
                 </button>
               </div>
             </motion.div>
           ))}
         </div>
       </div>
+
+      {/* Popup Component */}
+      {showPopup && <PackagePopup onClose={() => setShowPopup(false)} />}
     </section>
   );
 }
