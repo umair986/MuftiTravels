@@ -4,10 +4,10 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 
 const logos = [
-  "/partner1.png",
-  "/partner2.png",
-  "/partner3.png",
-  "/partner4.png",
+  "/Airlines/partner1.png",
+  "/Airlines/partner2.png",
+  "/Airlines/partner3.png",
+  "/Airlines/partner4.png",
 ];
 
 const scrollVariants = {

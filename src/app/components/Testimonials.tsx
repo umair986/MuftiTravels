@@ -8,31 +8,31 @@ const testimonials = [
   {
     name: "Ahmed Khan",
     role: "Pilgrim from Mumbai",
-    avatar: "/Mavatar.png",
+    avatar: "/testimonials/Mavatar.png",
     text: "Mufti Travels made my Umrah journey so peaceful and organized. From visa to ziyarat, everything was perfectly managed.",
   },
   {
     name: "Fatima Begum",
     role: "Hajj Group Member",
-    avatar: "/Favatar.png",
+    avatar: "/testimonials/favatar.png",
     text: "Truly spiritual and stress-free experience. The guides were extremely knowledgeable and caring throughout the Hajj.",
   },
   {
     name: "Imran Sheikh",
     role: "Family Umrah Package",
-    avatar: "/Mavatar.png",
+    avatar: "/testimonials/Mavatar.png",
     text: "Affordable packages, luxurious stays, and everything as promised. Definitely booking again next year.",
   },
   {
     name: "Zainab Patel",
     role: "Solo Umrah Traveller",
-    avatar: "/Favatar.png",
+    avatar: "/testimonials/favatar.png",
     text: "Even as a solo traveler, I felt safe and supported. Highly recommend Mufti Travels for women travelers.",
   },
   {
     name: "Yusuf Ali",
     role: "Pilgrim from Delhi",
-    avatar: "/Mavatar.png",
+    avatar: "/testimonials/Mavatar.png",
     text: "The attention to detail was incredible. From the hotels to the transport, everything was top-notch.",
   },
 ];

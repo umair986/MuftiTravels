@@ -10,37 +10,41 @@ interface PriceSelectorProps {
 
 export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
   const availableTiers = Object.keys(pkg.prices) as PackageTier[];
-  const availableSharings = [
+
+  // This is the complete list of all possible sharing options.
+  const allSharingTypes: SharingType[] = [
     "Quint",
     "Quad",
     "Triple",
     "Double",
-  ] as SharingType[];
+    "Child(6-11)",
+    "Child(2-5)",
+    "Infant(0-2)",
+  ];
 
-  // Set default states, ensuring they are valid for the current package
   const initialTier = availableTiers.includes("Silver")
     ? "Silver"
     : availableTiers[0];
   const [selectedTier, setSelectedTier] = useState<PackageTier>(initialTier);
   const [selectedSharing, setSelectedSharing] = useState<SharingType>("Quad");
 
-  // Adjust selected tier if it becomes invalid (e.g., after a data change)
   useEffect(() => {
     if (!availableTiers.includes(selectedTier)) {
       setSelectedTier(availableTiers[0] || "Silver");
     }
   }, [availableTiers, selectedTier]);
 
-  // Adjust selected sharing if it becomes invalid for the selected tier
   useEffect(() => {
+    // If the currently selected sharing option is not available for the selected tier,
+    // find the first available one and set it as the new selection.
     if (!pkg.prices[selectedTier]?.[selectedSharing]) {
-      // Find the first available sharing option for the current tier
-      const firstAvailableSharing = availableSharings.find(
+      const firstAvailableSharing = allSharingTypes.find(
         (s) => pkg.prices[selectedTier]?.[s]
       );
-      setSelectedSharing(firstAvailableSharing || "Quad"); // Default to Quad if none are available
+      // Default to 'Quad' if no other options are available for some reason
+      setSelectedSharing(firstAvailableSharing || "Quad");
     }
-  }, [selectedTier, selectedSharing, pkg.prices, availableSharings]);
+  }, [selectedTier, selectedSharing, pkg.prices, allSharingTypes]);
 
   const currentPrice = useMemo(() => {
     const price = pkg.prices[selectedTier]?.[selectedSharing];
@@ -48,6 +52,8 @@ export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
   }, [selectedTier, selectedSharing, pkg.prices]);
 
   const tierIsAvailable = (tier: PackageTier) => availableTiers.includes(tier);
+  // This function checks if a price exists for a given sharing type in your packageData.ts file.
+  // If a price doesn't exist, the button will be disabled.
   const sharingIsAvailable = (sharing: SharingType) =>
     pkg.prices[selectedTier]?.[sharing] !== undefined;
 
@@ -86,7 +92,8 @@ export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
           Sharing Type
         </h4>
         <div className="flex flex-wrap gap-2">
-          {availableSharings.map((sharing) => (
+          {/* This now correctly maps over the full list of sharing types */}
+          {allSharingTypes.map((sharing) => (
             <button
               key={sharing}
               onClick={() => setSelectedSharing(sharing)}

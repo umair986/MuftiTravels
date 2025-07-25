@@ -212,6 +212,9 @@ const PriceSelector = ({
     "Quad",
     "Triple",
     "Double",
+    "Child(6-11)",
+    "Child(2-5)",
+    "Infant(0-2)",
   ] as SharingType[];
   const initialTier = availableTiers.includes("Silver")
     ? "Silver"

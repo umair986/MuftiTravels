@@ -7,8 +7,7 @@ export type CategoryType = "Umrah Fixed Group" | "Umrah Land Package" | "Ziyarat
 
 // Define the types for our new dynamic pricing structure
 export type PackageTier = 'Super Saver' | 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
-export type SharingType = 'Quint' | 'Quad' | 'Triple' | 'Double';
-
+export type SharingType = 'Quint' | 'Quad' | 'Triple' | 'Double' | 'Child(6-11)' | 'Child(2-5)' | 'Infant(0-2)';
 export type PriceMap = {
   [key in SharingType]?: number;
 };
@@ -35,7 +34,7 @@ const generateSlug = (name: string): string => {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 };
 
-const addSlugsToPackages = (data: Record<CategoryType, Omit<PackageData, 'slug' | 'price' | 'originalPrice'>[]>): PackageDataType => {
+const addSlugsToPackages = (data: Record<CategoryType, Omit<PackageData, 'slug'>[]>): PackageDataType => {
   return Object.fromEntries(
     Object.entries(data).map(([category, packages]) => [
       category,
@@ -58,10 +57,13 @@ const basePrices: Record<PackageTier, number> = {
 
 // Function to generate prices for other sharing types based on the Quad price
 const generatePriceTiers = (baseQuadPrice: number): PriceMap => ({
-    'Quint': baseQuadPrice - 4000, // Example adjustment
+    'Quint': baseQuadPrice - 4000,
     'Quad': baseQuadPrice,
-    'Triple': baseQuadPrice + 5000, // Example adjustment
-    'Double': baseQuadPrice + 10000, // Example adjustment
+    'Triple': baseQuadPrice + 5000,
+    'Double': baseQuadPrice + 10000,
+    'Child(6-11)': baseQuadPrice - 10000, // Example: Child with bed price
+    'Child(2-5)': baseQuadPrice - 25000, // Example: Child without bed price
+    'Infant(0-2)': 20000, // Example: Fixed infant price
 });
 
 export const packageData: PackageDataType  = addSlugsToPackages({
@@ -77,8 +79,11 @@ export const packageData: PackageDataType  = addSlugsToPackages({
       ],
       features: [ "Group Travel", "Standard Hotels", "Economy Flights" ],
       prices: {
+        'Super Saver': generatePriceTiers(basePrices["Super Saver"]),
+        'Bronze': generatePriceTiers(basePrices.Bronze),
         'Silver': generatePriceTiers(basePrices.Silver),
         'Gold': generatePriceTiers(basePrices.Gold),
+        'Platinum': generatePriceTiers(basePrices.Platinum),
       }
     },
     {
@@ -89,9 +94,11 @@ export const packageData: PackageDataType  = addSlugsToPackages({
       badges: [{ text: "Featured", color: "bg-blue-500" }],
       features: [ "Private Rooms", "3-star Hotels", "Guided Ziyarat" ],
       prices: {
+        'Super Saver': generatePriceTiers(basePrices["Super Saver"]),
         'Bronze': generatePriceTiers(basePrices.Bronze),
         'Silver': generatePriceTiers(basePrices.Silver),
         'Gold': generatePriceTiers(basePrices.Gold),
+        'Platinum': generatePriceTiers(basePrices.Platinum),
       }
     },
     {
@@ -102,8 +109,10 @@ export const packageData: PackageDataType  = addSlugsToPackages({
       badges: [{ text: "New", color: "bg-yellow-500" }],
       features: [ "5-star Hotels", "VIP Lounge Access", "Dedicated Guide" ],
        prices: {
-        'Super Saver': generatePriceTiers(basePrices['Super Saver']),
+        'Super Saver': generatePriceTiers(basePrices["Super Saver"]),
+        'Bronze': generatePriceTiers(basePrices.Bronze),
         'Silver': generatePriceTiers(basePrices.Silver),
+        'Gold': generatePriceTiers(basePrices.Gold),
         'Platinum': generatePriceTiers(basePrices.Platinum),
       }
     },
@@ -111,7 +120,7 @@ export const packageData: PackageDataType  = addSlugsToPackages({
   "Umrah Land Package": [
     {
       name: "14 Days Umrah Land Package",
-      image: "/package1.webp",
+      image: "/packages/package1.webp",
       reviews: 35,
       rating: 5,
       badges: [
@@ -126,7 +135,7 @@ export const packageData: PackageDataType  = addSlugsToPackages({
     },
     {
       name: "30 Days Super saver Land Package",
-      image: "/package2.webp",
+      image: "/packages/package2.webp",
       reviews: 28,
       rating: 5,
       badges: [{ text: "Featured", color: "bg-blue-500" }],
@@ -137,7 +146,7 @@ export const packageData: PackageDataType  = addSlugsToPackages({
     },
     {
       name: "25 Days Super saver Land Package",
-      image: "/package3.webp",
+      image: "/packages/package3.webp",
       reviews: 25,
       rating: 5,
       badges: [{ text: "New", color: "bg-yellow-500" }],
@@ -150,7 +159,7 @@ export const packageData: PackageDataType  = addSlugsToPackages({
   Ziyarat: [
      {
       name: "Umrah Plus Turkey",
-      image: "/package1.webp",
+      image: "/packages/package1.webp",
       reviews: 26,
       rating: 5,
       badges: [
@@ -164,7 +173,7 @@ export const packageData: PackageDataType  = addSlugsToPackages({
     },
     {
       name: "Umrah Plus Dubai",
-      image: "/package2.webp",
+      image: "/packages/package2.webp",
       reviews: 28,
       rating: 5,
       badges: [{ text: "Featured", color: "bg-blue-500" }],
@@ -176,7 +185,7 @@ export const packageData: PackageDataType  = addSlugsToPackages({
     },
     {
       name: "Umrah Plus Baitul Muqaddas",
-      image: "/package3.webp",
+      image: "/packages/package3.webp",
       reviews: 33,
       rating: 5,
       badges: [{ text: "New", color: "bg-yellow-500" }],

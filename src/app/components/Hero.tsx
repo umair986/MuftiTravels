@@ -8,7 +8,7 @@ export default function Hero() {
     >
       {/* ✅ Correct image path */}
       <Image
-        src="/hero4.png"
+        src="/Hero/hero4.png"
         alt="Hero Background"
         fill
         priority
