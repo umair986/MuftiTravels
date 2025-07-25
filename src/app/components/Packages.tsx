@@ -1,57 +1,75 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import Image from "next/image";
-import { FaStar, FaArrowRight } from "react-icons/fa";
 import { useRouter } from "next/navigation";
-import {
-  PackageData,
-  packageData,
-  CategoryType,
-  Badge,
-  TierPriceMap,
-} from "./packageData";
+import { useState } from "react";
 
-const tabs: CategoryType[] = [
-  "Umrah Fixed Group",
-  "Umrah Land Package",
-  "Ziyarat",
-];
+// Umrah Fixed Group Cards
+import PackageCardMumbai from "./PackageCard/UmrahFixedGroup/PackageCardMumbai";
+import PackageCardLucknow from "./PackageCard/UmrahFixedGroup/PackageCardLucknow";
+import PackageCardDelhi from "./PackageCard/UmrahFixedGroup/PackageCardDelhi";
 
-// Helper function to get the lowest starting price for a package card
-const getStartingPrice = (prices: TierPriceMap): string => {
-  let lowestPrice: number | null = null;
+// Umrah Land Package Cards
+import PackageCard14Days from "./PackageCard/UmrahLandPackage/PackageCard14Days";
+import PackageCard30Days from "./PackageCard/UmrahLandPackage/PackageCard30Days";
+import PackageCard25Days from "./PackageCard/UmrahLandPackage/PackageCard25Days";
 
-  // Iterate through all tiers and sharing options to find the minimum price
-  for (const tier in prices) {
-    const priceMap = prices[tier as keyof TierPriceMap];
-    if (priceMap) {
-      for (const sharing in priceMap) {
-        const price = priceMap[sharing as keyof typeof priceMap];
-        if (
-          price !== undefined &&
-          (lowestPrice === null || price < lowestPrice)
-        ) {
-          lowestPrice = price;
-        }
-      }
-    }
-  }
-
-  return lowestPrice ? `₹${lowestPrice.toLocaleString("en-IN")}` : "N/A";
-};
+const tabs = ["Umrah Fixed Group", "Umrah Land Package", "Ziyarat"];
 
 export default function Packages() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<CategoryType>("Umrah Fixed Group");
+  const [activeTab, setActiveTab] = useState("Umrah Fixed Group");
 
-  const handleBookNow = (pkg: PackageData) => {
-    const formattedCategory = activeTab
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-    router.push(`/packages/${formattedCategory}/${pkg.slug}`);
+  // --- CORRECTED: Handlers now point to the new dedicated pages ---
+  const handleBookNowMumbai = () => {
+    router.push("/packages/umrah-fixed-group/mumbai");
+  };
+  const handleBookNowLucknow = () => {
+    router.push("/packages/umrah-fixed-group/lucknow");
+  };
+  const handleBookNowDelhi = () => {
+    router.push("/packages/umrah-fixed-group/delhi");
+  };
+
+  // --- Handlers for Umrah Land Package (These still use the dynamic slug pages) ---
+  const handleBookNow14DaysLand = () => {
+    router.push("/packages/umrah-land-package/14-days-umrah-land-package");
+  };
+  const handleBookNow30DaysLand = () => {
+    router.push(
+      "/packages/umrah-land-package/30-days-super-saver-land-package"
+    );
+  };
+  const handleBookNow25DaysLand = () => {
+    router.push(
+      "/packages/umrah-land-package/25-days-super-saver-land-package"
+    );
+  };
+
+  const renderCards = () => {
+    if (activeTab === "Umrah Fixed Group") {
+      return (
+        <>
+          <PackageCardMumbai handleBookNow={handleBookNowMumbai} />
+          <PackageCardLucknow handleBookNow={handleBookNowLucknow} />
+          <PackageCardDelhi handleBookNow={handleBookNowDelhi} />
+        </>
+      );
+    }
+    if (activeTab === "Umrah Land Package") {
+      return (
+        <>
+          <PackageCard14Days handleBookNow={handleBookNow14DaysLand} />
+          <PackageCard30Days handleBookNow={handleBookNow30DaysLand} />
+          <PackageCard25Days handleBookNow={handleBookNow25DaysLand} />
+        </>
+      );
+    }
+    // Fallback for other tabs
+    return (
+      <p className="text-center text-gray-500 col-span-1 sm:col-span-2 lg:col-span-3">
+        No packages available for this category.
+      </p>
+    );
   };
 
   return (
@@ -63,8 +81,9 @@ export default function Packages() {
           </h2>
         </div>
 
+        {/* Tabs */}
         <div className="flex flex-wrap justify-center gap-2 mb-8 sm:mb-12">
-          {tabs.map((tab: CategoryType) => (
+          {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -79,79 +98,10 @@ export default function Packages() {
           ))}
         </div>
 
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8"
-        >
-          {packageData[activeTab].map((pkg: PackageData, index: number) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col"
-            >
-              <div className="relative">
-                <Image
-                  src={pkg.image}
-                  alt={pkg.name}
-                  width={400}
-                  height={250}
-                  className="w-full h-56 object-cover"
-                />
-                <div className="absolute top-3 right-3 flex gap-2">
-                  {pkg.badges.map((badge: Badge, i: number) => (
-                    <span
-                      key={i}
-                      className={`${badge.color} text-white px-3 py-1 rounded-full text-xs font-semibold shadow-sm`}
-                    >
-                      {badge.text}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-5 flex flex-col flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="flex gap-1">
-                    {Array(pkg.rating)
-                      .fill(0)
-                      .map((_, i: number) => (
-                        <FaStar key={i} className="text-yellow-400" />
-                      ))}
-                  </div>
-                  <span className="text-gray-500 text-sm">
-                    ({pkg.reviews} Reviews)
-                  </span>
-                </div>
-
-                <h3 className="text-lg font-bold text-[#092638] mb-4 flex-grow">
-                  {pkg.name}
-                </h3>
-
-                <div className="flex justify-between items-center mt-auto">
-                  <div>
-                    <p className="text-sm text-gray-500">Starting From</p>
-                    {/* FIX: Use the helper function to display the correct starting price */}
-                    <p className="text-xl font-bold text-[#092638]">
-                      {getStartingPrice(pkg.prices)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleBookNow(pkg)}
-                    className="bg-[#f8ac0d] hover:bg-[#e59a00] text-white font-bold py-3 px-5 rounded-lg transition-colors duration-300 flex items-center justify-center gap-2"
-                  >
-                    Book Now
-                    <FaArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+        {/* Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {renderCards()}
+        </div>
       </div>
     </section>
   );

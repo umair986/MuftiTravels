@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useEffect, useState, FormEvent, FC, useMemo } from "react";
 import {
@@ -20,23 +20,20 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Import data structures and data
 import {
   PackageData,
-  packageData,
-  CategoryType,
   PackageTier,
   SharingType,
-} from "../../../components/packageData";
+} from "@/app/components/packageData";
+import { lucknowPackageData } from "@/app/components/Prices/lucknowPackageData";
 import {
   policies,
   notes,
   inclusions,
   exclusions,
-} from "../../../components/policyData";
+} from "@/app/components/policyData";
 import Footer from "@/app/components/Footer";
 
-// --- Reusable Enquiry Form Component ---
 const EnquiryForm = ({
   pkgName,
   onClose,
@@ -209,7 +206,6 @@ const availableSharings: SharingType[] = [
   "Infant(0-2)",
 ];
 
-// --- Reusable Price Selector Component (Integrated into this file) ---
 const PriceSelector = ({
   pkg,
   onEnquire,
@@ -302,7 +298,6 @@ const PriceSelector = ({
   );
 };
 
-// --- Reusable Content Components for Tabs ---
 const InfoList: FC<{
   title: string;
   items: string[];
@@ -316,7 +311,7 @@ const InfoList: FC<{
       <span className={iconColor}>{icon}</span> {title}
     </h3>
     <ul className="space-y-3">
-      {items.map((item, index) => (
+      {items.map((item: string, index: number) => (
         <li key={index} className="flex items-start gap-3">
           <span className="text-gray-400 mt-1">✓</span>
           <span className="text-gray-700">{item}</span>
@@ -363,7 +358,7 @@ const ImportantNotesContent = () => (
       <FaExclamationTriangle className="text-yellow-500" /> Important Notes
     </h3>
     <ul className="space-y-3 mb-6">
-      {notes.main.map((note, index) => (
+      {notes.main.map((note: string, index: number) => (
         <li key={index} className="flex items-start gap-3">
           <span className="text-gray-400 mt-1">▸</span>
           <span className="text-gray-700">{note}</span>
@@ -372,7 +367,7 @@ const ImportantNotesContent = () => (
     </ul>
     <h4 className="font-semibold text-gray-800 mb-2">Required Documents:</h4>
     <ul className="space-y-2 list-disc list-inside text-gray-700">
-      {notes.documents.map((doc, index) => (
+      {notes.documents.map((doc: string, index: number) => (
         <li key={index}>{doc}</li>
       ))}
     </ul>
@@ -393,8 +388,8 @@ const OverviewContent = ({ pkg }: { pkg: PackageData }) => (
         envelops every corner of these holy cities.
       </p>
       <ul className="list-disc pl-5 space-y-2 mt-4">
-        {pkg.features.map((feature) => (
-          <li key={feature}>{feature}</li>
+        {pkg.features.map((feature: string, index: number) => (
+          <li key={index}>{feature}</li>
         ))}
       </ul>
     </div>
@@ -424,51 +419,11 @@ const OverviewContent = ({ pkg }: { pkg: PackageData }) => (
   </div>
 );
 
-// --- Main Page Component ---
-const categorySlugMap: Record<string, CategoryType> = {
-  "umrah-fixed-group": "Umrah Fixed Group",
-  "umrah-land-package": "Umrah Land Package",
-  ziyarat: "Ziyarat",
-};
-
-export default function PackageDetailPage() {
+export default function LucknowPackagePage() {
   const router = useRouter();
-  const params = useParams();
-  const [pkg, setPkg] = useState<PackageData | null>(null);
-  const [categoryName, setCategoryName] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
+  const pkg: PackageData = lucknowPackageData;
   const [activeTab, setActiveTab] = useState("Overview");
   const [isFormOpen, setIsFormOpen] = useState(false);
-
-  useEffect(() => {
-    if (params.category && params.slug) {
-      try {
-        const categorySlug = Array.isArray(params.category)
-          ? params.category[0]
-          : params.category;
-        const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
-        const categoryKey = categorySlugMap[categorySlug];
-        if (!categoryKey || !packageData[categoryKey]) {
-          router.push("/404");
-          return;
-        }
-        const foundPackage = packageData[categoryKey].find(
-          (p) => p.slug === slug
-        );
-        if (!foundPackage) {
-          router.push("/404");
-          return;
-        }
-        setPkg(foundPackage);
-        setCategoryName(categoryKey);
-      } catch (error) {
-        console.error("Error loading package:", error);
-        router.push("/404");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  }, [params, router]);
 
   useEffect(() => {
     if (isFormOpen) {
@@ -481,13 +436,6 @@ export default function PackageDetailPage() {
     };
   }, [isFormOpen]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#f7f9fc] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-[#f8ac0d]"></div>
-      </div>
-    );
-  }
   if (!pkg) {
     return (
       <div className="min-h-screen bg-[#f7f9fc] flex items-center justify-center text-center p-4">
@@ -542,7 +490,7 @@ export default function PackageDetailPage() {
                 {pkg.name}
               </h1>
               <p className="text-gray-300 mt-2 text-sm">
-                Home » {categoryName} »{" "}
+                Home » Umrah Fixed Group »{" "}
                 <span className="text-white font-semibold">
                   Package Details
                 </span>

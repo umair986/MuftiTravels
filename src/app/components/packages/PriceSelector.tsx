@@ -8,19 +8,20 @@ interface PriceSelectorProps {
   onEnquire: () => void;
 }
 
+// CORRECTED: Moved the array outside the component.
+// This prevents it from being recreated on every render and resolves the warning.
+const allSharingTypes: SharingType[] = [
+  "Quint",
+  "Quad",
+  "Triple",
+  "Double",
+  "Child(6-11)",
+  "Child(2-5)",
+  "Infant(0-2)",
+];
+
 export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
   const availableTiers = Object.keys(pkg.prices) as PackageTier[];
-
-  // This is the complete list of all possible sharing options.
-  const allSharingTypes: SharingType[] = [
-    "Quint",
-    "Quad",
-    "Triple",
-    "Double",
-    "Child(6-11)",
-    "Child(2-5)",
-    "Infant(0-2)",
-  ];
 
   const initialTier = availableTiers.includes("Silver")
     ? "Silver"
@@ -35,16 +36,13 @@ export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
   }, [availableTiers, selectedTier]);
 
   useEffect(() => {
-    // If the currently selected sharing option is not available for the selected tier,
-    // find the first available one and set it as the new selection.
     if (!pkg.prices[selectedTier]?.[selectedSharing]) {
       const firstAvailableSharing = allSharingTypes.find(
         (s) => pkg.prices[selectedTier]?.[s]
       );
-      // Default to 'Quad' if no other options are available for some reason
       setSelectedSharing(firstAvailableSharing || "Quad");
     }
-  }, [selectedTier, selectedSharing, pkg.prices, allSharingTypes]);
+  }, [selectedTier, selectedSharing, pkg.prices]);
 
   const currentPrice = useMemo(() => {
     const price = pkg.prices[selectedTier]?.[selectedSharing];
@@ -52,8 +50,6 @@ export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
   }, [selectedTier, selectedSharing, pkg.prices]);
 
   const tierIsAvailable = (tier: PackageTier) => availableTiers.includes(tier);
-  // This function checks if a price exists for a given sharing type in your packageData.ts file.
-  // If a price doesn't exist, the button will be disabled.
   const sharingIsAvailable = (sharing: SharingType) =>
     pkg.prices[selectedTier]?.[sharing] !== undefined;
 
@@ -92,7 +88,6 @@ export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
           Sharing Type
         </h4>
         <div className="flex flex-wrap gap-2">
-          {/* This now correctly maps over the full list of sharing types */}
           {allSharingTypes.map((sharing) => (
             <button
               key={sharing}

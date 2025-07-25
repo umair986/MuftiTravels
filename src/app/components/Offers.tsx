@@ -13,7 +13,8 @@ export default function Offers() {
     description: "from Mumbai & Delhi in Via/Direct flight",
     price: "₹71,786",
     image: "/packages/umrah/umrah1.jpeg", // Make sure you have an image at this path in your public folder
-    slug: "/packages/umrah-fixed-group/15-days-regular-umrah-from-mumbai", // Example link
+    // UPDATED: The slug now points to the new dedicated page for the Mumbai package.
+    slug: "/packages/umrah-fixed-group/mumbai",
   };
 
   return (
