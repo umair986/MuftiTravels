@@ -5,13 +5,42 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { FaStar, FaArrowRight } from "react-icons/fa";
 import { useRouter } from "next/navigation";
-import { PackageData, packageData, CategoryType, Badge } from "./packageData";
+import {
+  PackageData,
+  packageData,
+  CategoryType,
+  Badge,
+  TierPriceMap,
+} from "./packageData";
 
 const tabs: CategoryType[] = [
   "Umrah Fixed Group",
   "Umrah Land Package",
   "Ziyarat",
 ];
+
+// Helper function to get the lowest starting price for a package card
+const getStartingPrice = (prices: TierPriceMap): string => {
+  let lowestPrice: number | null = null;
+
+  // Iterate through all tiers and sharing options to find the minimum price
+  for (const tier in prices) {
+    const priceMap = prices[tier as keyof TierPriceMap];
+    if (priceMap) {
+      for (const sharing in priceMap) {
+        const price = priceMap[sharing as keyof typeof priceMap];
+        if (
+          price !== undefined &&
+          (lowestPrice === null || price < lowestPrice)
+        ) {
+          lowestPrice = price;
+        }
+      }
+    }
+  }
+
+  return lowestPrice ? `₹${lowestPrice.toLocaleString("en-IN")}` : "N/A";
+};
 
 export default function Packages() {
   const router = useRouter();
@@ -34,7 +63,6 @@ export default function Packages() {
           </h2>
         </div>
 
-        {/* Tab Navigation */}
         <div className="flex flex-wrap justify-center gap-2 mb-8 sm:mb-12">
           {tabs.map((tab: CategoryType) => (
             <button
@@ -51,7 +79,6 @@ export default function Packages() {
           ))}
         </div>
 
-        {/* Package Cards */}
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}
@@ -108,8 +135,9 @@ export default function Packages() {
                 <div className="flex justify-between items-center mt-auto">
                   <div>
                     <p className="text-sm text-gray-500">Starting From</p>
+                    {/* FIX: Use the helper function to display the correct starting price */}
                     <p className="text-xl font-bold text-[#092638]">
-                      {pkg.price}
+                      {getStartingPrice(pkg.prices)}
                     </p>
                   </div>
                   <button
