@@ -53,8 +53,8 @@ export default function PackageCardMumbai({
         <div className="flex justify-between items-center mt-auto">
           <div>
             <p className="text-sm text-gray-500">Starting From</p>
-            {/* UPDATED: Price changed to Bronze + Quad */}
-            <p className="text-xl font-bold text-[#092638]">₹78,786</p>
+            {/* UPDATED: Price changed to Super Saver + Quint */}
+            <p className="text-xl font-bold text-[#092638]">₹69,786</p>
           </div>
           <button
             onClick={handleBookNow}
