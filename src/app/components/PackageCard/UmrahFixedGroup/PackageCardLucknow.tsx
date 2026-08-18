@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { FaStar, FaArrowRight } from "react-icons/fa";
+import { FiClock, FiMapPin, FiArrowRight, FiStar } from "react-icons/fi";
+import { FaPlane, FaHotel, FaUtensils, FaShieldAlt } from "react-icons/fa";
 
 export default function PackageCardLucknow({
   handleBookNow,
@@ -11,53 +12,98 @@ export default function PackageCardLucknow({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5 }}
-      className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4, delay: 0.1 }}
+      className="bg-white rounded-3xl overflow-hidden border border-stone-200 shadow-sm hover:border-[#D4AF37]/50 hover:shadow-2xl transition-all duration-300 flex flex-col group"
     >
-      <div className="relative">
+      {/* Image & Badges */}
+      <div className="relative h-60 w-full overflow-hidden bg-stone-900">
         <Image
           src="/packages/umrah/umrah2.jpeg"
           alt="15 Days Regular Umrah from Lucknow"
-          width={400}
-          height={250}
-          className="w-full h-56 object-cover"
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-700"
         />
-        <div className="absolute top-3 right-3 flex gap-2">
-          <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-t from-[#06131D]/80 via-transparent to-transparent" />
+        
+        {/* Top Badges */}
+        <div className="absolute top-3 left-3 right-3 flex justify-between items-center">
+          <span className="px-3 py-1 rounded-full text-xs font-bold text-white bg-blue-700/90 backdrop-blur-md shadow-sm border border-blue-500/30 flex items-center gap-1">
+            <FaPlane className="w-3 h-3" /> Direct Lucknow Flight
+          </span>
+          <span className="px-3 py-1 rounded-full text-xs font-bold text-stone-100 bg-[#06131D]/80 border border-[#D4AF37]/40 shadow-sm">
             Featured
           </span>
         </div>
-      </div>
 
-      <div className="p-5 flex flex-col flex-1">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex gap-1">
-            {Array(5)
-              .fill(0)
-              .map((_, i: number) => (
-                <FaStar key={i} className="text-yellow-400" />
-              ))}
-          </div>
-          <span className="text-gray-500 text-sm">(28 Reviews)</span>
+        {/* Distance Indicator Badge */}
+        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#06131D]/85 backdrop-blur-md text-[#F3E5AB] text-xs font-medium border border-[#D4AF37]/30">
+          <FiMapPin className="text-[#D4AF37] w-3.5 h-3.5" />
+          <span>Walking Distance to Haram</span>
         </div>
 
-        <h3 className="text-lg font-bold text-[#092638] mb-4 flex-grow">
-          15 Days Regular Umrah from Lucknow
-        </h3>
+        <div className="absolute bottom-3 right-3 text-white text-xs font-semibold px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-sm flex items-center gap-1">
+          <FiClock className="w-3.5 h-3.5 text-[#D4AF37]" />
+          <span>15 Days / 14 Nights</span>
+        </div>
+      </div>
 
-        <div className="flex justify-between items-center mt-auto">
-          <div>
-            <p className="text-sm text-gray-500">Starting From</p>
-            <p className="text-xl font-bold text-[#092638]">₹82,786</p>
+      {/* Card Body */}
+      <div className="p-6 flex flex-col flex-1 justify-between">
+        <div>
+          {/* Rating */}
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-1">
+              {[...Array(5)].map((_, i) => (
+                <FiStar key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+              ))}
+              <span className="text-xs font-bold text-stone-800 ml-1">5.0</span>
+              <span className="text-xs text-stone-500">(28 reviews)</span>
+            </div>
+            <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+              Direct Airfare
+            </span>
           </div>
+
+          <h3 className="font-serif text-xl font-bold text-[#06131D] group-hover:text-[#946E19] transition-colors line-clamp-1 mb-3">
+            15 Days Regular Umrah from Lucknow
+          </h3>
+
+          {/* Inclusions Grid */}
+          <div className="grid grid-cols-2 gap-2 py-3 border-y border-stone-100 text-xs text-stone-600 mb-4">
+            <span className="flex items-center gap-1.5 font-medium">
+              <FaPlane className="text-[#D4AF37] w-3 h-3" /> Direct Flight (LKO)
+            </span>
+            <span className="flex items-center gap-1.5 font-medium">
+              <FaHotel className="text-[#D4AF37] w-3 h-3" /> 4★/5★ Hotels
+            </span>
+            <span className="flex items-center gap-1.5 font-medium">
+              <FaUtensils className="text-[#D4AF37] w-3 h-3" /> 3x Indian Buffet
+            </span>
+            <span className="flex items-center gap-1.5 font-medium">
+              <FaShieldAlt className="text-[#D4AF37] w-3 h-3" /> Visa + Ziyarat
+            </span>
+          </div>
+        </div>
+
+        {/* Price & Action */}
+        <div className="pt-2 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-stone-400 font-semibold">Starting From</p>
+            <div className="flex items-baseline gap-1">
+              <span className="font-display text-2xl font-bold text-[#06131D]">₹72,786</span>
+              <span className="text-xs text-stone-500">/ person</span>
+            </div>
+          </div>
+
           <button
             onClick={handleBookNow}
-            className="bg-[#f8ac0d] hover:bg-[#e59a00] text-white font-bold py-3 px-5 rounded-lg transition-colors duration-300 flex items-center justify-center gap-2"
+            className="px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-[#06131D] gold-gradient-bg hover:brightness-110 shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            Book Now
-            <FaArrowRight className="w-3 h-3" />
+            <span>Book Now</span>
+            <FiArrowRight />
           </button>
         </div>
       </div>

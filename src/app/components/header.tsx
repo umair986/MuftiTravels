@@ -1,111 +1,243 @@
 "use client";
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { FiMenu, FiX } from "react-icons/fi"; // 🆕 Import phone icon
+import { FiMenu, FiX, FiPhone, FiCompass, FiShield } from "react-icons/fi";
+import { FaWhatsapp } from "react-icons/fa";
 
 const Header = () => {
   const [navOpen, setNavOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const toggleMenu = () => setNavOpen(!navOpen);
 
+  const navLinks = [
+    { name: "Home", href: "/" },
+    { name: "Curated Packages", href: "#packages" },
+    { name: "Why Mufti Travels", href: "#why-us" },
+    { name: "Spiritual Blueprint", href: "#journey" },
+    { name: "About Us", href: "#about" },
+    { name: "Gallery", href: "#gallery" },
+    { name: "Contact", href: "#contact" },
+  ];
+
+  const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("#")) {
+      e.preventDefault();
+      const targetId = href.replace("#", "");
+      const targetElement = document.getElementById(targetId);
+      if (targetElement) {
+        const headerOffset = 90;
+        const elementPosition = targetElement.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: "smooth",
+        });
+      }
+      if (navOpen) {
+        setNavOpen(false);
+      }
+    } else if (href === "/") {
+      if (window.location.pathname === "/") {
+        e.preventDefault();
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+        if (navOpen) {
+          setNavOpen(false);
+        }
+      }
+    }
+  };
+
   return (
-    <header className="bg-[#092638] text-[#f8ac0d] sticky top-0 z-50 shadow-md py-4 px-6">
-      <div className="flex items-center justify-between px-4 py-3 md:px-8">
-        <div className="flex items-center space-x-2">
-          <Image
-            src="/Logo.png"
-            alt="Mufti Travels"
-            width={130}
-            height={130}
-            className="w-[130px] h-auto"
-          />
-        </div>
+    <>
+      {/* Top Banner: Official Certification & Hotline */}
+      <div className="bg-[#040C13] border-b border-[#D4AF37]/15 text-xs text-stone-300 py-1.5 px-4 sm:px-8 hidden md:block">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center space-x-4">
+            <span className="flex items-center gap-1.5 text-[#E5C058]">
+              <FiShield className="w-3.5 h-3.5" />
+              <span className="font-medium tracking-wide">Government & MoFA Authorized Umrah Operator</span>
+            </span>
+            <span className="text-stone-500">|</span>
+            <span className="text-stone-400">Direct Flights from Mumbai, Delhi & Lucknow</span>
+          </div>
 
-        {/* Desktop Nav */}
-        <nav className="hidden md:flex space-x-6 items-center">
-          <Link
-            href="/"
-            className="hover:text-white transition-colors duration-200"
-          >
-            Home
-          </Link>
-          <Link
-            href="#packages"
-            className="hover:text-white transition-colors duration-200"
-          >
-            Packages
-          </Link>
-          <Link
-            href="#about"
-            className="hover:text-white transition-colors duration-200"
-          >
-            About
-          </Link>
-          <Link
-            href="#contact"
-            className="hover:text-white transition-colors duration-200"
-          >
-            Contact
-          </Link>
-          <Link
-            href="#gallery"
-            onClick={toggleMenu}
-            className="hover:text-white transition-colors duration-200"
-          >
-            Gallery
-          </Link>
-        </nav>
-
-        {/* Mobile Burger Icon */}
-        <div className="md:hidden">
-          <button onClick={toggleMenu}>
-            {navOpen ? <FiX size={24} /> : <FiMenu size={24} />}
-          </button>
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-stone-300">Pilgrim Advisors Online</span>
+            </div>
+            <a
+              href="tel:+919323063712"
+              className="flex items-center gap-1.5 text-stone-200 hover:text-[#D4AF37] transition-colors"
+            >
+              <FiPhone className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span className="font-medium">+91 93230 63712</span>
+            </a>
+            <a
+              href="https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20enquire%20about%20Umrah%20packages."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors"
+            >
+              <FaWhatsapp className="w-3.5 h-3.5" />
+              <span>WhatsApp Chat</span>
+            </a>
+          </div>
         </div>
       </div>
 
-      {/* Mobile Nav Links */}
-      {navOpen && (
-        <nav className="md:hidden flex flex-col items-center space-y-4 py-4 bg-[#092638] text-[#f8ac0d]">
+      {/* Main Navigation Header */}
+      <header
+        className={`sticky top-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-[#06131D]/95 backdrop-blur-md shadow-2xl border-b border-[#D4AF37]/25 py-2.5"
+            : "bg-[#06131D]/90 backdrop-blur-sm border-b border-[#D4AF37]/15 py-3.5"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+          {/* Brand Logo */}
           <Link
             href="/"
-            onClick={toggleMenu}
-            className="hover:text-white transition-colors duration-200"
+            onClick={(e) => handleSmoothScroll(e, "/")}
+            className="flex items-center gap-3 group"
           >
-            Home
+            <div className="relative overflow-hidden rounded-lg p-1 bg-gradient-to-br from-white/10 to-transparent border border-[#D4AF37]/20 group-hover:border-[#D4AF37]/50 transition-colors">
+              <Image
+                src="/Logo.png"
+                alt="Mufti Travels - Sacred Pilgrimage Experiences"
+                width={130}
+                height={50}
+                className="h-10 sm:h-12 w-auto object-contain"
+                priority
+              />
+            </div>
+            <div className="hidden lg:block text-left">
+              <p className="font-serif text-lg font-bold tracking-wider text-white leading-none">
+                MUFTI <span className="text-[#D4AF37]">TRAVELS</span>
+              </p>
+              <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 font-medium mt-1">
+                Hajj &bull; Umrah &bull; Ziyarat
+              </p>
+            </div>
           </Link>
-          <Link
-            href="#packages"
-            onClick={toggleMenu}
-            className="hover:text-white transition-colors duration-200"
-          >
-            Packages
-          </Link>
-          <Link
-            href="#about"
-            onClick={toggleMenu}
-            className="hover:text-white transition-colors duration-200"
-          >
-            About
-          </Link>
-          <Link
-            href="#contact"
-            onClick={toggleMenu}
-            className="hover:text-white transition-colors duration-200"
-          >
-            Contact
-          </Link>
-          <Link
-            href="#gallery"
-            onClick={toggleMenu}
-            className="hover:text-white transition-colors duration-200"
-          >
-            Gallery
-          </Link>
-        </nav>
-      )}
-    </header>
+
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
+            {navLinks.map((link) => (
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={(e) => handleSmoothScroll(e, link.href)}
+                className="px-3 py-1.5 rounded-full text-xs lg:text-sm font-medium text-stone-200 hover:text-[#E5C058] hover:bg-white/5 transition-all duration-200 relative group cursor-pointer"
+              >
+                {link.name}
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-[#D4AF37] group-hover:w-3/5 transition-all duration-300 rounded-full" />
+              </Link>
+            ))}
+          </nav>
+
+          {/* Action CTA & Contact */}
+          <div className="hidden md:flex items-center space-x-3">
+            <a
+              href="https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20consult%20for%20Umrah."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all duration-300 shadow-sm"
+              title="Instant WhatsApp Consultation"
+            >
+              <FaWhatsapp className="w-4 h-4" />
+            </a>
+            <a
+              href="#contact"
+              onClick={(e) => handleSmoothScroll(e, "#contact")}
+              className="px-4 lg:px-5 py-2 rounded-full font-semibold text-xs lg:text-sm text-[#06131D] gold-gradient-bg hover:brightness-110 shadow-lg hover:shadow-[#D4AF37]/20 transition-all duration-200 flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Enquire Now</span>
+              <FiCompass className="w-4 h-4" />
+            </a>
+          </div>
+
+          {/* Mobile Hamburger Button */}
+          <div className="flex items-center gap-2 md:hidden">
+            <a
+              href="https://wa.me/919323063712"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+              aria-label="WhatsApp Us"
+            >
+              <FaWhatsapp className="w-4 h-4" />
+            </a>
+            <button
+              onClick={toggleMenu}
+              className="p-2 rounded-lg text-stone-200 hover:text-[#D4AF37] hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
+              aria-label="Toggle Menu"
+            >
+              {navOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation Drawer */}
+        {navOpen && (
+          <div className="md:hidden bg-[#06131D]/98 backdrop-blur-xl border-b border-[#D4AF37]/20 px-6 py-6 animate-in slide-in-from-top duration-300">
+            <div className="flex flex-col space-y-3">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  onClick={(e) => handleSmoothScroll(e, link.href)}
+                  className="px-4 py-2.5 rounded-lg text-stone-200 hover:text-[#E5C058] hover:bg-white/5 font-medium text-base transition-colors flex items-center justify-between border-b border-white/5 cursor-pointer"
+                >
+                  <span>{link.name}</span>
+                  <span className="text-stone-600 text-xs">→</span>
+                </Link>
+              ))}
+
+              <div className="pt-4 flex flex-col gap-3">
+                <a
+                  href="tel:+919323063712"
+                  className="flex items-center justify-center gap-2 py-3 rounded-xl border border-stone-700 text-stone-200 hover:bg-white/5 transition-colors font-medium text-sm"
+                >
+                  <FiPhone className="text-[#D4AF37]" />
+                  <span>Call +91 93230 63712</span>
+                </a>
+                <a
+                  href="#contact"
+                  onClick={(e) => handleSmoothScroll(e, "#contact")}
+                  className="flex items-center justify-center gap-2 py-3 rounded-xl gold-gradient-bg text-[#06131D] font-bold text-sm shadow-md cursor-pointer"
+                >
+                  <span>Plan Your Sacred Journey</span>
+                  <FiCompass />
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+      </header>
+    </>
   );
 };
 

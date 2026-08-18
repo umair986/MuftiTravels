@@ -1,90 +1,117 @@
 "use client";
 
 import Image from "next/image";
-import { FaQuoteLeft, FaStar } from "react-icons/fa";
+import { FaStar, FaKaaba } from "react-icons/fa";
+import { FiCheck, FiMapPin } from "react-icons/fi";
 
-// Testimonial data with updated avatar paths
 const testimonials = [
   {
-    name: "Ahmed Khan",
-    role: "Pilgrim from Mumbai",
+    name: "Haji Ahmed Khan",
+    city: "Mumbai, Maharashtra",
+    category: "Family Group (8 Members)",
     avatar: "/testimonials/Mavatar.png",
-    text: "Mufti Travels made my Umrah journey so peaceful and organized. From visa to ziyarat, everything was perfectly managed.",
+    text: "Mufti Travels made our family Umrah completely effortless. With my elderly parents, having our hotel just 50 meters from Clock Tower meant they could pray all 5 Salah in the Haram without fatigue.",
+    package: "15 Days Mumbai Fixed Group",
   },
   {
     name: "Fatima Begum",
-    role: "Hajj Group Member",
+    city: "Lucknow, UP",
+    category: "Elderly Couple Umrah",
     avatar: "/testimonials/favatar.png",
-    text: "Truly spiritual and stress-free experience. The guides were extremely knowledgeable and caring throughout the Hajj.",
+    text: "Truly spiritual and stress-free. The scholar accompanying our group explained the historical significance of every Ziyarat site in Makkah and Madinah with such beauty and depth.",
+    package: "15 Days Lucknow Fixed Group",
   },
   {
     name: "Imran Sheikh",
-    role: "Family Umrah Package",
+    city: "Delhi NCR",
+    category: "Ramadan Special Group",
     avatar: "/testimonials/Mavatar.png",
-    text: "Affordable packages, luxurious stays, and everything as promised. Definitely booking again next year.",
+    text: "From airport clearance in Jeddah to the delicious Indian buffet meals served three times a day, everything exceeded what was promised. 10/10 recommend Mufti Travels.",
+    package: "15 Days Delhi Fixed Group",
   },
   {
     name: "Zainab Patel",
-    role: "Solo Umrah Traveller",
+    city: "Mumbai, Maharashtra",
+    category: "Solo Pilgrim",
     avatar: "/testimonials/favatar.png",
-    text: "Even as a solo traveler, I felt safe and supported. Highly recommend Mufti Travels for women travelers.",
+    text: "As a solo traveler, I felt completely safe, respected, and supported by the on-ground Khadims. The Rawdah permit was pre-arranged seamlessly on Nusuk without any wait.",
+    package: "14 Days Umrah Land Package",
   },
   {
-    name: "Yusuf Ali",
-    role: "Pilgrim from Delhi",
+    name: "Dr. Yusuf Ali",
+    city: "Bengaluru, Karnataka",
+    category: "VIP Suite Package",
     avatar: "/testimonials/Mavatar.png",
-    text: "The attention to detail was incredible. From the hotels to the transport, everything was top-notch.",
+    text: "The attention to detail and transparency in pricing is what sets Mufti Travels apart. No hidden fees, luxury private GMC transfers, and extraordinary hospitality.",
+    package: "Umrah Plus Turkey Heritage",
   },
 ];
 
-// The Testimonial Card component
 const TestimonialCard = ({
   name,
-  role,
-  text,
+  city,
+  category,
   avatar,
+  text,
+  package: pkgName,
 }: (typeof testimonials)[0]) => (
-  <li className="w-80 sm:w-96 flex-shrink-0">
-    <div className="flex flex-col h-full bg-white p-6 rounded-2xl shadow-lg border border-gray-100 transition-transform duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl">
-      <FaQuoteLeft className="text-indigo-500 text-3xl mb-4" />
-      {/* FIX: Replaced raw quotes with HTML entities to resolve the build error */}
-      <p className="text-gray-600 mb-5 flex-grow">&quot;{text}&quot;</p>
-      <div className="flex items-center mt-auto">
+  <li className="w-84 sm:w-96 flex-shrink-0">
+    <div className="flex flex-col h-full bg-white p-6 sm:p-7 rounded-3xl shadow-lg border border-stone-200 hover:border-[#D4AF37]/50 transition-all duration-300">
+      
+      {/* Top Header */}
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex gap-1 text-amber-400">
+          {[...Array(5)].map((_, i) => (
+            <FaStar key={i} className="w-3.5 h-3.5" />
+          ))}
+        </div>
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+          <FiCheck className="w-3 h-3" /> Verified Pilgrim
+        </span>
+      </div>
+
+      {/* Quote */}
+      <p className="text-stone-700 text-sm sm:text-base leading-relaxed mb-6 flex-grow font-body italic">
+        &ldquo;{text}&rdquo;
+      </p>
+
+      {/* Package Tag */}
+      <div className="text-[11px] font-medium text-[#946E19] bg-[#FAF8F5] px-3 py-1 rounded-lg border border-stone-200/80 mb-4 inline-block">
+        {pkgName}
+      </div>
+
+      {/* Pilgrim Profile */}
+      <div className="flex items-center pt-3 border-t border-stone-100">
         <Image
           src={avatar}
           alt={name}
-          width={50}
-          height={50}
-          className="rounded-full object-cover mr-4 border-2 border-indigo-100"
+          width={48}
+          height={48}
+          className="rounded-full object-cover mr-3.5 border-2 border-[#D4AF37]/40"
           onError={(e) => {
-            e.currentTarget.src =
-              "https://placehold.co/50x50/E2E8F0/4A5568?text=??";
-          }} // Fallback
+            e.currentTarget.src = "https://placehold.co/48x48/E2E8F0/4A5568?text=Pilgrim";
+          }}
         />
         <div>
-          <h4 className="font-bold text-[#092638]">{name}</h4>
-          <div className="flex items-center">
-            <span className="text-sm text-gray-500 mr-2">{role}</span>
-            <div className="flex gap-0.5">
-              {Array(5)
-                .fill(0)
-                .map((_, i) => (
-                  <FaStar key={i} className="text-yellow-400 text-xs" />
-                ))}
-            </div>
-          </div>
+          <h4 className="font-serif font-bold text-[#06131D] text-base">{name}</h4>
+          <p className="text-xs text-stone-500 flex items-center gap-1">
+            <FiMapPin className="text-[#D4AF37] w-3 h-3" />
+            <span>{city}</span>
+            <span className="text-stone-300">&bull;</span>
+            <span className="text-stone-400">{category}</span>
+          </p>
         </div>
       </div>
+
     </div>
   </li>
 );
 
-// The main Testimonials component using CSS animation
 export default function Testimonials() {
   return (
     <>
       <style jsx global>{`
-        @keyframes scroll {
+        @keyframes testimonialScroll {
           from {
             transform: translateX(0);
           }
@@ -94,19 +121,25 @@ export default function Testimonials() {
         }
       `}</style>
 
-      <section className="py-16 sm:py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#092638]">
-            Trusted by Pilgrims
+      <section className="py-20 bg-[#FAF8F5] relative overflow-hidden" id="testimonials">
+        <div className="absolute inset-0 islamic-pattern opacity-30 pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 mb-14">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#946E19] text-xs font-semibold uppercase tracking-wider mb-3">
+            <FaKaaba className="w-3.5 h-3.5" />
+            <span>Pilgrim Reflections & Du&apos;as</span>
+          </div>
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-[#06131D] tracking-tight mb-4">
+            Trusted by Thousands of <span className="gold-gradient-text italic">Blessed Pilgrims</span>
           </h2>
-          <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-600">
-            Our commitment to a spiritual and seamless journey, reflected in
-            their words.
+          <p className="mt-2 max-w-2xl mx-auto text-base sm:text-lg text-stone-600 font-body">
+            Read heartfelt experiences from families, elders, and solo travelers who completed their sacred journey with us.
           </p>
         </div>
 
-        <div className="group relative mt-12 w-full overflow-hidden [mask-image:_linear-gradient(to_right,transparent_0,_black_128px,_black_calc(100%-128px),transparent_100%)]">
-          <ul className="flex w-max items-stretch gap-6 sm:gap-8 py-4 md:animate-[scroll_40s_linear_infinite] group-hover:[animation-play-state:paused]">
+        {/* Continuous Smooth Testimonial Stream */}
+        <div className="group relative w-full overflow-hidden [mask-image:_linear-gradient(to_right,transparent_0,_black_128px,_black_calc(100%-128px),transparent_100%)]">
+          <ul className="flex w-max items-stretch gap-6 sm:gap-8 py-4 animate-[testimonialScroll_45s_linear_infinite] group-hover:[animation-play-state:paused]">
             {[...testimonials, ...testimonials].map((testimonial, index) => (
               <TestimonialCard
                 key={`${testimonial.name}-${index}`}

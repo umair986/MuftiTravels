@@ -1,97 +1,148 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FaArrowRight } from "react-icons/fa";
+import { FiArrowRight, FiPercent, FiUsers, FiCalendar, FiCheck } from "react-icons/fi";
+import { FaWhatsapp } from "react-icons/fa";
 
 export default function Offers() {
   const router = useRouter();
 
-  // In a real app, you might fetch this data from an API
-  const specialOffer = {
-    title: "Offer for more than 8 People",
-    description: "from Mumbai & Delhi in Via/Direct flight",
-    price: "₹71,786",
-    image: "/packages/umrah/umrah1.jpeg", // Make sure you have an image at this path in your public folder
-    // UPDATED: The slug now points to the new dedicated page for the Mumbai package.
-    slug: "/packages/umrah-fixed-group/mumbai",
-  };
-
   return (
-    <section className="bg-gradient-to-b from-blue-50 via-white to-white py-16 sm:py-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <span className="inline-block bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full mb-2">
-          Special Offers
-        </span>
-        <h2 className="text-3xl md:text-4xl font-bold text-[#092638]">
-          Offers To Inspire You
-        </h2>
-      </div>
+    <section className="py-20 bg-[#FAF8F5] relative overflow-hidden" id="offers">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 islamic-pattern opacity-30 pointer-events-none" />
 
-      <div className="max-w-5xl mx-auto mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8 px-4 sm:px-6 lg:px-8">
-        {/* Special Offer Card */}
-        <div className="bg-blue-600 text-white rounded-3xl shadow-2xl overflow-hidden flex flex-col sm:flex-row items-center p-6 sm:p-0 transform hover:scale-105 transition-transform duration-300">
-          <div className="sm:w-1/2 text-left p-4 sm:pl-8">
-            <span className="text-sm font-semibold opacity-80">
-              Special Offer
-            </span>
-            <h3 className="text-xl font-bold mt-1">{specialOffer.title}</h3>
-            <p className="text-sm mt-1 opacity-80">
-              {specialOffer.description}
-            </p>
-            <p className="text-2xl font-bold mt-4">
-              {specialOffer.price}
-              <span className="text-sm font-normal opacity-80">
-                {" "}
-                /Per Person
-              </span>
-            </p>
-            <button
-              onClick={() => router.push(specialOffer.slug)}
-              className="mt-6 bg-white text-blue-600 font-bold py-3 px-6 rounded-lg transition-colors duration-300 hover:bg-blue-100 flex items-center gap-2"
-            >
-              Book Now <FaArrowRight />
-            </button>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        
+        {/* Section Header */}
+        <div className="text-center max-w-3xl mx-auto mb-14">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#946E19] text-xs font-semibold uppercase tracking-wider mb-3">
+            <FiPercent className="w-3.5 h-3.5" />
+            <span>Exclusive Seasonal Perks</span>
           </div>
-          <div className="sm:w-1/2 w-full mt-6 sm:mt-0 h-64 sm:h-full">
-            <Image
-              src={specialOffer.image}
-              alt="Special Offer"
-              width={400}
-              height={400}
-              className="w-full h-full object-cover sm:rounded-r-3xl"
-              onError={(e) => {
-                e.currentTarget.src =
-                  "https://placehold.co/400x400/1E40AF/FFFFFF?text=Offer";
-              }}
-            />
-          </div>
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-[#06131D] tracking-tight mb-4">
+            Offers to Inspire Your <span className="gold-gradient-text italic">Blessed Journey</span>
+          </h2>
+          <p className="text-stone-600 font-body text-base sm:text-lg leading-relaxed">
+            Take advantage of special group concessions, family booking rates, and seasonal packages designed with extraordinary value.
+          </p>
         </div>
 
-        {/* No Offer Card */}
-        <div className="bg-orange-500 text-white rounded-3xl shadow-2xl flex flex-col justify-between p-8 text-left">
-          <div>
-            <span className="inline-block bg-white/20 text-xs font-semibold px-3 py-1 rounded-full">
-              No Offer
-            </span>
+        {/* 2 Feature Cards Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          
+          {/* Offer Card 1: 8+ Pilgrims Group Special */}
+          <div className="bg-[#06131D] text-white rounded-3xl p-6 sm:p-8 border border-[#D4AF37]/40 shadow-2xl flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <span className="px-3.5 py-1 rounded-full text-xs font-bold text-[#06131D] gold-gradient-bg shadow-sm">
+                  Group Concession
+                </span>
+                <span className="text-xs font-semibold text-[#F3E5AB] flex items-center gap-1">
+                  <FiUsers className="w-3.5 h-3.5 text-[#D4AF37]" /> 8+ Passengers
+                </span>
+              </div>
+
+              <h3 className="font-display text-2xl sm:text-3xl font-bold text-white mb-2">
+                Special Rate for 8+ Family & Friends Group
+              </h3>
+              <p className="text-stone-300 font-body text-sm leading-relaxed mb-6">
+                Traveling with extended family or community members? Enjoy dedicated private transport, interconnected hotel rooms, and exclusive discount per pilgrim.
+              </p>
+
+              {/* Perks List */}
+              <div className="space-y-2 mb-6 text-xs text-stone-300">
+                <p className="flex items-center gap-2">
+                  <FiCheck className="text-emerald-400" /> Direct/Via Flights from Mumbai & Delhi
+                </p>
+                <p className="flex items-center gap-2">
+                  <FiCheck className="text-emerald-400" /> Private AC Coach for Group Ziyarat
+                </p>
+                <p className="flex items-center gap-2">
+                  <FiCheck className="text-emerald-400" /> Complimentary Dedicated Group Khadim
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-stone-400 font-semibold">Special Group Price</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-display text-2xl sm:text-3xl font-bold text-[#F3E5AB]">₹71,786</span>
+                  <span className="text-xs text-stone-400">/ person</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => router.push("/packages/umrah-fixed-group/mumbai")}
+                className="px-6 py-3 rounded-xl font-bold text-xs sm:text-sm text-[#06131D] gold-gradient-bg hover:brightness-110 shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <span>Book Group Package</span>
+                <FiArrowRight />
+              </button>
+            </div>
           </div>
-          <div className="text-center my-8">
-            <h3 className="text-2xl font-bold">Get Special Offer</h3>
-            <p className="mt-1 opacity-80">No Offer Available</p>
+
+          {/* Offer Card 2: Ramadan 2025 Early Bird */}
+          <div className="bg-gradient-to-br from-[#0D2A3A] to-[#0B1E28] text-white rounded-3xl p-6 sm:p-8 border border-[#D4AF37]/30 shadow-2xl flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <span className="px-3.5 py-1 rounded-full text-xs font-bold text-white bg-emerald-700/90 border border-emerald-500/30">
+                  Early Bird Slots
+                </span>
+                <span className="text-xs font-semibold text-[#F3E5AB] flex items-center gap-1">
+                  <FiCalendar className="w-3.5 h-3.5 text-[#D4AF37]" /> Ramadan 2025
+                </span>
+              </div>
+
+              <h3 className="font-display text-2xl sm:text-3xl font-bold text-white mb-2">
+                Ramadan Mubarak 2025 Advance Registration
+              </h3>
+              <p className="text-stone-300 font-body text-sm leading-relaxed mb-6">
+                Experience the spiritual zenith of Laylatul Qadr and Taraweeh prayers in the Two Holy Mosques. Secure guaranteed Clock Tower accommodations before peak price surges.
+              </p>
+
+              {/* Perks List */}
+              <div className="space-y-2 mb-6 text-xs text-stone-300">
+                <p className="flex items-center gap-2">
+                  <FiCheck className="text-emerald-400" /> First 15 Days & Last 15 Days Options
+                </p>
+                <p className="flex items-center gap-2">
+                  <FiCheck className="text-emerald-400" /> Daily Sahoor & Iftar Buffet Inclusions
+                </p>
+                <p className="flex items-center gap-2">
+                  <FiCheck className="text-emerald-400" /> Guaranteed MoFA Ramadan Visa Quota
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-stone-400 font-semibold">Priority Booking</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-display text-xl sm:text-2xl font-bold text-[#F3E5AB]">Custom Dates</span>
+                  <span className="text-xs text-stone-400">available</span>
+                </div>
+              </div>
+
+              <a
+                href="https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20register%20early%20for%20Ramadan%202025%20Umrah."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-3 rounded-xl font-bold text-xs sm:text-sm text-white bg-white/10 hover:bg-white/20 border border-[#D4AF37]/30 flex items-center justify-center gap-2 transition-all"
+              >
+                <FaWhatsapp className="w-4 h-4 text-emerald-400" />
+                <span>Reserve on WhatsApp</span>
+              </a>
+            </div>
           </div>
-          <div className="flex justify-between items-center">
-            <p className="text-xl font-bold">
-              ₹N/A
-              <span className="text-sm font-normal opacity-80">
-                {" "}
-                /Per Person
-              </span>
-            </p>
-            <button className="bg-white/20 text-white font-bold py-3 px-5 rounded-lg flex items-center gap-2 cursor-not-allowed">
-              Book Now <FaArrowRight />
-            </button>
-          </div>
+
         </div>
+
       </div>
     </section>
   );
