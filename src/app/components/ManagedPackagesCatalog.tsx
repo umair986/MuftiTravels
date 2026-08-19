@@ -17,6 +17,7 @@ export default function ManagedPackagesCatalog({
 }) {
   const [packages, setPackages] = useState<CmsPackageRecord[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const supabase = createClient();
@@ -31,15 +32,26 @@ export default function ManagedPackagesCatalog({
       .eq("category", category)
       .eq("is_published", true)
       .order("sort_order", { ascending: true })
-      .then(({ data }) => {
+      .then(({ data, error: queryError }) => {
         setPackages((data as CmsPackageRecord[]) ?? []);
+        if (queryError) setError(queryError.message);
         setIsLoaded(true);
       });
   }, [category]);
 
-  if (!isLoaded || packages.length === 0) {
+  if (!isLoaded) {
     return <>{fallback}</>;
   }
+
+  if (error) {
+    return (
+      <p className="col-span-full rounded-xl border border-red-200 bg-red-50 p-4 text-center text-sm text-red-700">
+        Packages are temporarily unavailable. Please try again shortly.
+      </p>
+    );
+  }
+
+  if (packages.length === 0) return <>{fallback}</>;
 
   return (
     <>
