@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   FiArrowRight,
   FiShield,
@@ -12,6 +13,7 @@ import {
 } from "react-icons/fi";
 import { FaWhatsapp, FaKaaba } from "react-icons/fa";
 import CustomDropdown, { DropdownOption } from "./ui/CustomDropdown";
+import { useRouter } from "next/navigation";
 
 const cityOptions: DropdownOption[] = [
   {
@@ -89,16 +91,14 @@ const seasonOptions: DropdownOption[] = [
 ];
 
 export default function Hero() {
+  const router = useRouter();
   const [selectedCity, setSelectedCity] = useState("Mumbai");
   const [selectedType, setSelectedType] = useState("Umrah Fixed Group");
   const [selectedMonth, setSelectedMonth] = useState("Upcoming");
 
   const handleQuickSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const packageSection = document.getElementById("packages");
-    if (packageSection) {
-      packageSection.scrollIntoView({ behavior: "smooth" });
-    }
+    router.push("/packages");
   };
 
   return (
@@ -150,13 +150,13 @@ export default function Hero() {
 
         {/* Dual Primary CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md sm:max-w-none mb-12">
-          <a
-            href="#packages"
+          <Link
+            href="/packages"
             className="w-full sm:w-auto px-8 py-3.5 rounded-full font-bold text-sm sm:text-base text-[#06131D] gold-gradient-bg hover:brightness-110 shadow-xl shadow-[#D4AF37]/20 transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer"
           >
             <span>Explore Packages</span>
             <FiArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </a>
+          </Link>
 
           <a
             href="https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20consult%20for%20an%20Umrah%20package."

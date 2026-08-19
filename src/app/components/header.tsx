@@ -26,7 +26,7 @@ const Header = () => {
 
   const navLinks = [
     { name: "Home", href: "/" },
-    { name: "Curated Packages", href: "#packages" },
+    { name: "Curated Packages", href: "/packages" },
     { name: "Why Mufti Travels", href: "#why-us" },
     { name: "Spiritual Blueprint", href: "#journey" },
     { name: "About Us", href: "#about" },
@@ -34,7 +34,10 @@ const Header = () => {
     { name: "Contact", href: "#contact" },
   ];
 
-  const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+  const handleSmoothScroll = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    href: string,
+  ) => {
     if (href.startsWith("#")) {
       e.preventDefault();
       const targetId = href.replace("#", "");
@@ -42,7 +45,8 @@ const Header = () => {
       if (targetElement) {
         const headerOffset = 90;
         const elementPosition = targetElement.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        const offsetPosition =
+          elementPosition + window.pageYOffset - headerOffset;
 
         window.scrollTo({
           top: offsetPosition,
@@ -74,10 +78,14 @@ const Header = () => {
           <div className="flex items-center space-x-4">
             <span className="flex items-center gap-1.5 text-[#E5C058]">
               <FiShield className="w-3.5 h-3.5" />
-              <span className="font-medium tracking-wide">Government & MoFA Authorized Umrah Operator</span>
+              <span className="font-medium tracking-wide">
+                Government & MoFA Authorized Umrah Operator
+              </span>
             </span>
             <span className="text-stone-500">|</span>
-            <span className="text-stone-400">Direct Flights from Mumbai, Delhi & Lucknow</span>
+            <span className="text-stone-400">
+              Direct Flights from Mumbai, Delhi & Lucknow
+            </span>
           </div>
 
           <div className="flex items-center space-x-6">
@@ -195,7 +203,11 @@ const Header = () => {
               className="p-2 rounded-lg text-stone-200 hover:text-[#D4AF37] hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
               aria-label="Toggle Menu"
             >
-              {navOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
+              {navOpen ? (
+                <FiX className="w-6 h-6" />
+              ) : (
+                <FiMenu className="w-6 h-6" />
+              )}
             </button>
           </div>
         </div>
