@@ -2,13 +2,13 @@
 
 export default function Error() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-6">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-[#092638] mb-4">
-          Something went wrong!
+        <h1 className="font-display text-3xl font-bold text-[#06131D] mb-3">
+          We could not open this package
         </h1>
-        <p className="text-gray-600">
-          Please try refreshing the page or go back to the packages list.
+        <p className="text-stone-600">
+          Please refresh the page or return to the available packages.
         </p>
       </div>
     </div>

@@ -18,7 +18,7 @@ const scrollVariants = {
       x: {
         duration: 22,
         repeat: Infinity,
-        ease: "linear",
+        ease: "linear" as const,
       },
     },
   },
