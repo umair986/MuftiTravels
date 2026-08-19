@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { packageData } from "./components/packageData";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://muftitravels.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://muftitravels.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const packageUrls = Object.entries(packageData).flatMap(([category, packages]) => {

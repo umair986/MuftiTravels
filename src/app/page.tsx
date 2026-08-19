@@ -20,8 +20,8 @@ export default function Home() {
             "@context": "https://schema.org",
             "@type": "TravelAgency",
             name: "Mufti Travels",
-            url: "https://muftitravels.vercel.app",
-            logo: "https://muftitravels.vercel.app/favicon.png",
+            url: "https://muftitravels.com",
+            logo: "https://muftitravels.com/favicon.png",
             description:
               "Hajj, Umrah and Ziyarat packages from India with guided pilgrimage support.",
             areaServed: "India",

@@ -27,7 +27,7 @@ const amiri = Amiri({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://muftitravels.vercel.app",
+    process.env.NEXT_PUBLIC_SITE_URL || "https://muftitravels.com",
   ),
   title: {
     default: "Mufti Travels | Hajj & Umrah Packages from India",

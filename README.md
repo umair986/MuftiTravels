@@ -6,7 +6,7 @@ Welcome to **Mufti Travels**, a modern and responsive web application for bookin
 
 ## 🌐 Live Demo
 
-[Visit Live Site](https://muftitravels.vercel.app) <!-- Replace with your actual deployed URL -->
+[Visit Live Site](https://muftitravels.com)
 
 ---
 
@@ -73,7 +73,7 @@ This project is deployed using Vercel. Any push to the main branch will automati
 arduino
 Copy
 Edit
-https://muftitravels.vercel.app
+https://muftitravels.com
 🙏 Contributing
 Pull requests are welcome! If you have ideas to improve the UI, itinerary, or backend integration (like bookings or payments), feel free to fork and PR.
 
