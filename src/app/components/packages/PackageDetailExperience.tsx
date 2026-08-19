@@ -36,13 +36,6 @@ import {
 } from "@/app/components/packageData";
 import { createClient } from "@/lib/supabase/client";
 
-const tiers: PackageTier[] = [
-  "Super Saver",
-  "Bronze",
-  "Silver",
-  "Gold",
-  "Platinum",
-];
 const sharingTypes: SharingType[] = ["Quint", "Quad", "Triple", "Double"];
 
 type DetailProps = { pkg: PackageData; categoryName: string };
@@ -326,7 +319,7 @@ function PriceSelector({
             Accommodation tier
           </legend>
           <div className="grid grid-cols-2 gap-2">
-            {tiers.map((item) => {
+            {availableTiers.map((item) => {
               const enabled = availableTiers.includes(item);
               return (
                 <button

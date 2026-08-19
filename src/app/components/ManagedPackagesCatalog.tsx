@@ -86,6 +86,16 @@ function ManagedPackageCard({ record }: { record: CmsPackageRecord }) {
           className="object-cover transition-transform duration-700 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#06131D]/80 via-transparent to-transparent" />
+        <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-1.5">
+          {(record.card_tags ?? []).map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full bg-[#D4AF37] px-2.5 py-1 text-[10px] font-bold text-[#06131D]"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
         <span className="absolute left-3 top-3 rounded-full bg-amber-700/90 px-3 py-1 text-xs font-bold text-white">
           {preferredTier || "Package"}
         </span>

@@ -209,6 +209,7 @@ export interface PackageData {
   rating: 1 | 2 | 3 | 4 | 5;
   features: string[];
   badges: Badge[];
+  card_tags?: string[];
   slug: string;
   prices: TierPriceMap;
 }

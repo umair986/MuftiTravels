@@ -56,22 +56,20 @@ export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
           Package Type
         </h4>
         <div className="flex flex-wrap gap-2">
-          {["Super Saver", "Bronze", "Silver", "Gold", "Platinum"].map(
-            (tier) => (
-              <button
-                key={tier}
-                onClick={() => setSelectedTier(tier as PackageTier)}
-                disabled={!tierIsAvailable(tier as PackageTier)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                  selectedTier === tier
-                    ? "bg-[#092638] text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                } disabled:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed`}
-              >
-                {tier}
-              </button>
-            ),
-          )}
+          {availableTiers.map((tier) => (
+            <button
+              key={tier}
+              onClick={() => setSelectedTier(tier)}
+              disabled={!tierIsAvailable(tier)}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                selectedTier === tier
+                  ? "bg-[#092638] text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              } disabled:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed`}
+            >
+              {tier}
+            </button>
+          ))}
         </div>
       </div>
 

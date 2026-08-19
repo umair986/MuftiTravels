@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type AdminDashboardProps = {
@@ -10,6 +10,8 @@ type AdminDashboardProps = {
 
 export default function AdminDashboard({ email }: AdminDashboardProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [packageCount, setPackageCount] = useState<number | null>(null);
+  const [enquiryCount, setEnquiryCount] = useState<number | null>(null);
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -17,6 +19,27 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
     if (supabase) await supabase.auth.signOut();
     setIsSigningOut(false);
   }
+
+  useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) return;
+    const client = supabase;
+
+    async function loadCounts() {
+      const [{ count: packages }, { count: enquiries }] = await Promise.all([
+        client
+          .from("packages")
+          .select("id", { count: "exact", head: true })
+          .eq("is_published", true),
+        client.from("enquiries").select("id", { count: "exact", head: true }),
+      ]);
+
+      setPackageCount(packages ?? 0);
+      setEnquiryCount(enquiries ?? 0);
+    }
+
+    void loadCounts();
+  }, []);
 
   return (
     <main className="min-h-[calc(100vh-5rem)] bg-[#F3EFEA] px-5 py-8 sm:px-8 lg:px-12">
@@ -44,10 +67,16 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
         </header>
 
         <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <DashboardMetric label="Published Packages" value="0" />
-          <DashboardMetric label="Enquiries" value="0" />
-          <DashboardMetric label="Testimonials" value="0" />
-          <DashboardMetric label="Gallery Items" value="0" />
+          <DashboardMetric
+            label="Published Packages"
+            value={packageCount === null ? "..." : String(packageCount)}
+          />
+          <DashboardMetric
+            label="Enquiries"
+            value={enquiryCount === null ? "..." : String(enquiryCount)}
+          />
+          <DashboardMetric label="Testimonials" value="-" />
+          <DashboardMetric label="Gallery Items" value="-" />
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -84,6 +113,21 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
               <DashboardAction
                 title="Gallery"
                 description="Manage travel photos"
+              />
+              <DashboardAction
+                title="Tags & Tiers"
+                description="Manage card labels and package tiers"
+                href="/admin/tags"
+              />
+              <DashboardAction
+                title="Ramzan Packages"
+                description="Create and edit Ramadan offers"
+                href="/admin/ramzan"
+              />
+              <DashboardAction
+                title="Hajj Packages"
+                description="Create and edit Hajj offers"
+                href="/admin/hajj"
               />
             </div>
           </div>

@@ -11,6 +11,7 @@ export type CmsPackageRecord = {
   duration_nights: number;
   destinations: string;
   features: string[];
+  card_tags?: string[];
   prices: TierPriceMap;
   starting_price: number;
   currency: string;
@@ -27,6 +28,7 @@ export function cmsPackageToPackageData(record: CmsPackageRecord): PackageData {
     reviews: record.reviews,
     rating: record.rating,
     features: record.features,
+    card_tags: record.card_tags ?? [],
     badges: [{ text: "Published", color: "bg-emerald-600" }],
     slug: record.slug,
     prices: record.prices,

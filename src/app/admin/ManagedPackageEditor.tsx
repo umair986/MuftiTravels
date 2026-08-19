@@ -5,18 +5,11 @@ import { CmsPackageRecord } from "@/lib/packages";
 import { createClient } from "@/lib/supabase/client";
 
 const packageSlug = "14-days-umrah-land-package";
-const packageTiers = [
-  "Super Saver",
-  "Bronze",
-  "Silver",
-  "Gold",
-  "Platinum",
-] as const;
 const sharingTypes = ["Quint", "Quad", "Triple", "Double"] as const;
 
 type PriceRow = {
   id: number;
-  tier: (typeof packageTiers)[number];
+  tier: string;
   sharing: (typeof sharingTypes)[number];
   amount: string;
 };
@@ -30,6 +23,7 @@ type FormState = {
   destinations: string;
   features: string;
   prices: PriceRow[];
+  cardTags: string;
   isPublished: boolean;
 };
 
@@ -42,6 +36,7 @@ const emptyForm: FormState = {
   destinations: "",
   features: "",
   prices: [],
+  cardTags: "",
   isPublished: true,
 };
 
@@ -49,9 +44,7 @@ function pricesToRows(prices: CmsPackageRecord["prices"]): PriceRow[] {
   return Object.entries(prices).flatMap(([tier, sharingPrices], tierIndex) =>
     Object.entries(sharingPrices ?? {}).map(([sharing, amount], rowIndex) => ({
       id: tierIndex * 100 + rowIndex,
-      tier: packageTiers.includes(tier as PriceRow["tier"])
-        ? (tier as PriceRow["tier"])
-        : "Silver",
+      tier,
       sharing: sharingTypes.includes(sharing as PriceRow["sharing"])
         ? (sharing as PriceRow["sharing"])
         : "Quad",
@@ -110,6 +103,7 @@ export default function ManagedPackageEditor({
             durationNights: String(packageRecord.duration_nights),
             destinations: packageRecord.destinations,
             features: packageRecord.features.join("\n"),
+            cardTags: (packageRecord.card_tags ?? []).join(", "),
             prices: pricesToRows(packageRecord.prices),
             isPublished: packageRecord.is_published,
           });
@@ -221,6 +215,10 @@ export default function ManagedPackageEditor({
           .filter(Boolean),
         starting_price: startingPrice,
         prices: nextPrices,
+        card_tags: form.cardTags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
         is_published: form.isPublished,
       })
       .eq("id", record.id)
@@ -310,6 +308,11 @@ export default function ManagedPackageEditor({
           value={form.destinations}
           onChange={(value) => updateField("destinations", value)}
         />
+        <EditorField
+          label="Card tags (comma separated)"
+          value={form.cardTags}
+          onChange={(value) => updateField("cardTags", value)}
+        />
         <label className="space-y-1.5 font-body text-sm font-semibold text-[#06131D] sm:col-span-2">
           Description
           <textarea
@@ -345,13 +348,10 @@ export default function ManagedPackageEditor({
                 key={row.id}
                 className="grid gap-3 rounded-lg border border-stone-200 bg-white p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"
               >
-                <EditorSelect
+                <EditorField
                   label="Package tier"
                   value={row.tier}
-                  options={packageTiers}
-                  onChange={(value) =>
-                    updatePriceRow(row.id, { tier: value as PriceRow["tier"] })
-                  }
+                  onChange={(value) => updatePriceRow(row.id, { tier: value })}
                 />
                 <EditorSelect
                   label="Sharing"
