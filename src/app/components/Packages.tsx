@@ -14,13 +14,23 @@ import PackageCardDelhi from "./PackageCard/UmrahFixedGroup/PackageCardDelhi";
 import PackageCard14Days from "./PackageCard/UmrahLandPackage/PackageCard14Days";
 import PackageCard30Days from "./PackageCard/UmrahLandPackage/PackageCard30Days";
 import PackageCard25Days from "./PackageCard/UmrahLandPackage/PackageCard25Days";
+import ManagedPackageCard from "./ManagedPackageCard";
+import ManagedPackagesCatalog from "./ManagedPackagesCatalog";
 
 // Ziyarat Card
 import ZiyaratCard from "./PackageCard/Ziyarat/ZiyaratCard";
 
 const tabs = [
-  { id: "Umrah Fixed Group", label: "Fixed Group (Air + Hotel)", icon: <FaKaaba /> },
-  { id: "Umrah Land Package", label: "Land Packages (Hotel Only)", icon: <FaHotel /> },
+  {
+    id: "Umrah Fixed Group",
+    label: "Fixed Group (Air + Hotel)",
+    icon: <FaKaaba />,
+  },
+  {
+    id: "Umrah Land Package",
+    label: "Land Packages (Hotel Only)",
+    icon: <FaHotel />,
+  },
   { id: "Ziyarat", label: "Umrah + Ziyarat Combos", icon: <FaMosque /> },
 ];
 
@@ -44,10 +54,14 @@ export default function Packages() {
     router.push("/packages/umrah-land-package/14-days-umrah-land-package");
   };
   const handleBookNow30DaysLand = () => {
-    router.push("/packages/umrah-land-package/30-days-super-saver-land-package");
+    router.push(
+      "/packages/umrah-land-package/30-days-super-saver-land-package",
+    );
   };
   const handleBookNow25DaysLand = () => {
-    router.push("/packages/umrah-land-package/25-days-super-saver-land-package");
+    router.push(
+      "/packages/umrah-land-package/25-days-super-saver-land-package",
+    );
   };
 
   // Ziyarat handlers
@@ -68,7 +82,11 @@ export default function Packages() {
     if (activeTab === "Umrah Land Package") {
       return (
         <>
-          <PackageCard14Days handleBookNow={handleBookNow14DaysLand} />
+          <ManagedPackageCard
+            fallback={
+              <PackageCard14Days handleBookNow={handleBookNow14DaysLand} />
+            }
+          />
           <PackageCard30Days handleBookNow={handleBookNow30DaysLand} />
           <PackageCard25Days handleBookNow={handleBookNow25DaysLand} />
         </>
@@ -83,7 +101,12 @@ export default function Packages() {
             price="₹2,30,786"
             days="18 Days / 17 Nights"
             destinations="Makkah • Madinah • Istanbul • Bursa"
-            inclusions={["Umrah Visa", "Turkey E-Visa", "Bosphorus Cruise", "5★ Hotels"]}
+            inclusions={[
+              "Umrah Visa",
+              "Turkey E-Visa",
+              "Bosphorus Cruise",
+              "5★ Hotels",
+            ]}
             reviews={26}
             badgeText="Turkey Combo"
             handleBookNow={() => handleBookNowZiyarat("umrah-plus-turkey")}
@@ -94,7 +117,12 @@ export default function Packages() {
             price="₹1,49,786"
             days="16 Days / 15 Nights"
             destinations="Makkah • Madinah • Dubai Marina"
-            inclusions={["Umrah Visa", "Dubai Visa", "Desert Safari", "4★/5★ Hotels"]}
+            inclusions={[
+              "Umrah Visa",
+              "Dubai Visa",
+              "Desert Safari",
+              "4★/5★ Hotels",
+            ]}
             reviews={28}
             badgeText="Dubai Combo"
             handleBookNow={() => handleBookNowZiyarat("umrah-plus-dubai")}
@@ -105,10 +133,17 @@ export default function Packages() {
             price="₹1,75,786"
             days="20 Days / 19 Nights"
             destinations="Makkah • Madinah • Jerusalem • Jordan"
-            inclusions={["Masjid Al-Aqsa Visit", "Jordan Visa", "Historical Ziyarat", "VIP Transport"]}
+            inclusions={[
+              "Masjid Al-Aqsa Visit",
+              "Jordan Visa",
+              "Historical Ziyarat",
+              "VIP Transport",
+            ]}
             reviews={33}
             badgeText="3 Sacred Mosques"
-            handleBookNow={() => handleBookNowZiyarat("umrah-plus-baitul-muqaddas")}
+            handleBookNow={() =>
+              handleBookNowZiyarat("umrah-plus-baitul-muqaddas")
+            }
           />
         </>
       );
@@ -117,23 +152,27 @@ export default function Packages() {
   };
 
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-[#FAF8F5] relative overflow-hidden" id="packages">
+    <section
+      className="py-20 px-4 sm:px-6 lg:px-8 bg-[#FAF8F5] relative overflow-hidden"
+      id="packages"
+    >
       {/* Background Pattern */}
       <div className="absolute inset-0 islamic-pattern opacity-30 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto relative z-10">
-        
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#946E19] text-xs font-semibold uppercase tracking-wider mb-3">
             <FaKaaba className="w-3.5 h-3.5" />
-            <span>Curated Pilgrimage Packages 2025</span>
+            <span>Curated Pilgrimage Packages</span>
           </div>
           <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-[#06131D] tracking-tight mb-4">
-            Select Your Sacred <span className="gold-gradient-text italic">Journey Plan</span>
+            Select Your Sacred{" "}
+            <span className="gold-gradient-text italic">Journey Plan</span>
           </h2>
           <p className="text-stone-600 font-body text-base sm:text-lg leading-relaxed">
-            All packages feature 4★ & 5★ Haram-adjacent accommodation, authentic scholar guidance, MoFA verified visas, and dedicated Khadim care.
+            All packages feature 4★ & 5★ Haram-adjacent accommodation, authentic
+            scholar guidance, MoFA verified visas, and dedicated Khadim care.
           </p>
         </div>
 
@@ -149,7 +188,11 @@ export default function Packages() {
                   : "bg-white text-stone-700 hover:bg-stone-50 border border-stone-200"
               }`}
             >
-              <span className={activeTab === tab.id ? "text-[#D4AF37]" : "text-stone-400"}>
+              <span
+                className={
+                  activeTab === tab.id ? "text-[#D4AF37]" : "text-stone-400"
+                }
+              >
                 {tab.icon}
               </span>
               <span>{tab.label}</span>
@@ -159,7 +202,10 @@ export default function Packages() {
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {renderCards()}
+          <ManagedPackagesCatalog
+            category={activeTab}
+            fallback={renderCards()}
+          />
         </div>
 
         {/* Custom Package Consultation Banner */}
@@ -172,7 +218,9 @@ export default function Packages() {
               Need a Custom Dates or Family VIP Suite Package?
             </h3>
             <p className="text-stone-300 font-body text-sm sm:text-base max-w-2xl">
-              We specialize in custom Haram-view suites, private GMC Yukon transfers, and personalized scholar accompaniment for private family groups.
+              We specialize in custom Haram-view suites, private GMC Yukon
+              transfers, and personalized scholar accompaniment for private
+              family groups.
             </p>
           </div>
 
@@ -187,7 +235,6 @@ export default function Packages() {
             <FiArrowRight />
           </a>
         </div>
-
       </div>
     </section>
   );

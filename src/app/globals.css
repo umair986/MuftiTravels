@@ -147,3 +147,18 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.admin-package-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1024px) {
+  .admin-package-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+    transition: grid-template-columns 500ms ease-out;
+  }
+
+  .admin-package-layout[data-expanded="true"] {
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  }
+}

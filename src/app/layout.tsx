@@ -26,29 +26,42 @@ const amiri = Amiri({
 });
 
 export const metadata: Metadata = {
-  title: "Mufti Travels | Premium Hajj & Umrah Pilgrimage Experiences",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://muftitravels.vercel.app",
+  ),
+  title: {
+    default: "Mufti Travels | Hajj & Umrah Packages from India",
+    template: "%s | Mufti Travels",
+  },
   description:
-    "Experience your sacred journey to Makkah and Madinah with peace of mind. Luxury hotels adjacent to the Haram, scholar-led spiritual guidance, direct flights, and 24/7 ground khadim support.",
+    "Explore trusted Hajj, Umrah and Ziyarat packages from India with Mufti Travels, including Haram-adjacent hotels, guided support and direct flight options.",
   keywords: [
     "Mufti Travels",
     "Umrah Packages Mumbai",
     "Hajj Packages Delhi",
-    "Umrah 2025",
     "Luxury Umrah India",
     "Ziyarat Packages",
     "Clock Tower Hotel Umrah",
   ],
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: "/favicon.png",
   },
   openGraph: {
-    title: "Mufti Travels | Sacred Hajj & Umrah Journeys",
+    title: "Mufti Travels | Hajj & Umrah Packages from India",
     description:
-      "Crafted with devotion and luxury. Direct flights, 5-star Haram-adjacent hotels, and complete spiritual guidance.",
-    url: "https://muftitravels.com",
+      "Hajj, Umrah and Ziyarat packages with comfortable hotels, guided support and trusted pilgrimage services.",
     siteName: "Mufti Travels",
     locale: "en_IN",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mufti Travels | Hajj & Umrah Packages from India",
+    description:
+      "Explore trusted Hajj, Umrah and Ziyarat packages from India with Mufti Travels.",
   },
 };
 

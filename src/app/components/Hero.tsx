@@ -2,28 +2,90 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { FiArrowRight, FiShield, FiStar, FiMapPin, FiCalendar, FiCompass } from "react-icons/fi";
+import {
+  FiArrowRight,
+  FiShield,
+  FiStar,
+  FiMapPin,
+  FiCalendar,
+  FiCompass,
+} from "react-icons/fi";
 import { FaWhatsapp, FaKaaba } from "react-icons/fa";
 import CustomDropdown, { DropdownOption } from "./ui/CustomDropdown";
 
 const cityOptions: DropdownOption[] = [
-  { value: "Mumbai", label: "Mumbai", badge: "Direct Flights", sublabel: "Chhatrapati Shivaji Intl (BOM)" },
-  { value: "Delhi", label: "Delhi", badge: "Direct Flights", sublabel: "Indira Gandhi Intl (DEL)" },
-  { value: "Lucknow", label: "Lucknow", badge: "Direct Flights", sublabel: "Chaudhary Charan Singh (LKO)" },
-  { value: "All India", label: "All India", badge: "Connecting", sublabel: "Bengaluru, Hyderabad, Calicut, etc." },
+  {
+    value: "Mumbai",
+    label: "Mumbai",
+    badge: "Direct Flights",
+    sublabel: "Chhatrapati Shivaji Intl (BOM)",
+  },
+  {
+    value: "Delhi",
+    label: "Delhi",
+    badge: "Direct Flights",
+    sublabel: "Indira Gandhi Intl (DEL)",
+  },
+  {
+    value: "Lucknow",
+    label: "Lucknow",
+    badge: "Direct Flights",
+    sublabel: "Chaudhary Charan Singh (LKO)",
+  },
+  {
+    value: "All India",
+    label: "All India",
+    badge: "Connecting",
+    sublabel: "Bengaluru, Hyderabad, Calicut, etc.",
+  },
 ];
 
 const categoryOptions: DropdownOption[] = [
-  { value: "Umrah Fixed Group", label: "15 Days Fixed Group", badge: "All Inclusive", sublabel: "Flights + 5★ Hotels + Buffet Meals" },
-  { value: "Umrah Land Package", label: "Land Package (Hotel Only)", badge: "Flexible", sublabel: "14 to 30 Days stays in Haramain" },
-  { value: "Ziyarat", label: "Umrah + Ziyarat Combos", badge: "Popular", sublabel: "Turkey / Dubai / Jerusalem Al-Aqsa" },
+  {
+    value: "Umrah Fixed Group",
+    label: "15 Days Fixed Group",
+    badge: "All Inclusive",
+    sublabel: "Flights + 5★ Hotels + Buffet Meals",
+  },
+  {
+    value: "Umrah Land Package",
+    label: "Land Package (Hotel Only)",
+    badge: "Flexible",
+    sublabel: "14 to 30 Days stays in Haramain",
+  },
+  {
+    value: "Ziyarat",
+    label: "Umrah + Ziyarat Combos",
+    badge: "Popular",
+    sublabel: "Turkey / Dubai / Jerusalem Al-Aqsa",
+  },
 ];
 
 const seasonOptions: DropdownOption[] = [
-  { value: "Upcoming", label: "Next Available Departures", badge: "Immediate", sublabel: "Fastest MoFA visa processing" },
-  { value: "Ramadan 2025", label: "Ramadan Special 2025", badge: "Early Bird", sublabel: "First 15 / Last 15 Days & Laylatul Qadr" },
-  { value: "Shawwal", label: "Shawwal / Post-Eid", badge: "Pleasant", sublabel: "Peaceful atmosphere after Ramadan" },
-  { value: "Custom", label: "Custom Family Dates", badge: "VIP", sublabel: "Choose your own private schedule" },
+  {
+    value: "Upcoming",
+    label: "Next Available Departures",
+    badge: "Immediate",
+    sublabel: "Fastest MoFA visa processing",
+  },
+  {
+    value: "Ramadan Special",
+    label: "Ramadan Special",
+    badge: "Early Bird",
+    sublabel: "First 15 / Last 15 Days & Laylatul Qadr",
+  },
+  {
+    value: "Shawwal",
+    label: "Shawwal / Post-Eid",
+    badge: "Pleasant",
+    sublabel: "Peaceful atmosphere after Ramadan",
+  },
+  {
+    value: "Custom",
+    label: "Custom Family Dates",
+    badge: "VIP",
+    sublabel: "Choose your own private schedule",
+  },
 ];
 
 export default function Hero() {
@@ -59,7 +121,6 @@ export default function Hero() {
 
       {/* Main Hero Body */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12 flex-1 flex flex-col justify-center items-center text-center">
-        
         {/* Sacred Bismillah Calligraphy Pill */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-[#D4AF37]/30 backdrop-blur-md mb-6 animate-float">
           <FaKaaba className="text-[#D4AF37] w-3.5 h-3.5" />
@@ -74,7 +135,7 @@ export default function Hero() {
 
         {/* Regal Display Headline */}
         <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[1.1] max-w-4xl mb-6">
-          Begin Your Sacred Journey with{" "}
+          Hajj & Umrah Packages from India with{" "}
           <span className="gold-gradient-text block sm:inline italic">
             Devotion & Comfort
           </span>
@@ -82,8 +143,9 @@ export default function Hero() {
 
         {/* Editorial Subtitle */}
         <p className="text-base sm:text-lg md:text-xl text-stone-300 font-normal max-w-2xl mx-auto leading-relaxed mb-8 sm:mb-10 font-body">
-          Expertly curated Hajj, Umrah & Ziyarat packages. Experience luxury 5★ hotels 
-          at the steps of the Haram, scholar-led spiritual guidance, direct flights, and 24/7 dedicated ground Khadim support.
+          Expertly curated Hajj, Umrah & Ziyarat packages. Experience luxury 5★
+          hotels at the steps of the Haram, scholar-led spiritual guidance,
+          direct flights, and 24/7 dedicated ground Khadim support.
         </p>
 
         {/* Dual Primary CTA Buttons */}
@@ -92,7 +154,7 @@ export default function Hero() {
             href="#packages"
             className="w-full sm:w-auto px-8 py-3.5 rounded-full font-bold text-sm sm:text-base text-[#06131D] gold-gradient-bg hover:brightness-110 shadow-xl shadow-[#D4AF37]/20 transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer"
           >
-            <span>Explore 2025 Packages</span>
+            <span>Explore Packages</span>
             <FiArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </a>
 
@@ -114,8 +176,12 @@ export default function Hero() {
               <FaKaaba className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-white font-bold text-xs sm:text-sm">50m to Haram</p>
-              <p className="text-stone-400 text-[11px] leading-tight">Clock Tower & Markaziah</p>
+              <p className="text-white font-bold text-xs sm:text-sm">
+                50m to Haram
+              </p>
+              <p className="text-stone-400 text-[11px] leading-tight">
+                Clock Tower & Markaziah
+              </p>
             </div>
           </div>
 
@@ -124,8 +190,12 @@ export default function Hero() {
               <FiShield className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-white font-bold text-xs sm:text-sm">MoFA Certified</p>
-              <p className="text-stone-400 text-[11px] leading-tight">Verified Umrah Visas</p>
+              <p className="text-white font-bold text-xs sm:text-sm">
+                MoFA Certified
+              </p>
+              <p className="text-stone-400 text-[11px] leading-tight">
+                Verified Umrah Visas
+              </p>
             </div>
           </div>
 
@@ -134,8 +204,12 @@ export default function Hero() {
               <FiStar className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-white font-bold text-xs sm:text-sm">10,000+ Pilgrims</p>
-              <p className="text-stone-400 text-[11px] leading-tight">15+ Years Trust</p>
+              <p className="text-white font-bold text-xs sm:text-sm">
+                10,000+ Pilgrims
+              </p>
+              <p className="text-stone-400 text-[11px] leading-tight">
+                15+ Years Trust
+              </p>
             </div>
           </div>
 
@@ -144,12 +218,15 @@ export default function Hero() {
               <FiCompass className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-white font-bold text-xs sm:text-sm">Scholar Guidance</p>
-              <p className="text-stone-400 text-[11px] leading-tight">Mutawwif On Ground</p>
+              <p className="text-white font-bold text-xs sm:text-sm">
+                Scholar Guidance
+              </p>
+              <p className="text-stone-400 text-[11px] leading-tight">
+                Mutawwif On Ground
+              </p>
             </div>
           </div>
         </div>
-
       </div>
 
       {/* Embedded Luxury Custom Pilgrimage Finder Bar at the base of Hero */}

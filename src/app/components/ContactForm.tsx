@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { FiUser, FiPhone, FiMail, FiCalendar, FiCheckCircle, FiSend, FiMapPin } from "react-icons/fi";
+import {
+  FiUser,
+  FiPhone,
+  FiMail,
+  FiCalendar,
+  FiCheckCircle,
+  FiSend,
+  FiMapPin,
+} from "react-icons/fi";
 import { FaWhatsapp, FaKaaba } from "react-icons/fa";
 import CustomDropdown, { DropdownOption } from "./ui/CustomDropdown";
 
@@ -15,9 +23,13 @@ const cityOptions: DropdownOption[] = [
 ];
 
 const packagePreferenceOptions: DropdownOption[] = [
-  { value: "Umrah Fixed Group", label: "15 Days Fixed Group", badge: "Popular" },
+  {
+    value: "Umrah Fixed Group",
+    label: "15 Days Fixed Group",
+    badge: "Popular",
+  },
   { value: "Umrah Land Package", label: "Umrah Land Package (Hotel Only)" },
-  { value: "Ramadan Special", label: "Ramadan 2025 Special", badge: "Early Bird" },
+  { value: "Ramadan Special", label: "Ramadan Special", badge: "Early Bird" },
   { value: "VIP Custom Suite", label: "Custom VIP Family Suite", badge: "VIP" },
   { value: "Ziyarat Combo", label: "Umrah + Ziyarat (Turkey/Dubai)" },
 ];
@@ -36,11 +48,13 @@ export default function ContactForm() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<"success" | "error" | null>(null);
+  const [submitStatus, setSubmitStatus] = useState<"success" | "error" | null>(
+    null,
+  );
   const [submitMessage, setSubmitMessage] = useState("");
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -84,7 +98,7 @@ export default function ContactForm() {
 
       setSubmitStatus("success");
       setSubmitMessage(
-        "JazakAllah Khair! Your enquiry has been received. Our Chief Pilgrim Advisor will contact you within 2 hours."
+        "JazakAllah Khair! Your enquiry has been received. Our Chief Pilgrim Advisor will contact you within 2 hours.",
       );
       setFormData({
         name: "",
@@ -100,7 +114,9 @@ export default function ContactForm() {
     } catch (error) {
       console.error("Failed to send enquiry:", error);
       setSubmitStatus("error");
-      setSubmitMessage("Failed to send enquiry. Please try again or message us directly on WhatsApp.");
+      setSubmitMessage(
+        "Failed to send enquiry. Please try again or message us directly on WhatsApp.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -141,13 +157,16 @@ export default function ContactForm() {
           Plan Your Sacred Journey
         </h3>
         <p className="text-xs text-stone-500 font-body mt-0.5">
-          Fill in your details below for custom dates, hotel preferences, and transparent quotes.
+          Fill in your details below for custom dates, hotel preferences, and
+          transparent quotes.
         </p>
       </div>
 
       {/* Name Input */}
       <div>
-        <label className="block text-xs font-semibold text-stone-700 mb-1">Full Name</label>
+        <label className="block text-xs font-semibold text-stone-700 mb-1">
+          Full Name
+        </label>
         <div className="relative">
           <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
           <input
@@ -165,7 +184,9 @@ export default function ContactForm() {
       {/* Phone & Email Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-semibold text-stone-700 mb-1">WhatsApp / Phone</label>
+          <label className="block text-xs font-semibold text-stone-700 mb-1">
+            WhatsApp / Phone
+          </label>
           <div className="relative">
             <FiPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
             <input
@@ -181,7 +202,9 @@ export default function ContactForm() {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-stone-700 mb-1">Email Address</label>
+          <label className="block text-xs font-semibold text-stone-700 mb-1">
+            Email Address
+          </label>
           <div className="relative">
             <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
             <input
@@ -222,11 +245,15 @@ export default function ContactForm() {
 
       {/* Passengers Count Selector */}
       <div>
-        <label className="block text-xs font-semibold text-stone-700 mb-1">Number of Passengers</label>
+        <label className="block text-xs font-semibold text-stone-700 mb-1">
+          Number of Passengers
+        </label>
         <div className="grid grid-cols-2 gap-3">
           {/* Adults */}
           <div className="flex items-center justify-between p-2 rounded-xl border border-stone-300 bg-stone-50/50">
-            <span className="text-xs font-medium text-stone-700 pl-1">Adults (12+ yrs)</span>
+            <span className="text-xs font-medium text-stone-700 pl-1">
+              Adults (12+ yrs)
+            </span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -235,7 +262,9 @@ export default function ContactForm() {
               >
                 -
               </button>
-              <span className="font-bold text-sm w-4 text-center">{formData.adults}</span>
+              <span className="font-bold text-sm w-4 text-center">
+                {formData.adults}
+              </span>
               <button
                 type="button"
                 onClick={() => updateCount("adults", 1)}
@@ -248,7 +277,9 @@ export default function ContactForm() {
 
           {/* Children */}
           <div className="flex items-center justify-between p-2 rounded-xl border border-stone-300 bg-stone-50/50">
-            <span className="text-xs font-medium text-stone-700 pl-1">Children (&lt;12 yrs)</span>
+            <span className="text-xs font-medium text-stone-700 pl-1">
+              Children (&lt;12 yrs)
+            </span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -257,7 +288,9 @@ export default function ContactForm() {
               >
                 -
               </button>
-              <span className="font-bold text-sm w-4 text-center">{formData.children}</span>
+              <span className="font-bold text-sm w-4 text-center">
+                {formData.children}
+              </span>
               <button
                 type="button"
                 onClick={() => updateCount("children", 1)}
@@ -272,7 +305,9 @@ export default function ContactForm() {
 
       {/* Approximate Travel Date */}
       <div>
-        <label className="block text-xs font-semibold text-stone-700 mb-1">Preferred Travel Date / Month</label>
+        <label className="block text-xs font-semibold text-stone-700 mb-1">
+          Preferred Travel Date / Month
+        </label>
         <div className="relative">
           <FiCalendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
           <input
@@ -296,7 +331,9 @@ export default function ContactForm() {
         className="w-full py-3.5 rounded-xl font-bold text-xs sm:text-sm text-[#06131D] gold-gradient-bg hover:brightness-110 shadow-lg shadow-[#D4AF37]/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
       >
         <FiSend className="w-4 h-4" />
-        <span>{isSubmitting ? "Sending Request..." : "Request Detailed Quotation"}</span>
+        <span>
+          {isSubmitting ? "Sending Request..." : "Request Detailed Quotation"}
+        </span>
       </button>
 
       {/* Direct WhatsApp Sync Option */}

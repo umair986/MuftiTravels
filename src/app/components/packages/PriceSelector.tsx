@@ -10,15 +10,7 @@ interface PriceSelectorProps {
 
 // CORRECTED: Moved the array outside the component.
 // This prevents it from being recreated on every render and resolves the warning.
-const allSharingTypes: SharingType[] = [
-  "Quint",
-  "Quad",
-  "Triple",
-  "Double",
-  "Child(6-11)",
-  "Child(2-5)",
-  "Infant(0-2)",
-];
+const allSharingTypes: SharingType[] = ["Quint", "Quad", "Triple", "Double"];
 
 export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
   const availableTiers = Object.keys(pkg.prices) as PackageTier[];
@@ -38,7 +30,7 @@ export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
   useEffect(() => {
     if (!pkg.prices[selectedTier]?.[selectedSharing]) {
       const firstAvailableSharing = allSharingTypes.find(
-        (s) => pkg.prices[selectedTier]?.[s]
+        (s) => pkg.prices[selectedTier]?.[s],
       );
       setSelectedSharing(firstAvailableSharing || "Quad");
     }
@@ -78,7 +70,7 @@ export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
               >
                 {tier}
               </button>
-            )
+            ),
           )}
         </div>
       </div>

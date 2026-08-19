@@ -13,6 +13,26 @@ import Footer from "./components/Footer";
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#FAF8F5]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "TravelAgency",
+            name: "Mufti Travels",
+            url: "https://muftitravels.vercel.app",
+            logo: "https://muftitravels.vercel.app/favicon.png",
+            description:
+              "Hajj, Umrah and Ziyarat packages from India with guided pilgrimage support.",
+            areaServed: "India",
+            serviceType: [
+              "Hajj packages",
+              "Umrah packages",
+              "Ziyarat packages",
+            ],
+          }),
+        }}
+      />
       {/* 1. Atmospheric Sacred Hero */}
       <Hero />
 

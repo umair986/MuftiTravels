@@ -1,10 +1,10 @@
-"use client";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
-
-import PackageDetailExperience from "@/app/components/packages/PackageDetailExperience";
 import { CategoryType, packageData } from "@/app/components/packageData";
+import { cmsPackageToPackageData, CmsPackageRecord } from "@/lib/packages";
+import { createServerClient } from "@/lib/supabase/server";
+import PackageDetailPageClient from "./PackageDetailPageClient";
 
 const categorySlugMap: Record<string, CategoryType> = {
   "umrah-fixed-group": "Umrah Fixed Group",
@@ -12,19 +12,73 @@ const categorySlugMap: Record<string, CategoryType> = {
   ziyarat: "Ziyarat",
 };
 
-export default function PackageDetailPage() {
-  const params = useParams<{ category: string; slug: string }>();
-  const router = useRouter();
-  const categorySlug = Array.isArray(params.category) ? params.category[0] : params.category;
-  const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
-  const categoryName = categorySlugMap[categorySlug];
-  const pkg = useMemo(() => categoryName ? packageData[categoryName].find((item) => item.slug === slug) : undefined, [categoryName, slug]);
+type PackageRouteParams = {
+  category: string;
+  slug: string;
+};
 
-  useEffect(() => { if (!categoryName || !pkg) router.replace("/"); }, [categoryName, pkg, router]);
+async function getPackage({ category, slug }: PackageRouteParams) {
+  const categoryName = categorySlugMap[category];
+  const staticPackage = categoryName
+    ? packageData[categoryName].find((item) => item.slug === slug)
+    : undefined;
+
+  if (!categoryName) return { categoryName, pkg: undefined };
+
+  const { data } = await createServerClient()
+    .from("packages")
+    .select("*")
+    .eq("category", categoryName)
+    .eq("slug", slug)
+    .eq("is_published", true)
+    .maybeSingle();
+
+  return {
+    categoryName,
+    pkg: data
+      ? cmsPackageToPackageData(data as CmsPackageRecord)
+      : staticPackage,
+  };
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<PackageRouteParams>;
+}): Promise<Metadata> {
+  const routeParams = await params;
+  const { categoryName, pkg } = await getPackage(routeParams);
 
   if (!categoryName || !pkg) {
-    return <main className="grid min-h-screen place-items-center bg-[#FAF8F5] p-6 text-center"><div><p className="font-display text-3xl font-bold text-[#06131D]">Loading your journey</p><p className="mt-2 text-sm text-stone-600">Finding the requested package details.</p></div></main>;
+    return { title: "Package Not Found" };
   }
 
-  return <PackageDetailExperience pkg={pkg} categoryName={categoryName} />;
+  return {
+    title: pkg.name,
+    description: `${pkg.name} by Mufti Travels. Explore accommodation, transport, visa assistance and guided pilgrimage services included in this ${categoryName.toLowerCase()} package.`,
+    alternates: {
+      canonical: `/packages/${routeParams.category}/${routeParams.slug}`,
+    },
+    openGraph: {
+      title: `${pkg.name} | Mufti Travels`,
+      description: `Explore the ${pkg.name} pilgrimage package from Mufti Travels.`,
+      type: "website",
+      images: [{ url: pkg.image, alt: pkg.name }],
+    },
+  };
+}
+
+export default async function PackageDetailPage({
+  params,
+}: {
+  params: Promise<PackageRouteParams>;
+}) {
+  const routeParams = await params;
+  const { categoryName, pkg } = await getPackage(routeParams);
+
+  if (!categoryName || !pkg) {
+    notFound();
+  }
+
+  return <PackageDetailPageClient pkg={pkg} categoryName={categoryName} />;
 }

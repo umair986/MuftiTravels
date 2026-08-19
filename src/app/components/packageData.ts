@@ -193,7 +193,7 @@ export type CategoryType = "Umrah Fixed Group" | "Umrah Land Package" | "Ziyarat
 
 // Define the types for our new dynamic pricing structure
 export type PackageTier = 'Super Saver' | 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
-export type SharingType = 'Quint' | 'Quad' | 'Triple' | 'Double' | 'Child(6-11)' | 'Child(2-5)' | 'Infant(0-2)';
+export type SharingType = 'Quint' | 'Quad' | 'Triple' | 'Double';
 export type PriceMap = {
   [key in SharingType]?: number;
 };
@@ -237,9 +237,6 @@ const generatePriceTiers = (baseQuadPrice: number): PriceMap => ({
     'Quad': baseQuadPrice,
     'Triple': baseQuadPrice + 5000,
     'Double': baseQuadPrice + 10000,
-    'Child(6-11)': baseQuadPrice - 10000,
-    'Child(2-5)': baseQuadPrice - 25000,
-    'Infant(0-2)': 20000,
 });
 
 export const packageData: PackageDataType  = addSlugsToPackages({

@@ -1,0 +1,34 @@
+import { PackageData, TierPriceMap } from "@/app/components/packageData";
+
+export type CmsPackageRecord = {
+  id: string;
+  slug: string;
+  category: string;
+  name: string;
+  description: string;
+  image_url: string;
+  duration_days: number;
+  duration_nights: number;
+  destinations: string;
+  features: string[];
+  prices: TierPriceMap;
+  starting_price: number;
+  currency: string;
+  reviews: number;
+  rating: 1 | 2 | 3 | 4 | 5;
+  is_published: boolean;
+  sort_order: number;
+};
+
+export function cmsPackageToPackageData(record: CmsPackageRecord): PackageData {
+  return {
+    name: record.name,
+    image: record.image_url,
+    reviews: record.reviews,
+    rating: record.rating,
+    features: record.features,
+    badges: [{ text: "Published", color: "bg-emerald-600" }],
+    slug: record.slug,
+    prices: record.prices,
+  };
+}
