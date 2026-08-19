@@ -12,6 +12,7 @@ import {
 } from "react-icons/fi";
 import { FaWhatsapp, FaKaaba } from "react-icons/fa";
 import CustomDropdown, { DropdownOption } from "./ui/CustomDropdown";
+import { createClient } from "@/lib/supabase/client";
 
 const cityOptions: DropdownOption[] = [
   { value: "Mumbai", label: "Mumbai (Direct)", badge: "BOM" },
@@ -84,7 +85,23 @@ export default function ContactForm() {
     setSubmitMessage("");
 
     try {
-      window.open(generateWhatsAppUrl(), "_blank", "noopener,noreferrer");
+      const supabase = createClient();
+      if (!supabase) throw new Error("Supabase is not configured");
+
+      const { error } = await supabase.from("enquiries").insert({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        departure_city: formData.departureCity,
+        package_preference: formData.packagePreference,
+        adults: formData.adults,
+        children: formData.children,
+        preferred_date: formData.date || null,
+        notes: formData.notes,
+      });
+
+      if (error) throw error;
+
       setSubmitStatus("success");
       setSubmitMessage(
         "JazakAllah Khair! Your enquiry has been received. Our Chief Pilgrim Advisor will contact you within 2 hours.",
@@ -101,7 +118,7 @@ export default function ContactForm() {
         notes: "",
       });
     } catch (error) {
-      console.error("Failed to open WhatsApp enquiry:", error);
+      console.error("Failed to save enquiry:", error);
       setSubmitStatus("error");
       setSubmitMessage(
         "Failed to send enquiry. Please try again or message us directly on WhatsApp.",

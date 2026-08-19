@@ -34,6 +34,7 @@ import {
   PackageTier,
   SharingType,
 } from "@/app/components/packageData";
+import { createClient } from "@/lib/supabase/client";
 
 const tiers: PackageTier[] = [
   "Super Saver",
@@ -56,6 +57,8 @@ function EnquiryDialog({
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const passengers = [
     { label: "Adults", count: adults, update: setAdults, minimum: 1 },
     { label: "Children", count: children, update: setChildren, minimum: 0 },
@@ -107,9 +110,35 @@ function EnquiryDialog({
           </div>
         ) : (
           <form
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
+              setIsSubmitting(true);
+              setError("");
+              const formData = new FormData(event.currentTarget);
+              const supabase = createClient();
+
+              if (supabase) {
+                const { error: insertError } = await supabase
+                  .from("enquiries")
+                  .insert({
+                    name: String(formData.get("name") || ""),
+                    email: String(formData.get("email") || ""),
+                    phone: String(formData.get("phone") || ""),
+                    package_name: pkgName,
+                    adults,
+                    children,
+                    preferred_date: String(formData.get("date") || "") || null,
+                  });
+
+                if (insertError) {
+                  setError("We could not save your enquiry. Please try again.");
+                  setIsSubmitting(false);
+                  return;
+                }
+              }
+
               setSubmitted(true);
+              setIsSubmitting(false);
             }}
             className="space-y-5"
           >
@@ -174,11 +203,18 @@ function EnquiryDialog({
               type="date"
               required={false}
             />
+            {error && (
+              <p role="alert" className="text-sm text-red-600">
+                {error}
+              </p>
+            )}
             <button
               type="submit"
+              disabled={isSubmitting}
               className="flex w-full items-center justify-center gap-2 rounded-full gold-gradient-bg px-6 py-3.5 text-sm font-bold text-[#06131D] shadow-lg shadow-[#D4AF37]/20 transition hover:brightness-110"
             >
-              Send enquiry <FiArrowRight />
+              {isSubmitting ? "Saving enquiry..." : "Send enquiry"}{" "}
+              <FiArrowRight />
             </button>
           </form>
         )}

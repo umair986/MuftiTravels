@@ -75,6 +75,7 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
               <DashboardAction
                 title="Enquiries"
                 description="Review customer requests"
+                href="/admin/enquiries"
               />
               <DashboardAction
                 title="Testimonials"

@@ -23,12 +23,10 @@ export default function AdminLoginForm() {
       return;
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword(
-      {
-        email,
-        password,
-      },
-    );
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (signInError) {
       setError("Invalid email or password. Please try again.");
