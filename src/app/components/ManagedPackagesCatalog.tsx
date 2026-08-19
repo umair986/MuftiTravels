@@ -19,7 +19,13 @@ export default function ManagedPackagesCatalog({
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    createClient()
+    const supabase = createClient();
+    if (!supabase) {
+      setIsLoaded(true);
+      return;
+    }
+
+    supabase
       .from("packages")
       .select("*")
       .eq("category", category)

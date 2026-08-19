@@ -84,18 +84,7 @@ export default function ContactForm() {
     setSubmitMessage("");
 
     try {
-      const response = await fetch("/api/send-enquiry", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-
+      window.open(generateWhatsAppUrl(), "_blank", "noopener,noreferrer");
       setSubmitStatus("success");
       setSubmitMessage(
         "JazakAllah Khair! Your enquiry has been received. Our Chief Pilgrim Advisor will contact you within 2 hours.",
@@ -112,7 +101,7 @@ export default function ContactForm() {
         notes: "",
       });
     } catch (error) {
-      console.error("Failed to send enquiry:", error);
+      console.error("Failed to open WhatsApp enquiry:", error);
       setSubmitStatus("error");
       setSubmitMessage(
         "Failed to send enquiry. Please try again or message us directly on WhatsApp.",

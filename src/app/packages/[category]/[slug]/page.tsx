@@ -25,7 +25,10 @@ async function getPackage({ category, slug }: PackageRouteParams) {
 
   if (!categoryName) return { categoryName, pkg: undefined };
 
-  const { data } = await createServerClient()
+  const supabase = createServerClient();
+  if (!supabase) return { categoryName, pkg: staticPackage };
+
+  const { data } = await supabase
     .from("packages")
     .select("*")
     .eq("category", categoryName)

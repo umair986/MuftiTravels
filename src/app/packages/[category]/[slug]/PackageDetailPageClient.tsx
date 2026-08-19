@@ -18,7 +18,10 @@ export default function PackageDetailPageClient({
   const [currentPackage, setCurrentPackage] = useState(pkg);
 
   useEffect(() => {
-    createClient()
+    const supabase = createClient();
+    if (!supabase) return;
+
+    supabase
       .from("packages")
       .select("*")
       .eq("slug", pkg.slug)

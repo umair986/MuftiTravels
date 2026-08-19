@@ -17,6 +17,12 @@ export default function AdminPackagesPage() {
   const [supabase] = useState(createClient);
 
   const loadPage = useCallback(async () => {
+    if (!supabase) {
+      setError("Supabase is not configured for this deployment.");
+      setIsLoading(false);
+      return;
+    }
+
     const { data: userData } = await supabase.auth.getUser();
     setEmail(userData.user?.email ?? null);
 
@@ -45,6 +51,10 @@ export default function AdminPackagesPage() {
 
   async function handleDelete(id: string, name: string) {
     if (!window.confirm(`Delete ${name}?`)) return;
+    if (!supabase) {
+      setError("Supabase is not configured for this deployment.");
+      return;
+    }
 
     const { error: deleteError } = await supabase
       .from("packages")

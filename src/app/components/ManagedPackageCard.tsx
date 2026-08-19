@@ -20,7 +20,13 @@ export default function ManagedPackageCard({
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    createClient()
+    const supabase = createClient();
+    if (!supabase) {
+      setHasLoaded(true);
+      return;
+    }
+
+    supabase
       .from("packages")
       .select("*")
       .eq("slug", packageSlug)

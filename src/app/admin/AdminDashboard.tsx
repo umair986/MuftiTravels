@@ -13,7 +13,9 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
 
   async function handleSignOut() {
     setIsSigningOut(true);
-    await createClient().auth.signOut();
+    const supabase = createClient();
+    if (supabase) await supabase.auth.signOut();
+    setIsSigningOut(false);
   }
 
   return (

@@ -13,6 +13,11 @@ export default function AdminPageContent() {
   useEffect(() => {
     let isMounted = true;
 
+    if (!supabase) {
+      setIsLoading(false);
+      return;
+    }
+
     supabase.auth.getUser().then(({ data }) => {
       if (isMounted) {
         setEmail(data.user?.email ?? null);
@@ -31,7 +36,7 @@ export default function AdminPageContent() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase.auth]);
+  }, [supabase]);
 
   if (isLoading) {
     return (

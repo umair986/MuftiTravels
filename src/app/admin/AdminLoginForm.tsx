@@ -16,7 +16,14 @@ export default function AdminLoginForm() {
     setError("");
     setIsSubmitting(true);
 
-    const { error: signInError } = await createClient().auth.signInWithPassword(
+    const supabase = createClient();
+    if (!supabase) {
+      setError("Supabase is not configured for this deployment.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword(
       {
         email,
         password,

@@ -82,7 +82,14 @@ export default function ManagedPackageEditor({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    createClient()
+    const supabase = createClient();
+    if (!supabase) {
+      setError("Supabase is not configured for this deployment.");
+      setIsLoading(false);
+      return;
+    }
+
+    supabase
       .from("packages")
       .select("*")
       .eq("slug", slug)
@@ -131,6 +138,11 @@ export default function ManagedPackageEditor({
     setError("");
 
     const supabase = createClient();
+    if (!supabase) {
+      setError("Supabase is not configured for this deployment.");
+      setIsSaving(false);
+      return;
+    }
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       setError("Please sign in again before uploading an image.");
@@ -187,7 +199,14 @@ export default function ManagedPackageEditor({
       .filter((amount) => amount > 0);
     const startingPrice = amounts.length ? Math.min(...amounts) : 0;
 
-    const { data, error: saveError } = await createClient()
+    const supabase = createClient();
+    if (!supabase) {
+      setError("Supabase is not configured for this deployment.");
+      setIsSaving(false);
+      return;
+    }
+
+    const { data, error: saveError } = await supabase
       .from("packages")
       .update({
         name: form.name.trim(),
