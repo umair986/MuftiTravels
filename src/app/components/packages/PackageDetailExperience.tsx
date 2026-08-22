@@ -124,10 +124,15 @@ function EnquiryDialog({
                     adults,
                     children,
                     preferred_date: String(formData.get("date") || "") || null,
+                    honeypot: String(formData.get("website") || ""),
                   });
 
                 if (insertError) {
-                  setError("We could not save your enquiry. Please try again.");
+                  setError(
+                    insertError.message.includes("Too many enquiries")
+                      ? "You have sent several enquiries recently. Please message us on WhatsApp instead."
+                      : "We could not save your enquiry. Please try again.",
+                  );
                   setIsSubmitting(false);
                   return;
                 }
@@ -152,6 +157,16 @@ function EnquiryDialog({
                 Enquiring for:{" "}
                 <span className="font-semibold text-[#06131D]">{pkgName}</span>
               </p>
+            </div>
+            <div aria-hidden="true" className="absolute left-[-9999px] h-px w-px overflow-hidden">
+              <label htmlFor="website-detail">Website</label>
+              <input
+                id="website-detail"
+                name="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+              />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Full name" name="name" />

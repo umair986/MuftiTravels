@@ -1,6 +1,6 @@
 "use client";
 
-import { FaKaaba, FaHotel, FaMosque } from "react-icons/fa";
+import { FaKaaba, FaHotel, FaMosque, FaMoon, FaStarAndCrescent } from "react-icons/fa";
 import PackageCardMumbai from "@/app/components/PackageCard/UmrahFixedGroup/PackageCardMumbai";
 import PackageCardLucknow from "@/app/components/PackageCard/UmrahFixedGroup/PackageCardLucknow";
 import PackageCardDelhi from "@/app/components/PackageCard/UmrahFixedGroup/PackageCardDelhi";
@@ -37,10 +37,26 @@ const groupDefinitions = [
       "Extend your sacred journey with carefully planned heritage visits.",
     icon: <FaMosque />,
   },
+  {
+    category: "Hajj",
+    title: "Hajj Packages",
+    description: "Guided Hajj journeys with Mina, Arafat and Azizia arranged.",
+    icon: <FaStarAndCrescent />,
+  },
+  {
+    category: "Ramzan",
+    title: "Ramadan Packages",
+    description:
+      "Umrah during Ramadan, including the last ten nights and Laylatul Qadr.",
+    icon: <FaMoon />,
+  },
 ];
 
 /** Static cards shown only when a category has no published CMS packages. */
 function fallbackFor(category: string) {
+  // Hajj and Ramzan are CMS-only: with nothing published the section hides
+  // itself rather than showing unrelated packages.
+  if (category === "Hajj" || category === "Ramzan") return null;
   if (category === "Umrah Fixed Group") {
     return (
       <>
@@ -168,7 +184,13 @@ export default function PackagesCatalogPage({
             <CatalogFilters filter={filter} matchCount={matches.length} />
           )}
 
-          {groups.map((group) => (
+          {groups
+            .filter(
+              (group) =>
+                visible.some((item) => item.category === group.category) ||
+                fallbackFor(group.category) !== null,
+            )
+            .map((group) => (
             <PackageGroup
               key={group.category}
               title={group.title}

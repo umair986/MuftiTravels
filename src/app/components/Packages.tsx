@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { FaKaaba, FaHotel, FaMosque } from "react-icons/fa";
+import { FaKaaba, FaHotel, FaMosque, FaMoon, FaStarAndCrescent } from "react-icons/fa";
 import { FiArrowRight, FiPhoneCall } from "react-icons/fi";
 
 // Umrah Fixed Group Cards
@@ -33,6 +34,8 @@ const tabs = [
     icon: <FaHotel />,
   },
   { id: "Ziyarat", label: "Umrah + Ziyarat Combos", icon: <FaMosque /> },
+  { id: "Hajj", label: "Hajj", icon: <FaStarAndCrescent /> },
+  { id: "Ramzan", label: "Ramadan Specials", icon: <FaMoon /> },
 ];
 
 export default function Packages({
@@ -95,6 +98,21 @@ export default function Packages({
           <PackageCard30Days handleBookNow={handleBookNow30DaysLand} />
           <PackageCard25Days handleBookNow={handleBookNow25DaysLand} />
         </>
+      );
+    }
+    if (activeTab === "Hajj" || activeTab === "Ramzan") {
+      return (
+        <p className="col-span-full rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center font-body text-sm text-stone-600">
+          No {activeTab === "Hajj" ? "Hajj" : "Ramadan"} packages are published
+          yet.{" "}
+          <Link
+            href="/#contact"
+            className="font-semibold text-[#946E19] underline"
+          >
+            Ask us what is coming
+          </Link>
+          .
+        </p>
       );
     }
     if (activeTab === "Ziyarat") {

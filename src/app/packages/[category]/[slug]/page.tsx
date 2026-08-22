@@ -1,16 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { CategoryType, packageData } from "@/app/components/packageData";
+import { packageData } from "@/app/components/packageData";
+import { CATEGORY_BY_SLUG } from "@/lib/categories";
 import { cmsPackageToPackageData } from "@/lib/packages";
 import { getPublicCatalog } from "@/lib/packages.server";
 import PackageDetailPageClient from "./PackageDetailPageClient";
-
-const categorySlugMap: Record<string, CategoryType> = {
-  "umrah-fixed-group": "Umrah Fixed Group",
-  "umrah-land-package": "Umrah Land Package",
-  ziyarat: "Ziyarat",
-};
 
 type PackageRouteParams = {
   category: string;
@@ -18,10 +13,14 @@ type PackageRouteParams = {
 };
 
 async function getPackage({ category, slug }: PackageRouteParams) {
-  const categoryName = categorySlugMap[category];
-  const staticPackage = categoryName
-    ? packageData[categoryName].find((item) => item.slug === slug)
-    : undefined;
+  const categoryName = CATEGORY_BY_SLUG[category];
+  // Only three categories carry hardcoded fallbacks; the rest are CMS-only.
+  const staticPackage =
+    categoryName && categoryName in packageData
+      ? packageData[categoryName as keyof typeof packageData].find(
+          (item) => item.slug === slug,
+        )
+      : undefined;
 
   if (!categoryName) return { categoryName, pkg: undefined };
 

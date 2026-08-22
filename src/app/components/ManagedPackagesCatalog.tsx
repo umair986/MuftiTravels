@@ -10,6 +10,7 @@ import {
   type PackageTierRecord,
 } from "@/lib/taxonomy";
 import PackageTagBadges from "./PackageTagBadges";
+import { categorySlug } from "@/lib/categories";
 
 /**
  * Renders CMS packages for one category.
@@ -66,7 +67,7 @@ function ManagedPackageCard({
     preferredPrices?.Quint ??
     Object.values(preferredPrices ?? {})[0] ??
     record.starting_price;
-  const categorySlug = record.category.toLowerCase().replaceAll(" ", "-");
+  const slug = categorySlug(record.category);
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm transition-all duration-300 hover:border-[#D4AF37]/50 hover:shadow-2xl">
@@ -120,7 +121,7 @@ function ManagedPackageCard({
           <button
             type="button"
             onClick={() =>
-              router.push(`/packages/${categorySlug}/${record.slug}`)
+              router.push(`/packages/${slug}/${record.slug}`)
             }
             className="flex items-center gap-1.5 rounded-xl gold-gradient-bg px-4 py-2.5 text-xs font-bold text-[#06131D] shadow-md transition-all hover:brightness-110 sm:text-sm"
           >

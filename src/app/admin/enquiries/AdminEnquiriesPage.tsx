@@ -63,7 +63,8 @@ export default function AdminEnquiriesPage() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [statusFilter, setStatusFilter] = useState<Status | "all">("new");
   const [search, setSearch] = useState("");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [page, setPage] = useState(0);
+  const [totalMatching, setTotalMatching] = useState(0);
   const [email, setEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -83,15 +84,37 @@ export default function AdminEnquiriesPage() {
       return;
     }
 
+    // Page in the database, not in JavaScript. This used to select every
+    // matching row and slice client-side, so the admin downloaded the whole
+    // table on each visit.
     let query = supabase
       .from("enquiries")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
     if (statusFilter !== "all") query = query.eq("status", statusFilter);
 
-    const [{ data, error: loadError }, allStatuses] = await Promise.all([
+    // Counts come back as headers rather than rows.
+    const countFor = (status?: Status) => {
+      let q = supabase
+        .from("enquiries")
+        .select("id", { count: "exact", head: true });
+      if (status) q = q.eq("status", status);
+      return q;
+    };
+
+    const [
+      { data, count, error: loadError },
+      newCount,
+      contactedCount,
+      closedCount,
+      allCount,
+    ] = await Promise.all([
       query,
-      supabase.from("enquiries").select("status"),
+      countFor("new"),
+      countFor("contacted"),
+      countFor("closed"),
+      countFor(),
     ]);
 
     if (loadError) {
@@ -103,24 +126,25 @@ export default function AdminEnquiriesPage() {
     } else {
       setError("");
       setEnquiries((data as Enquiry[]) ?? []);
+      setTotalMatching(count ?? 0);
     }
 
-    const tally: Record<string, number> = { all: 0 };
-    for (const row of (allStatuses.data as { status: Status }[]) ?? []) {
-      tally[row.status] = (tally[row.status] ?? 0) + 1;
-      tally.all += 1;
-    }
-    setCounts(tally);
+    setCounts({
+      new: newCount.count ?? 0,
+      contacted: contactedCount.count ?? 0,
+      closed: closedCount.count ?? 0,
+      all: allCount.count ?? 0,
+    });
     setIsLoading(false);
-  }, [supabase, statusFilter]);
+  }, [supabase, statusFilter, page]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [statusFilter, search]);
+    setPage(0);
+  }, [statusFilter]);
 
   /**
    * The status write used to be fire-and-forget: the badge flipped locally
@@ -183,9 +207,25 @@ export default function AdminEnquiriesPage() {
     );
   }, [enquiries, search]);
 
-  const visible = filtered.slice(0, visibleCount);
+  const visible = filtered;
+  const pageCount = Math.max(1, Math.ceil(totalMatching / PAGE_SIZE));
 
-  function exportCsv() {
+  async function exportCsv() {
+    if (!supabase) return;
+    // Export the whole filtered set, not just the page on screen.
+    let exportQuery = supabase
+      .from("enquiries")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(5000);
+    if (statusFilter !== "all")
+      exportQuery = exportQuery.eq("status", statusFilter);
+    const { data: rows, error: exportError } = await exportQuery;
+    if (exportError) {
+      setError(`Could not export: ${exportError.message}`);
+      return;
+    }
+    const exportRows = (rows as Enquiry[]) ?? [];
     const columns: (keyof Enquiry)[] = [
       "created_at",
       "status",
@@ -205,7 +245,9 @@ export default function AdminEnquiriesPage() {
       `"${String(value ?? "").replaceAll('"', '""')}"`;
     const csv = [
       columns.join(","),
-      ...filtered.map((row) => columns.map((key) => escape(row[key])).join(",")),
+      ...exportRows.map((row) =>
+        columns.map((key) => escape(row[key])).join(","),
+      ),
     ].join("\n");
 
     const url = URL.createObjectURL(
@@ -258,8 +300,8 @@ export default function AdminEnquiriesPage() {
           </div>
           <button
             type="button"
-            onClick={exportCsv}
-            disabled={!filtered.length}
+            onClick={() => void exportCsv()}
+            disabled={!totalMatching}
             className="inline-flex items-center gap-2 self-start rounded-lg border border-[#06131D]/15 px-4 py-2.5 font-body text-sm font-semibold text-[#06131D] transition hover:border-[#997A15] hover:text-[#997A15] disabled:opacity-50"
           >
             <FiDownload /> Export CSV
@@ -310,7 +352,7 @@ export default function AdminEnquiriesPage() {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search name, phone, email, city"
+              placeholder="Search this page"
               className="w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-body text-sm outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
             />
           </label>
@@ -336,14 +378,28 @@ export default function AdminEnquiriesPage() {
             </div>
           )}
 
-          {filtered.length > visible.length && (
-            <button
-              type="button"
-              onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-              className="w-full rounded-xl border border-stone-200 bg-white py-3 font-body text-sm font-semibold text-[#06131D] transition hover:border-[#D4AF37]"
-            >
-              Show more ({filtered.length - visible.length} remaining)
-            </button>
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                disabled={page === 0}
+                onClick={() => setPage((current) => Math.max(0, current - 1))}
+                className="rounded-lg border border-stone-200 bg-white px-4 py-2.5 font-body text-sm font-semibold text-[#06131D] transition hover:border-[#D4AF37] disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <p className="font-body text-sm text-[#526168]">
+                Page {page + 1} of {pageCount} · {totalMatching} total
+              </p>
+              <button
+                type="button"
+                disabled={page + 1 >= pageCount}
+                onClick={() => setPage((current) => current + 1)}
+                className="rounded-lg border border-stone-200 bg-white px-4 py-2.5 font-body text-sm font-semibold text-[#06131D] transition hover:border-[#D4AF37] disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
           )}
         </section>
       </div>

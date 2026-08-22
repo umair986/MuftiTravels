@@ -46,6 +46,9 @@ export default function ContactForm() {
     date: "",
     packagePreference: "Umrah Fixed Group",
     notes: "",
+    // Honeypot: hidden from people, irresistible to bots. The database trigger
+    // silently discards any row that arrives with this filled in.
+    website: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -98,6 +101,7 @@ export default function ContactForm() {
         children: formData.children,
         preferred_date: formData.date || null,
         notes: formData.notes,
+        honeypot: formData.website,
       });
 
       if (error) throw error;
@@ -116,12 +120,16 @@ export default function ContactForm() {
         date: "",
         packagePreference: "Umrah Fixed Group",
         notes: "",
+        website: "",
       });
     } catch (error) {
-      console.error("Failed to save enquiry:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to send enquiry.";
       setSubmitStatus("error");
       setSubmitMessage(
-        "Failed to send enquiry. Please try again or message us directly on WhatsApp.",
+        message.includes("Too many enquiries")
+          ? "You have sent several enquiries recently. Please message us on WhatsApp and we will reply straight away."
+          : "Failed to send enquiry. Please try again or message us directly on WhatsApp.",
       );
     } finally {
       setIsSubmitting(false);
@@ -176,6 +184,20 @@ export default function ContactForm() {
           Fill in your details below for custom dates, hotel preferences, and
           transparent quotes.
         </p>
+      </div>
+
+      {/* Honeypot. Off-screen rather than display:none, which some bots skip. */}
+      <div aria-hidden="true" className="absolute left-[-9999px] top-auto h-px w-px overflow-hidden">
+        <label htmlFor="website">Website</label>
+        <input
+          id="website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={formData.website}
+          onChange={handleChange}
+        />
       </div>
 
       {/* Name Input */}

@@ -27,13 +27,13 @@
 //   prices: TierPriceMap;
 // }
 
-// export type PackageDataType = Record<CategoryType, PackageData[]>;
+// export type PackageDataType = Record<StaticCategoryType, PackageData[]>;
 
 // const generateSlug = (name: string): string => {
 //   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 // };
 
-// const addSlugsToPackages = (data: Record<CategoryType, Omit<PackageData, 'slug'>[]>): PackageDataType => {
+// const addSlugsToPackages = (data: Record<StaticCategoryType, Omit<PackageData, 'slug'>[]>): PackageDataType => {
 //   return Object.fromEntries(
 //     Object.entries(data).map(([category, packages]) => [
 //       category,
@@ -189,7 +189,18 @@ export interface Badge {
   color: string;
 }
 
-export type CategoryType = "Umrah Fixed Group" | "Umrah Land Package" | "Ziyarat";
+export type CategoryType =
+  | "Umrah Fixed Group"
+  | "Umrah Land Package"
+  | "Ziyarat"
+  | "Hajj"
+  | "Ramzan";
+
+/** Categories that still carry hardcoded fallback packages in this file. */
+export type StaticCategoryType =
+  | "Umrah Fixed Group"
+  | "Umrah Land Package"
+  | "Ziyarat";
 
 // Define the types for our new dynamic pricing structure
 export type PackageTier = 'Super Saver' | 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
@@ -214,13 +225,13 @@ export interface PackageData {
   prices: TierPriceMap;
 }
 
-export type PackageDataType = Record<CategoryType, PackageData[]>;
+export type PackageDataType = Record<StaticCategoryType, PackageData[]>;
 
 const generateSlug = (name: string): string => {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 };
 
-const addSlugsToPackages = (data: Record<CategoryType, Omit<PackageData, 'slug'>[]>): PackageDataType => {
+const addSlugsToPackages = (data: Record<StaticCategoryType, Omit<PackageData, 'slug'>[]>): PackageDataType => {
   return Object.fromEntries(
     Object.entries(data).map(([category, packages]) => [
       category,

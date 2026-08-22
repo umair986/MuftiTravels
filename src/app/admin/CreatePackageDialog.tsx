@@ -5,6 +5,7 @@ import { FiPlus, FiX } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 import { slugifyKey } from "@/lib/taxonomy";
 import { PACKAGE_CATEGORIES, schemaForCategory } from "@/lib/categoryFields";
+import { categorySlug } from "@/lib/categories";
 
 /**
  * Creates a package as an unpublished draft.
@@ -194,7 +195,7 @@ export default function CreatePackageDialog({
               {slug ? (
                 <>
                   /packages/
-                  {category.toLowerCase().replaceAll(" ", "-")}/
+                  {categorySlug(category)}/
                   <strong className="text-[#06131D]">{slug}</strong>
                 </>
               ) : (
