@@ -16,6 +16,8 @@ import {
   type PackageDetails,
 } from "@/lib/categoryFields";
 import CategoryDetailsFields from "./CategoryDetailsFields";
+import { PACKAGE_CATEGORIES } from "@/lib/categoryFields";
+import Image from "next/image";
 import { revalidatePackages } from "@/lib/revalidate";
 
 const packageSlug = "14-days-umrah-land-package";
@@ -42,6 +44,10 @@ type FormState = {
   cardTags: string[];
   /** Category-specific fields; see lib/categoryFields.ts. */
   details: PackageDetails;
+  category: string;
+  sortOrder: string;
+  rating: string;
+  reviews: string;
   isPublished: boolean;
 };
 
@@ -56,6 +62,10 @@ const emptyForm: FormState = {
   prices: [],
   cardTags: [],
   details: {},
+  category: "",
+  sortOrder: "0",
+  rating: "5",
+  reviews: "0",
   isPublished: true,
 };
 
@@ -134,6 +144,10 @@ export default function ManagedPackageEditor({
             features: packageRecord.features.join("\n"),
             cardTags: packageRecord.card_tags ?? [],
             details: packageRecord.details ?? {},
+            category: packageRecord.category,
+            sortOrder: String(packageRecord.sort_order ?? 0),
+            rating: String(packageRecord.rating ?? 5),
+            reviews: String(packageRecord.reviews ?? 0),
             prices: pricesToRows(packageRecord.prices),
             isPublished: packageRecord.is_published,
           };
@@ -264,6 +278,10 @@ export default function ManagedPackageEditor({
         starting_price: startingPrice,
         prices: nextPrices,
         card_tags: form.cardTags,
+        category: form.category,
+        sort_order: Number(form.sortOrder) || 0,
+        rating: Math.min(5, Math.max(1, Number(form.rating) || 5)),
+        reviews: Math.max(0, Number(form.reviews) || 0),
         // Only categories that declare fields write `details`, so a site that
         // has not run migration 007 yet can still save its Umrah packages.
         ...(schemaForCategory(record.category)
@@ -305,7 +323,7 @@ export default function ManagedPackageEditor({
   }
 
   // Hajj and Ramzan declare extra fields; every other category renders none.
-  const categorySchema = schemaForCategory(record?.category);
+  const categorySchema = schemaForCategory(form.category || record?.category);
 
   return (
     <div className="mt-8 border-t border-[#06131D]/10 pt-8">
@@ -347,9 +365,20 @@ export default function ManagedPackageEditor({
             className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-normal file:mr-4 file:rounded-md file:border-0 file:bg-[#06131D] file:px-3 file:py-2 file:font-body file:text-xs file:font-semibold file:text-[#F3E5AB]"
           />
           {form.imageUrl && (
-            <p className="truncate pt-1 text-xs font-normal text-emerald-700">
-              Image ready to save
-            </p>
+            <div className="pt-2">
+              <div className="relative h-40 w-full overflow-hidden rounded-lg border border-stone-200 bg-stone-100">
+                <Image
+                  src={form.imageUrl}
+                  alt="Current package image"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <p className="pt-1.5 text-xs font-normal text-[#526168]">
+                Save the package to apply this image.
+              </p>
+            </div>
           )}
         </label>
         <EditorField
@@ -368,6 +397,32 @@ export default function ManagedPackageEditor({
           label="Destinations"
           value={form.destinations}
           onChange={(value) => updateField("destinations", value)}
+        />
+        <EditorOptionSelect
+          label="Category"
+          value={form.category}
+          options={[...new Set([...PACKAGE_CATEGORIES, form.category])]
+            .filter(Boolean)
+            .map((value) => ({ value, label: value }))}
+          onChange={(value) => updateField("category", value)}
+        />
+        <EditorField
+          label="Display order (lower shows first)"
+          type="number"
+          value={form.sortOrder}
+          onChange={(value) => updateField("sortOrder", value)}
+        />
+        <EditorField
+          label="Star rating (1-5)"
+          type="number"
+          value={form.rating}
+          onChange={(value) => updateField("rating", value)}
+        />
+        <EditorField
+          label="Review count"
+          type="number"
+          value={form.reviews}
+          onChange={(value) => updateField("reviews", value)}
         />
         <CardTagPicker
           tags={tags}

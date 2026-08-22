@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AdminPackagesPage from "./AdminPackagesPage";
+import AdminPackageCollectionPage from "../AdminPackageCollectionPage";
 
 export const metadata: Metadata = {
   title: "Manage Packages",
@@ -8,5 +8,10 @@ export const metadata: Metadata = {
 };
 
 export default function AdminPackagesRoute() {
-  return <AdminPackagesPage />;
+  return (
+    <AdminPackageCollectionPage
+      title="Packages"
+      description="Create, edit and publish the packages shown on your website."
+    />
+  );
 }

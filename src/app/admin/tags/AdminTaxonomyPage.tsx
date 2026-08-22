@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
-  FiArrowLeft,
   FiChevronDown,
   FiChevronUp,
   FiPlus,
@@ -24,6 +22,7 @@ import {
   type TagColor,
 } from "@/lib/taxonomy";
 import AdminLoginForm from "../AdminLoginForm";
+import AdminNav from "../AdminNav";
 
 type UsageMap = Record<string, string[]>;
 
@@ -249,14 +248,9 @@ export default function AdminTaxonomyPage() {
   return (
     <main className="min-h-screen bg-[#F3EFEA] px-5 py-8 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-7xl">
+        <AdminNav />
         <header className="border-b border-[#06131D]/10 pb-7">
-          <Link
-            href="/admin"
-            className="inline-flex items-center gap-2 font-body text-sm font-semibold text-[#997A15]"
-          >
-            <FiArrowLeft /> Back to dashboard
-          </Link>
-          <h1 className="mt-4 font-display text-4xl font-semibold text-[#06131D] sm:text-5xl">
+          <h1 className="font-display text-4xl font-semibold text-[#06131D] sm:text-5xl">
             Tags &amp; Tiers
           </h1>
           <p className="mt-2 max-w-2xl font-body text-sm text-[#526168]">

@@ -31,7 +31,10 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
           .from("packages")
           .select("id", { count: "exact", head: true })
           .eq("is_published", true),
-        client.from("enquiries").select("id", { count: "exact", head: true }),
+        client
+          .from("enquiries")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "new"),
       ]);
 
       setPackageCount(packages ?? 0);
@@ -72,7 +75,7 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
             value={packageCount === null ? "..." : String(packageCount)}
           />
           <DashboardMetric
-            label="Enquiries"
+            label="New Enquiries"
             value={enquiryCount === null ? "..." : String(enquiryCount)}
           />
           <DashboardMetric label="Testimonials" value="-" />
@@ -90,9 +93,6 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
                   Manage the content that appears across your website.
                 </p>
               </div>
-              <span className="rounded-full bg-[#F3E5AB]/50 px-3 py-1 font-body text-xs font-semibold text-[#715B11]">
-                Preparing
-              </span>
             </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -108,11 +108,11 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
               />
               <DashboardAction
                 title="Testimonials"
-                description="Update customer stories"
+                description="Coming soon — edited in code for now"
               />
               <DashboardAction
                 title="Gallery"
-                description="Manage travel photos"
+                description="Coming soon — edited in code for now"
               />
               <DashboardAction
                 title="Tags & Tiers"
@@ -185,7 +185,10 @@ function DashboardAction({
   }
 
   return (
-    <div className="rounded-xl border border-[#06131D]/10 bg-[#FAF8F5] p-4">
+    <div
+      aria-disabled="true"
+      className="rounded-xl border border-dashed border-[#06131D]/15 bg-[#FAF8F5]/60 p-4 opacity-60"
+    >
       <p className="font-body text-sm font-semibold text-[#06131D]">{title}</p>
       <p className="mt-1 font-body text-xs text-[#526168]">{description}</p>
     </div>

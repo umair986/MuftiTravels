@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { FiArrowLeft, FiEdit3, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiEdit3, FiPlus, FiTrash2 } from "react-icons/fi";
 import { CmsPackageRecord } from "@/lib/packages";
 import { createClient } from "@/lib/supabase/client";
 import AdminLoginForm from "./AdminLoginForm";
+import AdminNav from "./AdminNav";
 import ManagedPackageEditor from "./ManagedPackageEditor";
 import CreatePackageDialog from "./CreatePackageDialog";
 
@@ -93,15 +93,10 @@ export default function AdminPackageCollectionPage({
   return (
     <main className="min-h-screen bg-[#F3EFEA] px-5 py-8 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-7xl">
+        <AdminNav />
         <header className="flex flex-col gap-5 border-b border-[#06131D]/10 pb-7 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-2 font-body text-sm font-semibold text-[#997A15]"
-            >
-              <FiArrowLeft /> Back to dashboard
-            </Link>
-            <h1 className="mt-4 font-display text-4xl font-semibold text-[#06131D] sm:text-5xl">
+            <h1 className="font-display text-4xl font-semibold text-[#06131D] sm:text-5xl">
               {title}
             </h1>
             <p className="mt-2 font-body text-sm text-[#526168]">

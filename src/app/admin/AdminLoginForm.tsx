@@ -1,11 +1,15 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AdminLoginForm() {
   const router = useRouter();
+  // The middleware records where the visitor was headed before it bounced them
+  // here. Honour it instead of always dropping them on the dashboard.
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -34,7 +38,9 @@ export default function AdminLoginForm() {
       return;
     }
 
-    router.push("/admin");
+    router.push(
+      redirectTo?.startsWith("/admin") ? redirectTo : "/admin",
+    );
     router.refresh();
   }
 
