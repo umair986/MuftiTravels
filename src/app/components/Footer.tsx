@@ -113,96 +113,49 @@ export default function Footer() {
             </p>
             <ul className="space-y-2 text-xs sm:text-sm text-stone-400">
               <li>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                  className="hover:text-[#D4AF37] transition-colors cursor-pointer"
-                >
+                <Link href="/" className="hover:text-[#D4AF37] transition-colors">
                   Home
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#about"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const el = document.getElementById("about");
-                    if (el) {
-                      const offset = el.getBoundingClientRect().top + window.pageYOffset - 90;
-                      window.scrollTo({ top: offset, behavior: "smooth" });
-                    }
-                  }}
-                  className="hover:text-[#D4AF37] transition-colors cursor-pointer"
+                <Link
+                  href="/#about"
+                  className="hover:text-[#D4AF37] transition-colors"
                 >
                   About Us
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#why-us"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const el = document.getElementById("why-us");
-                    if (el) {
-                      const offset = el.getBoundingClientRect().top + window.pageYOffset - 90;
-                      window.scrollTo({ top: offset, behavior: "smooth" });
-                    }
-                  }}
-                  className="hover:text-[#D4AF37] transition-colors cursor-pointer"
+                <Link
+                  href="/#why-us"
+                  className="hover:text-[#D4AF37] transition-colors"
                 >
                   Why Mufti Travels
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#journey"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const el = document.getElementById("journey");
-                    if (el) {
-                      const offset = el.getBoundingClientRect().top + window.pageYOffset - 90;
-                      window.scrollTo({ top: offset, behavior: "smooth" });
-                    }
-                  }}
-                  className="hover:text-[#D4AF37] transition-colors cursor-pointer"
+                <Link
+                  href="/#journey"
+                  className="hover:text-[#D4AF37] transition-colors"
                 >
                   Spiritual Blueprint
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#gallery"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const el = document.getElementById("gallery");
-                    if (el) {
-                      const offset = el.getBoundingClientRect().top + window.pageYOffset - 90;
-                      window.scrollTo({ top: offset, behavior: "smooth" });
-                    }
-                  }}
-                  className="hover:text-[#D4AF37] transition-colors cursor-pointer"
+                <Link
+                  href="/#gallery"
+                  className="hover:text-[#D4AF37] transition-colors"
                 >
                   Sacred Gallery
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#contact"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const el = document.getElementById("contact");
-                    if (el) {
-                      const offset = el.getBoundingClientRect().top + window.pageYOffset - 90;
-                      window.scrollTo({ top: offset, behavior: "smooth" });
-                    }
-                  }}
-                  className="hover:text-[#D4AF37] transition-colors cursor-pointer"
+                <Link
+                  href="/#contact"
+                  className="hover:text-[#D4AF37] transition-colors"
                 >
                   Enquire Now
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

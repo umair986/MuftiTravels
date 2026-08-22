@@ -3,8 +3,8 @@
 Working document. Findings are ranked worst-first within each section, with
 `file:line` references so anything here can be checked or disputed.
 
-Parts 2 and 3 reviewed against commit `729e6fd`.
-Part 1 was implemented in commit `1da1616` — what remains of it is below.
+Part 3 reviewed against commit `729e6fd`.
+Parts 1 and 2 have been implemented — what remains of each is listed under it.
 
 ---
 
@@ -73,146 +73,51 @@ and spend rather than code changes.
 
 # Part 2 — UI/UX review
 
-Walked as a visitor would: land → find a package → open it → enquire. Then the
-admin flow. Ranked by business impact, not by how hard they are to fix.
+## Done
 
-## 🔴 The hero search ignores everything the visitor selects
+- **The hero search now carries its selections.** `Hero.tsx` pushes
+  `/packages?city=&category=&season=` instead of discarding all three. The
+  catalog filters on city and category, and shows a summary bar naming what was
+  searched with a "Clear search" link. Season has no equivalent field in the
+  package data, so it is echoed back and carried into the enquiry rather than
+  silently ignored. A search matching nothing shows the full catalog with an
+  explanation instead of an empty page.
+- **The `/gallery` 404 is gone.** The button now points at the contact section,
+  since the four images on the page are the whole gallery.
+- **`/packages` has a footer**, and every section link in the header and footer
+  is now `/#section`, so it navigates home from any page instead of doing
+  nothing.
+- **`EnquiryForm.tsx` deleted** — the fake form that thanked customers and
+  saved nothing.
+- **Contact form**: the notes field that was being submitted but never
+  collected now exists on screen, the date input rejects past dates and no
+  longer claims to accept a month, and a "Send another enquiry" link means the
+  form is reusable without a reload.
+- **`CustomDropdown` rebuilt as a real listbox** — visible focus ring, combobox
+  and option roles, `aria-selected`, arrow keys with Home/End, focus returned to
+  the trigger on Escape, and a properly associated label.
+- **Gallery lightbox is keyboard accessible** — tiles are buttons, Escape
+  closes, focus moves in on open and back to the tile on close, and the modal
+  carries dialog semantics.
+- **`error.tsx` uses `reset()`** with a working link back to the catalog.
+- **Testimonials** respect `prefers-reduced-motion`, pause on focus as well as
+  hover, and no longer depend on a third-party placeholder host.
+- **Card flash and layout shift** resolved by the server rendering in Part 1.
 
-`Hero.tsx:99`
+Note: `/packages` is now a dynamic route because it reads search params. The
+catalog data behind it is still cached, so this does not add database load.
 
-```ts
-const handleQuickSearch = (e: React.FormEvent) => {
-  e.preventDefault();
-  router.push("/packages");
-};
-```
+## 🟡 Still outstanding
 
-The most prominent control on the site asks for departure city, package
-category and travel season across three well-built dropdowns — then throws all
-three away and pushes to an unfiltered list.
-
-Someone selects *Lucknow · Land Package · Ramadan*, presses **View Packages**,
-and lands on a page showing Mumbai fixed-group departures. Nothing they chose is
-reflected, and nothing explains why. This is the first interaction most visitors
-have, and it silently fails.
-
-Either pass the selections through as query params and filter the catalog, or
-remove the dropdowns and make it a plain link. The current state is worse than
-either, because it teaches visitors the site does not listen.
-
-## 🔴 "View Full Pilgrim Gallery" is a 404
-
-`GallerySection.tsx:110` links to `/gallery`. That route does not exist —
-confirmed against the build output and the route tree. The button sits at the
-end of the gallery section on the home page, styled as a primary gold CTA.
-
-Either build the page or drop the button.
-
-## 🔴 The packages page has no footer and five dead nav links
-
-`/packages` renders only the catalog. No `<Footer />`, no `<ContactSection />`.
-
-`header.tsx:27` defines seven nav links, five of which are in-page anchors:
-`#why-us`, `#journey`, `#about`, `#gallery`, `#contact`. `handleSmoothScroll`
-calls `getElementById` and, when the element is missing, **does nothing at all** —
-no navigation, no feedback. Those sections only exist on the home page.
-
-So on `/packages`, and on every package detail page, five of seven nav items are
-inert. A visitor clicking "Contact" gets silence. The footer's link list
-(`Footer.tsx:116`) has the identical problem.
-
-This also means the packages page — the page closest to a booking decision — has
-no phone number, no address, and no way to reach you without going back home
-first. Anchors should be `/#contact`, not `#contact`, so they work from
-anywhere.
-
-## 🟠 A fake enquiry form is sitting in the codebase
-
-`packages/EnquiryForm.tsx:27`
-
-```ts
-// This is where you would call your API route
-// For now, we simulate a delay
-await new Promise((resolve) => setTimeout(resolve, 1500));
-setSubmitMessage("Thank you for your enquiry! Our team will get in touch...");
-```
-
-It waits 1.5 seconds, tells the customer their enquiry was received, and stores
-nothing.
-
-**It is currently dead code** — nothing imports it, and the real dialog
-(`PackageDetailExperience.tsx:45`) does insert to Supabase correctly. So no
-leads are being lost today. But it is a loaded gun: 105 lines that look
-production-ready and will silently discard customer enquiries the moment someone
-wires them up. Delete it.
-
-## 🟠 The contact form asks for less than it claims
-
-`ContactForm.tsx`
-
-- **The `notes` field is submitted but never collected.** It is in state
-  (line 46) and sent to Supabase (line 103), but there is no textarea anywhere
-  in the form. Every enquiry saves an empty `notes`. The field that would carry
-  "my mother uses a wheelchair" does not exist on screen.
-- **The label says "Preferred Travel Date / Month" but the control is
-  `type="date"`.** A visitor who wants to say "sometime in Ramadan" is forced to
-  invent an exact day. Either relabel it or offer a month picker.
-- **No `min` on the date input** — a past date can be submitted.
-- **`package_name` is never populated**, though the table has the column. An
-  enquiry from a specific package page does not record which package.
-- **Success replaces the whole form.** There is no way to send a second enquiry
-  without reloading the page.
-
-## 🟠 Package cards flash and shift on load
-
-`ManagedPackageCard.tsx:42` and `ManagedPackagesCatalog.tsx:41` render a
-fallback card until the client fetch resolves, then swap in real content.
-
-On a slow connection a visitor sees one package, then it changes to a different
-one, with different pricing. That reads as a glitch at best and a bait-and-switch
-at worst. Fixing the server-side rendering issue in Part 1 removes this entirely.
-
-## 🟠 Accessibility gaps that block keyboard and screen-reader users
-
-**`CustomDropdown.tsx`** — used in the hero and the contact form, so it is on the
-critical path:
-
-- `focus:outline-none` on the trigger (line 78) with **no replacement ring**.
-  Keyboard users cannot see where they are. WCAG 2.4.7 failure.
-- No `role="listbox"` / `role="option"` / `aria-selected`, no
-  `aria-haspopup="listbox"`.
-- No arrow-key navigation, no Home/End, no type-ahead.
-- Focus is not returned to the trigger when Escape closes the menu.
-- The label is a `<div>` (line 71), not associated with the control, so screen
-  readers announce an unlabelled button.
-
-**Gallery lightbox** (`GallerySection.tsx:66`) — tiles are `<div onClick>`, not
-buttons: unreachable by keyboard, invisible to screen readers. The modal has no
-Escape handler, no focus trap, and no `role="dialog"` / `aria-modal`.
-
-By contrast `EnquiryDialog` (`PackageDetailExperience.tsx:62`) does this
-correctly — `role="dialog"`, `aria-modal`, `aria-labelledby`, labelled close
-button. That is the pattern to copy.
-
-Across `src/app`, 12 uses of `focus:outline-none`, 3 of which add no replacement
-ring.
-
-## 🟡 Smaller things worth doing
-
-- **`error.tsx` never uses `reset()`.** Next passes a retry function; the page
-  instead tells the user to refresh manually and says "return to the available
-  packages" without linking there. Two lines to fix.
-- **Testimonials marquee** (`Testimonials.tsx:142`) runs a 45s infinite
-  animation with no `prefers-reduced-motion` guard, and pauses on hover but not
-  on focus — a keyboard user tabbing through cannot stop it.
-- **`Testimonials.tsx:92`** falls back to `placehold.co` on image error. That
-  host is not in `next.config.ts` `remotePatterns`, and it puts a third-party
-  request on your page for a case a local placeholder would cover.
-- **Admin dashboard** (`AdminDashboard.tsx:109`) shows "Testimonials" and
-  "Gallery" cards styled like the working ones but with no `href`. They look
-  clickable and do nothing. Mark them "Coming soon" or remove them.
-- **`loading.tsx`** uses a centred spinner rather than a skeleton, so the layout
-  jumps when content arrives.
+- **`loading.tsx`** is a centred spinner rather than a skeleton, so the layout
+  still jumps when content arrives.
+- **`ContactForm` never sets `package_name`.** Defensible — it is the general
+  home-page form with no package context, and the detail-page dialog does set
+  it. Worth revisiting only if you want to know which page an enquiry came
+  from.
+- **No focus-visible audit beyond the dropdown.** The remaining
+  `focus:outline-none` uses in the codebase all pair with a ring, but that is
+  worth re-checking whenever new controls are added.
 
 ## What the UX gets right
 
@@ -227,18 +132,6 @@ offered at every step, which matches how this audience actually communicates.
 
 The admin editor's live slug preview and duplicate detection prevent a whole
 class of mistake before it reaches the database.
-
-## Suggested order
-
-1. **Fix the hero search** — it is the first thing visitors touch (half a day)
-2. **Fix or remove the `/gallery` link** — a broken CTA on the home page (minutes)
-3. **Add the footer to `/packages` and make nav anchors `/#section`** (an hour)
-4. **Delete `EnquiryForm.tsx`** before it gets wired up (minutes)
-5. **Add the notes field, fix the date label and `min`** (an hour)
-6. **CustomDropdown focus ring and listbox semantics** (half a day)
-7. Gallery lightbox keyboard access, `error.tsx` reset, reduced-motion guard
-
-Items 1–4 are visitor-facing failures. Items 5–7 are quality and access.
 
 ---
 

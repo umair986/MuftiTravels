@@ -98,7 +98,15 @@ export default function Hero() {
 
   const handleQuickSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push("/packages");
+    // Carry the selections through instead of discarding them. The catalog
+    // filters on city and category, and echoes the season back so nothing the
+    // visitor chose disappears without explanation.
+    const params = new URLSearchParams({
+      city: selectedCity,
+      category: selectedType,
+      season: selectedMonth,
+    });
+    router.push(`/packages?${params.toString()}`);
   };
 
   return (

@@ -88,9 +88,6 @@ const TestimonialCard = ({
           width={48}
           height={48}
           className="rounded-full object-cover mr-3.5 border-2 border-[#D4AF37]/40"
-          onError={(e) => {
-            e.currentTarget.src = "https://placehold.co/48x48/E2E8F0/4A5568?text=Pilgrim";
-          }}
         />
         <div>
           <h4 className="font-serif font-bold text-[#06131D] text-base">{name}</h4>
@@ -119,6 +116,11 @@ export default function Testimonials() {
             transform: translateX(-50%);
           }
         }
+        @media (prefers-reduced-motion: reduce) {
+          .testimonial-stream {
+            animation: none !important;
+          }
+        }
       `}</style>
 
       <section className="py-20 bg-[#FAF8F5] relative overflow-hidden" id="testimonials">
@@ -139,7 +141,7 @@ export default function Testimonials() {
 
         {/* Continuous Smooth Testimonial Stream */}
         <div className="group relative w-full overflow-hidden [mask-image:_linear-gradient(to_right,transparent_0,_black_128px,_black_calc(100%-128px),transparent_100%)]">
-          <ul className="flex w-max items-stretch gap-6 sm:gap-8 py-4 animate-[testimonialScroll_45s_linear_infinite] group-hover:[animation-play-state:paused]">
+          <ul className="testimonial-stream flex w-max items-stretch gap-6 sm:gap-8 py-4 animate-[testimonialScroll_45s_linear_infinite] group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]">
             {[...testimonials, ...testimonials].map((testimonial, index) => (
               <TestimonialCard
                 key={`${testimonial.name}-${index}`}

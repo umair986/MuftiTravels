@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { FaKaaba, FaEye } from "react-icons/fa";
 import { FiArrowRight, FiMapPin, FiX } from "react-icons/fi";
 
@@ -39,6 +38,28 @@ const galleryItems = [
 
 export default function GallerySection() {
   const [selectedImage, setSelectedImage] = useState<(typeof galleryItems)[0] | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+
+  // Escape closes the lightbox, focus moves into it on open and returns to the
+  // tile that opened it on close.
+  useEffect(() => {
+    if (!selectedImage) return;
+    lastFocusedRef.current = document.activeElement as HTMLElement;
+    closeButtonRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedImage(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
+      lastFocusedRef.current?.focus();
+    };
+  }, [selectedImage]);
 
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8 bg-[#FAF8F5] relative overflow-hidden" id="gallery">
@@ -64,10 +85,12 @@ export default function GallerySection() {
         {/* Gallery Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {galleryItems.map((item) => (
-            <div
+            <button
               key={item.id}
+              type="button"
               onClick={() => setSelectedImage(item)}
-              className="relative h-80 rounded-3xl overflow-hidden shadow-md group cursor-pointer border border-stone-200 hover:border-[#D4AF37]/60 hover:shadow-2xl transition-all duration-500"
+              aria-label={`View ${item.title}, ${item.location}`}
+              className="relative h-80 w-full text-left rounded-3xl overflow-hidden shadow-md group cursor-pointer border border-stone-200 hover:border-[#D4AF37]/60 hover:shadow-2xl transition-all duration-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2"
             >
               <Image
                 src={item.src}
@@ -96,19 +119,20 @@ export default function GallerySection() {
                   {item.desc}
                 </p>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 
-        {/* Action Button */}
+        {/* Talk to someone — replaces a "View Full Gallery" button that
+            pointed at /gallery, a route that does not exist. */}
         <div className="mt-12 text-center">
-          <Link
-            href="/gallery"
+          <a
+            href="#contact"
             className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-xs sm:text-sm text-[#06131D] gold-gradient-bg hover:brightness-110 shadow-lg shadow-[#D4AF37]/20 transition-all"
           >
-            <span>View Full Pilgrim Gallery</span>
+            <span>Plan a journey like this</span>
             <FiArrowRight />
-          </Link>
+          </a>
         </div>
 
       </div>
@@ -118,14 +142,20 @@ export default function GallerySection() {
         <div
           className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
           onClick={() => setSelectedImage(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={selectedImage.title}
         >
           <div
             className="relative max-w-4xl w-full bg-[#06131D] border border-[#D4AF37]/40 rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <button
+              ref={closeButtonRef}
+              type="button"
               onClick={() => setSelectedImage(null)}
-              className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-black/60 text-white hover:text-[#D4AF37] transition-colors cursor-pointer"
+              aria-label="Close image"
+              className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-black/60 text-white hover:text-[#D4AF37] transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]"
             >
               <FiX className="w-6 h-6" />
             </button>

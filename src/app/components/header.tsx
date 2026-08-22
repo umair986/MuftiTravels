@@ -27,22 +27,25 @@ const Header = () => {
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Curated Packages", href: "/packages" },
-    { name: "Why Mufti Travels", href: "#why-us" },
-    { name: "Spiritual Blueprint", href: "#journey" },
-    { name: "About Us", href: "#about" },
-    { name: "Gallery", href: "#gallery" },
-    { name: "Contact", href: "#contact" },
+    { name: "Why Mufti Travels", href: "/#why-us" },
+    { name: "Spiritual Blueprint", href: "/#journey" },
+    { name: "About Us", href: "/#about" },
+    { name: "Gallery", href: "/#gallery" },
+    { name: "Contact", href: "/#contact" },
   ];
 
   const handleSmoothScroll = (
     e: React.MouseEvent<HTMLAnchorElement>,
     href: string,
   ) => {
-    if (href.startsWith("#")) {
-      e.preventDefault();
-      const targetId = href.replace("#", "");
+    // Section links are written as "/#id" so they navigate home from any page.
+    // Only intercept for smooth scrolling when the section is already on screen;
+    // otherwise let Next handle the navigation and the browser handle the hash.
+    if (href.startsWith("/#")) {
+      const targetId = href.slice(2);
       const targetElement = document.getElementById(targetId);
       if (targetElement) {
+        e.preventDefault();
         const headerOffset = 90;
         const elementPosition = targetElement.getBoundingClientRect().top;
         const offsetPosition =
@@ -177,14 +180,14 @@ const Header = () => {
             >
               <FaWhatsapp className="w-4 h-4" />
             </a>
-            <a
-              href="#contact"
-              onClick={(e) => handleSmoothScroll(e, "#contact")}
+            <Link
+              href="/#contact"
+              onClick={(e) => handleSmoothScroll(e, "/#contact")}
               className="px-4 lg:px-5 py-2 rounded-full font-semibold text-xs lg:text-sm text-[#06131D] gold-gradient-bg hover:brightness-110 shadow-lg hover:shadow-[#D4AF37]/20 transition-all duration-200 flex items-center gap-1.5 cursor-pointer"
             >
               <span>Enquire Now</span>
               <FiCompass className="w-4 h-4" />
-            </a>
+            </Link>
           </div>
 
           {/* Mobile Hamburger Button */}
@@ -236,14 +239,14 @@ const Header = () => {
                   <FiPhone className="text-[#D4AF37]" />
                   <span>Call +91 93230 63712</span>
                 </a>
-                <a
-                  href="#contact"
-                  onClick={(e) => handleSmoothScroll(e, "#contact")}
+                <Link
+                  href="/#contact"
+                  onClick={(e) => handleSmoothScroll(e, "/#contact")}
                   className="flex items-center justify-center gap-2 py-3 rounded-xl gold-gradient-bg text-[#06131D] font-bold text-sm shadow-md cursor-pointer"
                 >
                   <span>Plan Your Sacred Journey</span>
                   <FiCompass />
-                </a>
+                </Link>
               </div>
             </div>
           </div>
