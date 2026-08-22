@@ -5,6 +5,8 @@ import { packageData } from "@/app/components/packageData";
 import { CATEGORY_BY_SLUG } from "@/lib/categories";
 import { cmsPackageToPackageData } from "@/lib/packages";
 import { getPublicCatalog } from "@/lib/packages.server";
+import JsonLd from "@/app/components/JsonLd";
+import { breadcrumbSchema, packageSchema } from "@/lib/seo";
 import PackageDetailPageClient from "./PackageDetailPageClient";
 
 type PackageRouteParams = {
@@ -32,6 +34,9 @@ async function getPackage({ category, slug }: PackageRouteParams) {
   return {
     categoryName,
     pkg: record ? cmsPackageToPackageData(record) : staticPackage,
+    // Kept alongside the display shape so the page can emit Product schema
+    // from the real prices rather than re-deriving them.
+    record,
     tiers,
     tags,
     content,
@@ -71,7 +76,7 @@ export default async function PackageDetailPage({
   params: Promise<PackageRouteParams>;
 }) {
   const routeParams = await params;
-  const { categoryName, pkg, tiers, tags, content } =
+  const { categoryName, pkg, record, tiers, tags, content } =
     await getPackage(routeParams);
 
   if (!categoryName || !pkg) {
@@ -79,12 +84,28 @@ export default async function PackageDetailPage({
   }
 
   return (
-    <PackageDetailPageClient
-      pkg={pkg}
-      categoryName={categoryName}
-      tiers={tiers ?? []}
-      tags={tags ?? []}
-      content={content ?? []}
-    />
+    <>
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Packages", path: "/packages" },
+          {
+            name: categoryName,
+            path: `/packages/${routeParams.category}`,
+          },
+          {
+            name: pkg.name,
+            path: `/packages/${routeParams.category}/${routeParams.slug}`,
+          },
+        ])}
+      />
+      {record ? <JsonLd data={packageSchema(record)} /> : null}
+      <PackageDetailPageClient
+        pkg={pkg}
+        categoryName={categoryName}
+        tiers={tiers ?? []}
+        tags={tags ?? []}
+        content={content ?? []}
+      />
+    </>
   );
 }

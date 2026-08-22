@@ -22,6 +22,8 @@ export type CmsPackageRecord = {
   sort_order: number;
   /** Category-specific fields; shape declared in lib/categoryFields.ts. */
   details?: PackageDetails;
+  /** Set by the database trigger; used for sitemap lastModified. */
+  updated_at?: string;
 };
 
 export function cmsPackageToPackageData(record: CmsPackageRecord): PackageData {

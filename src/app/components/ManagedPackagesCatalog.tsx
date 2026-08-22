@@ -67,6 +67,9 @@ function ManagedPackageCard({
     preferredPrices?.Quint ??
     Object.values(preferredPrices ?? {})[0] ??
     record.starting_price;
+  // A package can legitimately carry no price yet — a Hajj season still being
+  // costed, for instance. Show that rather than a confident "₹0".
+  const hasPrice = Number(preferredPrice) > 0;
   const slug = categorySlug(record.category);
 
   return (
@@ -111,11 +114,21 @@ function ManagedPackageCard({
         <div className="mt-6 flex items-end justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">
-              {preferredTier ? `${preferredTier.name} · Quint` : "Starting from"}
+              {!hasPrice
+                ? "Pricing"
+                : preferredTier
+                  ? `${preferredTier.name} · Quint`
+                  : "Starting from"}
             </p>
             <p className="font-display text-2xl font-bold text-[#06131D]">
-              {record.currency === "INR" ? "₹" : record.currency}
-              {Number(preferredPrice).toLocaleString("en-IN")}
+              {hasPrice ? (
+                <>
+                  {record.currency === "INR" ? "₹" : record.currency}
+                  {Number(preferredPrice).toLocaleString("en-IN")}
+                </>
+              ) : (
+                "On request"
+              )}
             </p>
           </div>
           <button

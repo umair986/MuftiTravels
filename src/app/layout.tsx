@@ -56,12 +56,23 @@ export const metadata: Metadata = {
     siteName: "Mufti Travels",
     locale: "en_IN",
     type: "website",
+    // Without this every WhatsApp and Facebook share of the site renders as a
+    // bare text link. Package pages override it with their own photo.
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Mufti Travels — Hajj & Umrah packages from India",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Mufti Travels | Hajj & Umrah Packages from India",
     description:
       "Explore trusted Hajj, Umrah and Ziyarat packages from India with Mufti Travels.",
+    images: ["/og-image.jpg"],
   },
 };
 

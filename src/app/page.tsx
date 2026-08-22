@@ -1,4 +1,6 @@
 import { getPublicCatalog } from "@/lib/packages.server";
+import { organizationSchema, websiteSchema } from "@/lib/seo";
+import JsonLd from "./components/JsonLd";
 import Hero from "./components/Hero";
 import About from "./components/About";
 import WhyChooseUs from "./components/WhyChooseUs";
@@ -16,26 +18,8 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-[#FAF8F5]">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "TravelAgency",
-            name: "Mufti Travels",
-            url: "https://muftitravels.com",
-            logo: "https://muftitravels.com/favicon.png",
-            description:
-              "Hajj, Umrah and Ziyarat packages from India with guided pilgrimage support.",
-            areaServed: "India",
-            serviceType: [
-              "Hajj packages",
-              "Umrah packages",
-              "Ziyarat packages",
-            ],
-          }),
-        }}
-      />
+      <JsonLd data={organizationSchema()} />
+      <JsonLd data={websiteSchema()} />
       {/* 1. Atmospheric Sacred Hero */}
       <Hero />
 
