@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { FiArrowLeft, FiEdit3, FiPlus } from "react-icons/fi";
+import { FiArrowLeft, FiEdit3, FiPlus, FiTrash2 } from "react-icons/fi";
 import { CmsPackageRecord } from "@/lib/packages";
 import { createClient } from "@/lib/supabase/client";
 import AdminLoginForm from "./AdminLoginForm";
 import ManagedPackageEditor from "./ManagedPackageEditor";
+import CreatePackageDialog from "./CreatePackageDialog";
 
 export default function AdminPackageCollectionPage({
   title,
@@ -22,6 +23,11 @@ export default function AdminPackageCollectionPage({
   const [email, setEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<CmsPackageRecord | null>(
+    null,
+  );
   const [supabase] = useState(createClient);
 
   const load = useCallback(async () => {
@@ -49,6 +55,22 @@ export default function AdminPackageCollectionPage({
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function deletePackage(record: CmsPackageRecord) {
+    if (!supabase) return;
+    setPendingDelete(null);
+    const { error: deleteError } = await supabase
+      .from("packages")
+      .delete()
+      .eq("id", record.id);
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
+    }
+    if (selectedSlug === record.slug) setSelectedSlug(null);
+    setMessage(`"${record.name}" deleted.`);
+    void load();
+  }
 
   if (isLoading)
     return (
@@ -88,17 +110,24 @@ export default function AdminPackageCollectionPage({
           </div>
           <button
             type="button"
-            disabled
-            className="inline-flex items-center gap-2 rounded-lg bg-[#06131D] px-4 py-3 font-body text-sm font-bold text-[#F3E5AB] opacity-60"
+            onClick={() => setIsCreateOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#06131D] px-4 py-3 font-body text-sm font-bold text-[#F3E5AB] transition hover:bg-[#0D2A3A]"
           >
             <FiPlus /> Create new package
           </button>
         </header>
+
         {error && (
           <p className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-700">
             {error}
           </p>
         )}
+        {message && !error && (
+          <p className="mt-6 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+            {message}
+          </p>
+        )}
+
         <section className="mt-8 grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="rounded-2xl border border-[#06131D]/10 bg-white p-6 shadow-sm">
             <h2 className="font-display text-3xl font-semibold text-[#06131D]">
@@ -110,27 +139,37 @@ export default function AdminPackageCollectionPage({
                   key={record.id}
                   className={`flex items-center justify-between gap-3 rounded-xl border p-4 ${selectedSlug === record.slug ? "border-[#D4AF37] bg-[#FFFCF3]" : "border-stone-200 bg-[#FAF8F5]"}`}
                 >
-                  <div>
-                    <p className="font-body text-sm font-semibold text-[#06131D]">
+                  <div className="min-w-0">
+                    <p className="truncate font-body text-sm font-semibold text-[#06131D]">
                       {record.name}
                     </p>
                     <p className="mt-1 text-xs text-[#526168]">
                       {record.is_published ? "Published" : "Draft"}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSlug(record.slug)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#06131D]/15 px-3 py-2 text-xs font-bold"
-                  >
-                    <FiEdit3 /> Edit
-                  </button>
+                  <div className="flex flex-shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSlug(record.slug)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#06131D]/15 px-3 py-2 text-xs font-bold"
+                    >
+                      <FiEdit3 /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingDelete(record)}
+                      aria-label={`Delete ${record.name}`}
+                      className="inline-flex items-center rounded-lg border border-red-200 px-2.5 py-2 text-red-600 transition hover:bg-red-50"
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
                 </div>
               ))}
               {!records.length && (
                 <p className="rounded-xl border border-dashed border-stone-300 p-6 text-center text-sm text-[#526168]">
                   No {(category ?? "").toLowerCase()} packages yet. Use Create
-                  new package when the create form is enabled.
+                  new package to add one.
                 </p>
               )}
             </div>
@@ -146,6 +185,55 @@ export default function AdminPackageCollectionPage({
           </div>
         </section>
       </div>
+
+      <CreatePackageDialog
+        open={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        fixedCategory={category || undefined}
+        existingSlugs={records.map((item) => item.slug)}
+        knownCategories={records.map((item) => item.category)}
+        onCreated={(slug, name) => {
+          setIsCreateOpen(false);
+          setError("");
+          setMessage(`"${name}" created as a draft. Fill it in and publish.`);
+          setSelectedSlug(slug);
+          void load();
+        }}
+      />
+
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#06131D]/60 px-5">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="font-display text-2xl font-semibold text-[#06131D]">
+              Delete this package?
+            </h3>
+            <p className="mt-3 font-body text-sm text-[#526168]">
+              <strong className="text-[#06131D]">{pendingDelete.name}</strong>{" "}
+              and its prices will be removed for good. Any link to{" "}
+              <code className="rounded bg-stone-100 px-1.5 py-0.5 text-xs">
+                /packages/…/{pendingDelete.slug}
+              </code>{" "}
+              will stop working. This cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                className="rounded-lg border border-stone-200 px-4 py-2.5 font-body text-sm font-semibold text-[#06131D]"
+              >
+                Keep it
+              </button>
+              <button
+                type="button"
+                onClick={() => deletePackage(pendingDelete)}
+                className="rounded-lg bg-red-600 px-4 py-2.5 font-body text-sm font-bold text-white hover:bg-red-700"
+              >
+                Delete package
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

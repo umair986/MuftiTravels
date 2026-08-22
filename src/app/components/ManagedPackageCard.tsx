@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { FiArrowRight, FiClock, FiMapPin } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 import { CmsPackageRecord } from "@/lib/packages";
+import PackageTagBadges, { useTaxonomy } from "./PackageTagBadges";
 
 const packageSlug = "14-days-umrah-land-package";
 
@@ -18,6 +19,7 @@ export default function ManagedPackageCard({
   const [record, setRecord] = useState<CmsPackageRecord | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const taxonomy = useTaxonomy();
 
   useEffect(() => {
     const supabase = createClient();
@@ -39,7 +41,7 @@ export default function ManagedPackageCard({
       });
   }, []);
 
-  if (!hasLoaded || hasError || !record) {
+  if (!hasLoaded || !taxonomy.isLoaded || hasError || !record) {
     return <>{fallback}</>;
   }
 
@@ -56,6 +58,11 @@ export default function ManagedPackageCard({
         <span className="absolute left-3 top-3 rounded-full bg-amber-700/90 px-3 py-1 text-xs font-bold text-white">
           Land Package
         </span>
+        <PackageTagBadges
+          tagKeys={record.card_tags}
+          registry={taxonomy.tags}
+          className="absolute right-3 top-3 justify-end"
+        />
         <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full border border-[#D4AF37]/30 bg-[#06131D]/85 px-3 py-1 text-xs font-medium text-[#F3E5AB]">
           <FiMapPin className="h-3.5 w-3.5 text-[#D4AF37]" />
           <span>{record.destinations}</span>

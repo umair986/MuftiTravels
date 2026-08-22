@@ -35,6 +35,8 @@ import {
   SharingType,
 } from "@/app/components/packageData";
 import { createClient } from "@/lib/supabase/client";
+import { tierName } from "@/lib/taxonomy";
+import PackageTagBadges, { useTaxonomy } from "@/app/components/PackageTagBadges";
 
 const sharingTypes: SharingType[] = ["Quint", "Quad", "Triple", "Double"];
 
@@ -295,6 +297,7 @@ function PriceSelector({
     availableTiers.includes("Silver") ? "Silver" : availableTiers[0],
   );
   const [sharing, setSharing] = useState<SharingType>("Quad");
+  const { tiers: tierRegistry } = useTaxonomy();
   useEffect(() => {
     if (!pkg.prices[tier]?.[sharing])
       setSharing(
@@ -329,7 +332,7 @@ function PriceSelector({
                   onClick={() => setTier(item)}
                   className={`min-h-11 rounded-lg border px-2 text-xs font-semibold transition ${tier === item ? "border-[#D4AF37] bg-[#D4AF37] text-[#06131D]" : "border-white/10 bg-white/5 text-stone-300 hover:border-[#D4AF37]/60"} disabled:cursor-not-allowed disabled:border-white/5 disabled:bg-transparent disabled:text-stone-600`}
                 >
-                  {item}
+                  {tierName(item, tierRegistry)}
                 </button>
               );
             })}
@@ -394,6 +397,7 @@ export default function PackageDetailExperience({
 }: DetailProps) {
   const [activeTab, setActiveTab] = useState("Overview");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const { tags: heroTags } = useTaxonomy();
   useEffect(() => {
     document.body.style.overflow = isFormOpen ? "hidden" : "";
     return () => {
@@ -438,6 +442,11 @@ export default function PackageDetailExperience({
             <p className="mb-3 inline-flex w-fit items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#F3E5AB]">
               <FaKaaba className="text-[#D4AF37]" /> Curated pilgrimage
             </p>
+            <PackageTagBadges
+              tagKeys={pkg.card_tags}
+              registry={heroTags}
+              className="mb-4"
+            />
             <h1 className="max-w-4xl font-display text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
               {pkg.name}
             </h1>

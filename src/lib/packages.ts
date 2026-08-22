@@ -1,4 +1,5 @@
 import { PackageData, TierPriceMap } from "@/app/components/packageData";
+import type { PackageDetails } from "@/lib/categoryFields";
 
 export type CmsPackageRecord = {
   id: string;
@@ -19,6 +20,8 @@ export type CmsPackageRecord = {
   rating: 1 | 2 | 3 | 4 | 5;
   is_published: boolean;
   sort_order: number;
+  /** Category-specific fields; shape declared in lib/categoryFields.ts. */
+  details?: PackageDetails;
 };
 
 export function cmsPackageToPackageData(record: CmsPackageRecord): PackageData {

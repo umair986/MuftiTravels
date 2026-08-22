@@ -7,6 +7,7 @@ import { CmsPackageRecord } from "@/lib/packages";
 import { createClient } from "@/lib/supabase/client";
 import AdminLoginForm from "../AdminLoginForm";
 import ManagedPackageEditor from "../ManagedPackageEditor";
+import CreatePackageDialog from "../CreatePackageDialog";
 
 export default function AdminPackagesPage() {
   const [packages, setPackages] = useState<CmsPackageRecord[]>([]);
@@ -14,6 +15,8 @@ export default function AdminPackagesPage() {
   const [email, setEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [supabase] = useState(createClient);
 
   const loadPage = useCallback(async () => {
@@ -115,9 +118,8 @@ export default function AdminPackagesPage() {
           </div>
           <button
             type="button"
-            disabled
-            title="The create form will be enabled after the pilot edit flow is tested"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#06131D] px-4 py-3 font-body text-sm font-bold text-[#F3E5AB] opacity-60"
+            onClick={() => setIsCreateOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#06131D] px-4 py-3 font-body text-sm font-bold text-[#F3E5AB] transition hover:bg-[#0D2A3A]"
           >
             <FiPlus /> Create new package
           </button>
@@ -126,6 +128,11 @@ export default function AdminPackagesPage() {
         {error && (
           <p className="mt-6 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
             {error}
+          </p>
+        )}
+        {message && !error && (
+          <p className="mt-6 rounded-lg bg-emerald-50 p-3 font-body text-sm text-emerald-700">
+            {message}
           </p>
         )}
 
@@ -207,6 +214,20 @@ export default function AdminPackagesPage() {
           </div>
         </section>
       </div>
+
+      <CreatePackageDialog
+        open={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        existingSlugs={packages.map((item) => item.slug)}
+        knownCategories={packages.map((item) => item.category)}
+        onCreated={(slug, name) => {
+          setIsCreateOpen(false);
+          setError("");
+          setMessage(`"${name}" created as a draft. Fill it in and publish.`);
+          setSelectedSlug(slug);
+          void loadPage();
+        }}
+      />
     </main>
   );
 }

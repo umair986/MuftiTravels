@@ -3,12 +3,26 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { CmsPackageRecord } from "@/lib/packages";
 import { createClient } from "@/lib/supabase/client";
+import {
+  fetchTags,
+  fetchTiers,
+  tagBadgeClasses,
+  type PackageTagRecord,
+  type PackageTierRecord,
+} from "@/lib/taxonomy";
+import {
+  pruneDetails,
+  schemaForCategory,
+  type PackageDetails,
+} from "@/lib/categoryFields";
+import CategoryDetailsFields from "./CategoryDetailsFields";
 
 const packageSlug = "14-days-umrah-land-package";
 const sharingTypes = ["Quint", "Quad", "Triple", "Double"] as const;
 
 type PriceRow = {
   id: number;
+  /** A key from public.package_tiers, never a display name. */
   tier: string;
   sharing: (typeof sharingTypes)[number];
   amount: string;
@@ -23,7 +37,10 @@ type FormState = {
   destinations: string;
   features: string;
   prices: PriceRow[];
-  cardTags: string;
+  /** Keys from public.package_tags. */
+  cardTags: string[];
+  /** Category-specific fields; see lib/categoryFields.ts. */
+  details: PackageDetails;
   isPublished: boolean;
 };
 
@@ -36,7 +53,8 @@ const emptyForm: FormState = {
   destinations: "",
   features: "",
   prices: [],
-  cardTags: "",
+  cardTags: [],
+  details: {},
   isPublished: true,
 };
 
@@ -69,6 +87,8 @@ export default function ManagedPackageEditor({
 }) {
   const [record, setRecord] = useState<CmsPackageRecord | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [tiers, setTiers] = useState<PackageTierRecord[]>([]);
+  const [tags, setTags] = useState<PackageTagRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -81,6 +101,13 @@ export default function ManagedPackageEditor({
       setIsLoading(false);
       return;
     }
+
+    void Promise.all([fetchTiers(supabase), fetchTags(supabase)]).then(
+      ([nextTiers, nextTags]) => {
+        setTiers(nextTiers);
+        setTags(nextTags);
+      },
+    );
 
     supabase
       .from("packages")
@@ -103,7 +130,8 @@ export default function ManagedPackageEditor({
             durationNights: String(packageRecord.duration_nights),
             destinations: packageRecord.destinations,
             features: packageRecord.features.join("\n"),
-            cardTags: (packageRecord.card_tags ?? []).join(", "),
+            cardTags: packageRecord.card_tags ?? [],
+            details: packageRecord.details ?? {},
             prices: pricesToRows(packageRecord.prices),
             isPublished: packageRecord.is_published,
           });
@@ -168,7 +196,12 @@ export default function ManagedPackageEditor({
     const nextId = Math.max(0, ...form.prices.map((row) => row.id)) + 1;
     updateField("prices", [
       ...form.prices,
-      { id: nextId, tier: "Silver", sharing: "Quad", amount: "" },
+      {
+        id: nextId,
+        tier: tiers[0]?.key ?? "",
+        sharing: "Quad",
+        amount: "",
+      },
     ]);
   }
 
@@ -215,10 +248,17 @@ export default function ManagedPackageEditor({
           .filter(Boolean),
         starting_price: startingPrice,
         prices: nextPrices,
-        card_tags: form.cardTags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
+        card_tags: form.cardTags,
+        // Only categories that declare fields write `details`, so a site that
+        // has not run migration 007 yet can still save its Umrah packages.
+        ...(schemaForCategory(record.category)
+          ? {
+              details: pruneDetails(
+                schemaForCategory(record.category),
+                form.details,
+              ),
+            }
+          : {}),
         is_published: form.isPublished,
       })
       .eq("id", record.id)
@@ -246,12 +286,15 @@ export default function ManagedPackageEditor({
     );
   }
 
+  // Hajj and Ramzan declare extra fields; every other category renders none.
+  const categorySchema = schemaForCategory(record?.category);
+
   return (
     <div className="mt-8 border-t border-[#06131D]/10 pt-8">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-body text-xs font-semibold uppercase tracking-[0.2em] text-[#997A15]">
-            Pilot package
+            {record?.category || "Package"}
           </p>
           <h3 className="mt-1 font-display text-3xl font-semibold text-[#06131D]">
             Edit {record?.name || "Package"}
@@ -308,10 +351,10 @@ export default function ManagedPackageEditor({
           value={form.destinations}
           onChange={(value) => updateField("destinations", value)}
         />
-        <EditorField
-          label="Card tags (comma separated)"
-          value={form.cardTags}
-          onChange={(value) => updateField("cardTags", value)}
+        <CardTagPicker
+          tags={tags}
+          selected={form.cardTags}
+          onChange={(next) => updateField("cardTags", next)}
         />
         <label className="space-y-1.5 font-body text-sm font-semibold text-[#06131D] sm:col-span-2">
           Description
@@ -323,6 +366,13 @@ export default function ManagedPackageEditor({
             className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-3 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
           />
         </label>
+        {categorySchema && (
+          <CategoryDetailsFields
+            schema={categorySchema}
+            details={form.details}
+            onChange={(next) => updateField("details", next)}
+          />
+        )}
         <section className="rounded-xl border border-[#06131D]/10 bg-[#FAF8F5] p-4 sm:col-span-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -348,9 +398,13 @@ export default function ManagedPackageEditor({
                 key={row.id}
                 className="grid gap-3 rounded-lg border border-stone-200 bg-white p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"
               >
-                <EditorField
+                <EditorOptionSelect
                   label="Package tier"
                   value={row.tier}
+                  options={tiers.map((tier) => ({
+                    value: tier.key,
+                    label: tier.name,
+                  }))}
                   onChange={(value) => updatePriceRow(row.id, { tier: value })}
                 />
                 <EditorSelect
@@ -477,5 +531,108 @@ function EditorSelect({
         ))}
       </select>
     </label>
+  );
+}
+
+/**
+ * A select backed by the tier registry. Values are stable keys; the operator
+ * only ever sees display names.
+ */
+function EditorOptionSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  // A package saved before a tier was deleted can still hold its key. Surface
+  // that instead of silently snapping the row to a different tier.
+  const isOrphaned = Boolean(value) && !options.some((o) => o.value === value);
+
+  return (
+    <label className="space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
+      {label}
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={`block h-10 w-full rounded-lg border bg-white px-3 text-sm font-normal outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20 ${
+          isOrphaned ? "border-red-300" : "border-stone-200"
+        }`}
+      >
+        {!options.length && <option value="">No tiers defined yet</option>}
+        {isOrphaned && <option value={value}>{value} (deleted tier)</option>}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {isOrphaned && (
+        <span className="block pt-1 text-xs font-normal text-red-600">
+          This tier no longer exists. Pick another one.
+        </span>
+      )}
+    </label>
+  );
+}
+
+/** Tick which of the managed tags appear on this package's card. */
+function CardTagPicker({
+  tags,
+  selected,
+  onChange,
+}: {
+  tags: PackageTagRecord[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  function toggle(key: string) {
+    onChange(
+      selected.includes(key)
+        ? selected.filter((item) => item !== key)
+        : [...selected, key],
+    );
+  }
+
+  return (
+    <div className="space-y-2 font-body text-sm font-semibold text-[#06131D] sm:col-span-2">
+      Card tags
+      <div className="flex flex-wrap gap-2 rounded-lg border border-stone-200 bg-white p-3">
+        {tags.map((tag) => {
+          const isOn = selected.includes(tag.key);
+          return (
+            <button
+              key={tag.key}
+              type="button"
+              onClick={() => toggle(tag.key)}
+              aria-pressed={isOn}
+              className={`rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition ${
+                isOn
+                  ? tagBadgeClasses(tag.color)
+                  : "bg-stone-100 text-stone-500 hover:bg-stone-200"
+              }`}
+            >
+              {tag.label}
+            </button>
+          );
+        })}
+        {!tags.length && (
+          <p className="py-1 text-xs font-normal text-[#526168]">
+            No tags defined yet. Create them in Tags &amp; Tiers.
+          </p>
+        )}
+      </div>
+      <p className="text-xs font-normal text-[#526168]">
+        Manage the list itself in{" "}
+        <a href="/admin/tags" className="font-semibold text-[#997A15] underline">
+          Tags &amp; Tiers
+        </a>
+        .
+      </p>
+    </div>
   );
 }

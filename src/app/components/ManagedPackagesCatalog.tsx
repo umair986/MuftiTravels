@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FiArrowRight, FiClock, FiMapPin } from "react-icons/fi";
 import { CmsPackageRecord } from "@/lib/packages";
-import { PackageTier } from "@/app/components/packageData";
 import { createClient } from "@/lib/supabase/client";
+import { lowestTier, type PackageTagRecord, type PackageTierRecord } from "@/lib/taxonomy";
+import PackageTagBadges, { useTaxonomy } from "./PackageTagBadges";
 
 export default function ManagedPackagesCatalog({
   category,
@@ -18,6 +19,7 @@ export default function ManagedPackagesCatalog({
   const [packages, setPackages] = useState<CmsPackageRecord[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState("");
+  const taxonomy = useTaxonomy();
 
   useEffect(() => {
     const supabase = createClient();
@@ -39,7 +41,7 @@ export default function ManagedPackagesCatalog({
       });
   }, [category]);
 
-  if (!isLoaded) {
+  if (!isLoaded || !taxonomy.isLoaded) {
     return <>{fallback}</>;
   }
 
@@ -56,19 +58,32 @@ export default function ManagedPackagesCatalog({
   return (
     <>
       {packages.map((item) => (
-        <ManagedPackageCard key={item.id} record={item} />
+        <ManagedPackageCard
+          key={item.id}
+          record={item}
+          tiers={taxonomy.tiers}
+          tags={taxonomy.tags}
+        />
       ))}
     </>
   );
 }
 
-function ManagedPackageCard({ record }: { record: CmsPackageRecord }) {
+function ManagedPackageCard({
+  record,
+  tiers,
+  tags,
+}: {
+  record: CmsPackageRecord;
+  tiers: PackageTierRecord[];
+  tags: PackageTagRecord[];
+}) {
   const router = useRouter();
-  const preferredTier = record.prices["Super Saver"]
-    ? "Super Saver"
-    : (Object.keys(record.prices)[0] as PackageTier | undefined);
+  // Cheapest tier this package actually offers, by registry order. Replaces a
+  // hardcoded "Super Saver" lookup that broke as soon as the tier was renamed.
+  const preferredTier = lowestTier(record.prices, tiers);
   const preferredPrices = preferredTier
-    ? record.prices[preferredTier]
+    ? record.prices[preferredTier.key as keyof typeof record.prices]
     : undefined;
   const preferredPrice =
     preferredPrices?.Quint ??
@@ -86,18 +101,13 @@ function ManagedPackageCard({ record }: { record: CmsPackageRecord }) {
           className="object-cover transition-transform duration-700 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#06131D]/80 via-transparent to-transparent" />
-        <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-1.5">
-          {(record.card_tags ?? []).map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-[#D4AF37] px-2.5 py-1 text-[10px] font-bold text-[#06131D]"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+        <PackageTagBadges
+          tagKeys={record.card_tags}
+          registry={tags}
+          className="absolute right-3 top-3 justify-end"
+        />
         <span className="absolute left-3 top-3 rounded-full bg-amber-700/90 px-3 py-1 text-xs font-bold text-white">
-          {preferredTier || "Package"}
+          {preferredTier?.name || "Package"}
         </span>
         <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full border border-[#D4AF37]/30 bg-[#06131D]/85 px-3 py-1 text-xs font-medium text-[#F3E5AB]">
           <FiMapPin className="h-3.5 w-3.5 text-[#D4AF37]" />
@@ -123,7 +133,7 @@ function ManagedPackageCard({ record }: { record: CmsPackageRecord }) {
         <div className="mt-6 flex items-end justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">
-              {preferredTier ? `${preferredTier} · Quint` : "Starting from"}
+              {preferredTier ? `${preferredTier.name} · Quint` : "Starting from"}
             </p>
             <p className="font-display text-2xl font-bold text-[#06131D]">
               {record.currency === "INR" ? "₹" : record.currency}
