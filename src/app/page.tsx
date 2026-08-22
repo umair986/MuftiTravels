@@ -1,3 +1,4 @@
+import { getPublicCatalog } from "@/lib/packages.server";
 import Hero from "./components/Hero";
 import About from "./components/About";
 import WhyChooseUs from "./components/WhyChooseUs";
@@ -10,7 +11,9 @@ import GallerySection from "./components/GallerySection";
 import ContactSection from "./components/ContactSection";
 import Footer from "./components/Footer";
 
-export default function Home() {
+export default async function Home() {
+  const { packages, tiers, tags } = await getPublicCatalog();
+
   return (
     <main className="min-h-screen bg-[#FAF8F5]">
       <script
@@ -46,7 +49,7 @@ export default function Home() {
       <JourneyTimeline />
 
       {/* 5. Curated Packages Catalog (Fixed Group, Land Packages, Ziyarat) */}
-      <Packages />
+      <Packages packages={packages} tiers={tiers} tags={tags} />
 
       {/* 6. Why Choose Us (Bento Grid Architecture) */}
       <WhyChooseUs />

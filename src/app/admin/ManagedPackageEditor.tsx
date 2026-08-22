@@ -16,6 +16,7 @@ import {
   type PackageDetails,
 } from "@/lib/categoryFields";
 import CategoryDetailsFields from "./CategoryDetailsFields";
+import { revalidatePackages } from "@/lib/revalidate";
 
 const packageSlug = "14-days-umrah-land-package";
 const sharingTypes = ["Quint", "Quad", "Triple", "Double"] as const;
@@ -89,6 +90,7 @@ export default function ManagedPackageEditor({
   const [form, setForm] = useState<FormState>(emptyForm);
   const [tiers, setTiers] = useState<PackageTierRecord[]>([]);
   const [tags, setTags] = useState<PackageTagRecord[]>([]);
+  const [savedForm, setSavedForm] = useState<FormState>(emptyForm);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -122,7 +124,7 @@ export default function ManagedPackageEditor({
         } else if (data) {
           const packageRecord = data as CmsPackageRecord;
           setRecord(packageRecord);
-          setForm({
+          const loaded: FormState = {
             name: packageRecord.name,
             description: packageRecord.description,
             imageUrl: packageRecord.image_url,
@@ -134,13 +136,26 @@ export default function ManagedPackageEditor({
             details: packageRecord.details ?? {},
             prices: pricesToRows(packageRecord.prices),
             isPublished: packageRecord.is_published,
-          });
+          };
+          setForm(loaded);
+          setSavedForm(loaded);
         } else {
           setError("The pilot package has not been seeded in Supabase yet.");
         }
         setIsLoading(false);
       });
   }, [slug]);
+
+  const isDirty = JSON.stringify(form) !== JSON.stringify(savedForm);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    function warn(event: BeforeUnloadEvent) {
+      event.preventDefault();
+    }
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
 
   function updateField<Key extends keyof FormState>(
     key: Key,
@@ -273,6 +288,9 @@ export default function ManagedPackageEditor({
     }
 
     setRecord(data as CmsPackageRecord);
+    setSavedForm(form);
+    // Drop the cached public catalog so the change is live immediately.
+    await revalidatePackages();
     setMessage(
       "Package saved. Refresh the homepage or detail page to see the update.",
     );
@@ -470,10 +488,14 @@ export default function ManagedPackageEditor({
         </label>
         <button
           type="submit"
-          disabled={isSaving || !record}
+          disabled={isSaving || !record || !isDirty}
           className="rounded-lg bg-[#06131D] px-5 py-3 font-body text-sm font-bold text-[#F3E5AB] transition hover:bg-[#0D2A3A] disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
         >
-          {isSaving ? "Saving package..." : "Save package"}
+          {isSaving
+            ? "Saving package..."
+            : isDirty
+              ? "Save package"
+              : "Saved"}
         </button>
       </form>
     </div>

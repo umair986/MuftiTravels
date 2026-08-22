@@ -23,14 +23,37 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const isAdminHome = request.nextUrl.pathname === "/admin";
 
-  if (!user && !isAdminHome) {
+  if (!user) {
+    if (isAdminHome) return response;
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/admin";
     loginUrl.searchParams.set("redirect", request.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Signed in is not the same as authorised. RLS is the real gate (see
+  // migration 008), but checking here means a non-admin gets a clear answer
+  // instead of a dashboard full of failed queries.
+  const { data: adminRow } = await supabase
+    .from("admin_users")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!adminRow) {
+    const deniedUrl = request.nextUrl.clone();
+    deniedUrl.pathname = "/admin";
+    deniedUrl.search = "";
+    deniedUrl.searchParams.set("denied", "1");
+    // Already on /admin — let the page render its own "not authorised" state
+    // rather than redirecting to itself forever.
+    if (isAdminHome) return response;
+    return NextResponse.redirect(deniedUrl);
   }
 
   return response;

@@ -9,10 +9,20 @@ import PackageCard30Days from "@/app/components/PackageCard/UmrahLandPackage/Pac
 import PackageCard25Days from "@/app/components/PackageCard/UmrahLandPackage/PackageCard25Days";
 import ZiyaratCard from "@/app/components/PackageCard/Ziyarat/ZiyaratCard";
 import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
+import type { CmsPackageRecord } from "@/lib/packages";
+import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
 
 const noop = () => undefined;
 
-export default function PackagesCatalogPage() {
+export default function PackagesCatalogPage({
+  packages,
+  tiers,
+  tags,
+}: {
+  packages: CmsPackageRecord[];
+  tiers: PackageTierRecord[];
+  tags: PackageTagRecord[];
+}) {
   return (
     <main className="min-h-screen bg-[#FAF8F5] px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -34,6 +44,9 @@ export default function PackagesCatalogPage() {
           description="Air and hotel packages from Mumbai, Delhi and Lucknow."
           icon={<FaKaaba />}
           category="Umrah Fixed Group"
+          packages={packages}
+          tiers={tiers}
+          tags={tags}
           fallback={
             <>
               <PackageCardMumbai handleBookNow={noop} />
@@ -48,6 +61,9 @@ export default function PackagesCatalogPage() {
           description="Flexible hotel and ground-service options for your pilgrimage."
           icon={<FaHotel />}
           category="Umrah Land Package"
+          packages={packages}
+          tiers={tiers}
+          tags={tags}
           fallback={
             <>
               <PackageCard14Days handleBookNow={noop} />
@@ -62,6 +78,9 @@ export default function PackagesCatalogPage() {
           description="Extend your sacred journey with carefully planned heritage visits."
           icon={<FaMosque />}
           category="Ziyarat"
+          packages={packages}
+          tiers={tiers}
+          tags={tags}
           fallback={
             <>
               <ZiyaratCard
@@ -125,12 +144,18 @@ function PackageGroup({
   description,
   icon,
   category,
+  packages,
+  tiers,
+  tags,
   fallback,
 }: {
   title: string;
   description: string;
   icon: React.ReactNode;
   category: string;
+  packages: CmsPackageRecord[];
+  tiers: PackageTierRecord[];
+  tags: PackageTagRecord[];
   fallback: React.ReactNode;
 }) {
   return (
@@ -145,7 +170,12 @@ function PackageGroup({
         </div>
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <ManagedPackagesCatalog category={category} fallback={fallback} />
+        <ManagedPackagesCatalog
+          packages={packages.filter((item) => item.category === category)}
+          tiers={tiers}
+          tags={tags}
+          fallback={fallback}
+        />
       </div>
     </section>
   );

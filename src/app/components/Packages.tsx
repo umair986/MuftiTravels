@@ -14,8 +14,9 @@ import PackageCardDelhi from "./PackageCard/UmrahFixedGroup/PackageCardDelhi";
 import PackageCard14Days from "./PackageCard/UmrahLandPackage/PackageCard14Days";
 import PackageCard30Days from "./PackageCard/UmrahLandPackage/PackageCard30Days";
 import PackageCard25Days from "./PackageCard/UmrahLandPackage/PackageCard25Days";
-import ManagedPackageCard from "./ManagedPackageCard";
 import ManagedPackagesCatalog from "./ManagedPackagesCatalog";
+import type { CmsPackageRecord } from "@/lib/packages";
+import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
 
 // Ziyarat Card
 import ZiyaratCard from "./PackageCard/Ziyarat/ZiyaratCard";
@@ -34,7 +35,15 @@ const tabs = [
   { id: "Ziyarat", label: "Umrah + Ziyarat Combos", icon: <FaMosque /> },
 ];
 
-export default function Packages() {
+export default function Packages({
+  packages,
+  tiers,
+  tags,
+}: {
+  packages: CmsPackageRecord[];
+  tiers: PackageTierRecord[];
+  tags: PackageTagRecord[];
+}) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("Umrah Fixed Group");
 
@@ -82,11 +91,7 @@ export default function Packages() {
     if (activeTab === "Umrah Land Package") {
       return (
         <>
-          <ManagedPackageCard
-            fallback={
-              <PackageCard14Days handleBookNow={handleBookNow14DaysLand} />
-            }
-          />
+          <PackageCard14Days handleBookNow={handleBookNow14DaysLand} />
           <PackageCard30Days handleBookNow={handleBookNow30DaysLand} />
           <PackageCard25Days handleBookNow={handleBookNow25DaysLand} />
         </>
@@ -203,7 +208,9 @@ export default function Packages() {
         {/* Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           <ManagedPackagesCatalog
-            category={activeTab}
+            packages={packages.filter((item) => item.category === activeTab)}
+            tiers={tiers}
+            tags={tags}
             fallback={renderCards()}
           />
         </div>

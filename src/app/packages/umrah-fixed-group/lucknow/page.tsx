@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PackageDetailExperience from "@/app/components/packages/PackageDetailExperience";
+import { getPublicCatalog } from "@/lib/packages.server";
 import { lucknowPackageData } from "@/app/components/Prices/lucknowPackageData";
 
 export const metadata: Metadata = {
@@ -8,11 +9,17 @@ export const metadata: Metadata = {
   alternates: { canonical: "/packages/umrah-fixed-group/lucknow" },
 };
 
-export default function LucknowPackagePage() {
+export default async function LucknowPackagePage() {
+  // These pages are statically priced, but tier and tag names still come from
+  // the registries so a rename shows up here too.
+  const { tiers, tags } = await getPublicCatalog();
+
   return (
     <PackageDetailExperience
       pkg={lucknowPackageData}
       categoryName="Umrah Fixed Group"
+      tiers={tiers}
+      tags={tags}
     />
   );
 }

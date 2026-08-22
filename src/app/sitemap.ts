@@ -1,19 +1,23 @@
 import type { MetadataRoute } from "next";
-import { packageData } from "./components/packageData";
+import { getPublicCatalog } from "@/lib/packages.server";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://muftitravels.com";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const packageUrls = Object.entries(packageData).flatMap(([category, packages]) => {
-    const categorySlug = category.toLowerCase().replaceAll(" ", "-");
+/**
+ * The sitemap used to list only the hardcoded packages in components/
+ * packageData.ts, so nothing created through the admin was ever discoverable.
+ * It now reads the published catalog, with the static fixed-group city pages
+ * added because those are separate routes.
+ */
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const { packages } = await getPublicCatalog();
 
-    return packages.map((pkg) => ({
-      url: `${siteUrl}/packages/${categorySlug}/${pkg.slug}`,
-      lastModified: new Date(),
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
-    }));
-  });
+  const packageUrls = packages.map((pkg) => ({
+    url: `${siteUrl}/packages/${pkg.category.toLowerCase().replaceAll(" ", "-")}/${pkg.slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
 
   const fixedGroupUrls = ["delhi", "lucknow", "mumbai"].map((city) => ({
     url: `${siteUrl}/packages/umrah-fixed-group/${city}`,
@@ -28,6 +32,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 1,
+    },
+    {
+      url: `${siteUrl}/packages`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
     },
     ...packageUrls,
     ...fixedGroupUrls,

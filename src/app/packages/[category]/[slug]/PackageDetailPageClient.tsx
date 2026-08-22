@@ -2,39 +2,35 @@
 
 import PackageDetailExperience from "@/app/components/packages/PackageDetailExperience";
 import { CategoryType, PackageData } from "@/app/components/packageData";
-import { useEffect, useState } from "react";
-import { cmsPackageToPackageData, CmsPackageRecord } from "@/lib/packages";
-import { createClient } from "@/lib/supabase/client";
+import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
 
 type PackageDetailPageClientProps = {
   pkg: PackageData;
   categoryName: CategoryType;
+  tiers: PackageTierRecord[];
+  tags: PackageTagRecord[];
 };
 
+/**
+ * Thin client boundary for the detail experience.
+ *
+ * This used to re-fetch the package on mount even though the server component
+ * had already loaded it — a duplicate round trip that could also swap the
+ * content out from under the reader. The server fetch is now cache-tagged and
+ * cleared on admin save, so it is always current.
+ */
 export default function PackageDetailPageClient({
   pkg,
   categoryName,
+  tiers,
+  tags,
 }: PackageDetailPageClientProps) {
-  const [currentPackage, setCurrentPackage] = useState(pkg);
-
-  useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) return;
-
-    supabase
-      .from("packages")
-      .select("*")
-      .eq("slug", pkg.slug)
-      .eq("is_published", true)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setCurrentPackage(cmsPackageToPackageData(data as CmsPackageRecord));
-        }
-      });
-  }, [pkg.slug]);
-
   return (
-    <PackageDetailExperience pkg={currentPackage} categoryName={categoryName} />
+    <PackageDetailExperience
+      pkg={pkg}
+      categoryName={categoryName}
+      tiers={tiers}
+      tags={tags}
+    />
   );
 }

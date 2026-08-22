@@ -2,58 +2,35 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import { FiArrowRight, FiClock, FiMapPin } from "react-icons/fi";
 import { CmsPackageRecord } from "@/lib/packages";
-import { createClient } from "@/lib/supabase/client";
-import { lowestTier, type PackageTagRecord, type PackageTierRecord } from "@/lib/taxonomy";
-import PackageTagBadges, { useTaxonomy } from "./PackageTagBadges";
+import {
+  lowestTier,
+  type PackageTagRecord,
+  type PackageTierRecord,
+} from "@/lib/taxonomy";
+import PackageTagBadges from "./PackageTagBadges";
 
+/**
+ * Renders CMS packages for one category.
+ *
+ * Data arrives as props from a server component — this used to fetch in a
+ * `useEffect`, which kept package names and prices out of the server HTML and
+ * made every card swap in after hydration. `fallback` now renders only when
+ * the category genuinely has no published packages.
+ */
 export default function ManagedPackagesCatalog({
-  category,
+  packages,
+  tiers,
+  tags,
   fallback,
 }: {
-  category: string;
+  packages: CmsPackageRecord[];
+  tiers: PackageTierRecord[];
+  tags: PackageTagRecord[];
   fallback: React.ReactNode;
 }) {
-  const [packages, setPackages] = useState<CmsPackageRecord[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [error, setError] = useState("");
-  const taxonomy = useTaxonomy();
-
-  useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) {
-      setIsLoaded(true);
-      return;
-    }
-
-    supabase
-      .from("packages")
-      .select("*")
-      .eq("category", category)
-      .eq("is_published", true)
-      .order("sort_order", { ascending: true })
-      .then(({ data, error: queryError }) => {
-        setPackages((data as CmsPackageRecord[]) ?? []);
-        if (queryError) setError(queryError.message);
-        setIsLoaded(true);
-      });
-  }, [category]);
-
-  if (!isLoaded || !taxonomy.isLoaded) {
-    return <>{fallback}</>;
-  }
-
-  if (error) {
-    return (
-      <p className="col-span-full rounded-xl border border-red-200 bg-red-50 p-4 text-center text-sm text-red-700">
-        Packages are temporarily unavailable. Please try again shortly.
-      </p>
-    );
-  }
-
-  if (packages.length === 0) return <>{fallback}</>;
+  if (!packages.length) return <>{fallback}</>;
 
   return (
     <>
@@ -61,8 +38,8 @@ export default function ManagedPackagesCatalog({
         <ManagedPackageCard
           key={item.id}
           record={item}
-          tiers={taxonomy.tiers}
-          tags={taxonomy.tags}
+          tiers={tiers}
+          tags={tags}
         />
       ))}
     </>

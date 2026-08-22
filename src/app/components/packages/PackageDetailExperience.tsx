@@ -36,7 +36,8 @@ import {
 } from "@/app/components/packageData";
 import { createClient } from "@/lib/supabase/client";
 import { tierName } from "@/lib/taxonomy";
-import PackageTagBadges, { useTaxonomy } from "@/app/components/PackageTagBadges";
+import PackageTagBadges from "@/app/components/PackageTagBadges";
+import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
 
 const sharingTypes: SharingType[] = ["Quint", "Quad", "Triple", "Double"];
 
@@ -285,9 +286,11 @@ function InfoList({
 function PriceSelector({
   pkg,
   onEnquire,
+  tierRegistry,
 }: {
   pkg: PackageData;
   onEnquire: () => void;
+  tierRegistry: PackageTierRecord[];
 }) {
   const availableTiers = useMemo(
     () => Object.keys(pkg.prices) as PackageTier[],
@@ -297,7 +300,6 @@ function PriceSelector({
     availableTiers.includes("Silver") ? "Silver" : availableTiers[0],
   );
   const [sharing, setSharing] = useState<SharingType>("Quad");
-  const { tiers: tierRegistry } = useTaxonomy();
   useEffect(() => {
     if (!pkg.prices[tier]?.[sharing])
       setSharing(
@@ -394,10 +396,14 @@ function PriceSelector({
 export default function PackageDetailExperience({
   pkg,
   categoryName,
-}: DetailProps) {
+  tiers,
+  tags: heroTags,
+}: DetailProps & {
+  tiers: PackageTierRecord[];
+  tags: PackageTagRecord[];
+}) {
   const [activeTab, setActiveTab] = useState("Overview");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { tags: heroTags } = useTaxonomy();
   useEffect(() => {
     document.body.style.overflow = isFormOpen ? "hidden" : "";
     return () => {
@@ -593,7 +599,7 @@ export default function PackageDetailExperience({
                 </motion.div>
               </AnimatePresence>
             </article>
-            <PriceSelector pkg={pkg} onEnquire={() => setIsFormOpen(true)} />
+            <PriceSelector tierRegistry={tiers} pkg={pkg} onEnquire={() => setIsFormOpen(true)} />
           </div>
         </section>
       </main>

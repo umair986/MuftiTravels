@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getPublicCatalog } from "@/lib/packages.server";
 import PackagesCatalogPage from "./PackagesCatalogPage";
 
 export const metadata: Metadata = {
@@ -8,6 +9,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/packages" },
 };
 
-export default function PackagesPage() {
-  return <PackagesCatalogPage />;
+export default async function PackagesPage() {
+  const { packages, tiers, tags } = await getPublicCatalog();
+
+  return <PackagesCatalogPage packages={packages} tiers={tiers} tags={tags} />;
 }

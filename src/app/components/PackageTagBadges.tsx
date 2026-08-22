@@ -1,56 +1,16 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
-  fetchTags,
-  fetchTiers,
   resolveTags,
   tagBadgeClasses,
   type PackageTagRecord,
-  type PackageTierRecord,
 } from "@/lib/taxonomy";
 
-type Taxonomy = {
-  tiers: PackageTierRecord[];
-  tags: PackageTagRecord[];
-  isLoaded: boolean;
-};
-
-const empty: Taxonomy = { tiers: [], tags: [], isLoaded: false };
-
 /**
- * Loads the tier and tag registries once per mount. Cards render tags by key,
- * so they need the registry to know a key's label and colour.
- */
-export function useTaxonomy(): Taxonomy {
-  const [taxonomy, setTaxonomy] = useState<Taxonomy>(empty);
-
-  useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) {
-      setTaxonomy({ tiers: [], tags: [], isLoaded: true });
-      return;
-    }
-
-    let isActive = true;
-    void Promise.all([fetchTiers(supabase), fetchTags(supabase)]).then(
-      ([tiers, tags]) => {
-        if (isActive) setTaxonomy({ tiers, tags, isLoaded: true });
-      },
-    );
-    return () => {
-      isActive = false;
-    };
-  }, []);
-
-  return taxonomy;
-}
-
-/**
- * Renders a package's card tags. Given keys and the registry, unknown keys are
- * dropped — deleting a tag makes it vanish from the site rather than leaking a
- * raw key onto a card.
+ * Renders a package's card tags.
+ *
+ * The registry is passed in rather than fetched, so this works in server and
+ * client components alike. Keys with no matching registry row are dropped —
+ * deleting a tag makes it vanish from the site rather than leaking a raw key
+ * such as `best-seller` onto a card.
  */
 export default function PackageTagBadges({
   tagKeys,

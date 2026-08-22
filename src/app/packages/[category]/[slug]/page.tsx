@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { CategoryType, packageData } from "@/app/components/packageData";
-import { cmsPackageToPackageData, CmsPackageRecord } from "@/lib/packages";
-import { createServerClient } from "@/lib/supabase/server";
+import { cmsPackageToPackageData } from "@/lib/packages";
+import { getPublicCatalog } from "@/lib/packages.server";
 import PackageDetailPageClient from "./PackageDetailPageClient";
 
 const categorySlugMap: Record<string, CategoryType> = {
@@ -25,22 +25,16 @@ async function getPackage({ category, slug }: PackageRouteParams) {
 
   if (!categoryName) return { categoryName, pkg: undefined };
 
-  const supabase = createServerClient();
-  if (!supabase) return { categoryName, pkg: staticPackage };
-
-  const { data } = await supabase
-    .from("packages")
-    .select("*")
-    .eq("category", categoryName)
-    .eq("slug", slug)
-    .eq("is_published", true)
-    .maybeSingle();
+  const { packages, tiers, tags } = await getPublicCatalog();
+  const record = packages.find(
+    (item) => item.category === categoryName && item.slug === slug,
+  );
 
   return {
     categoryName,
-    pkg: data
-      ? cmsPackageToPackageData(data as CmsPackageRecord)
-      : staticPackage,
+    pkg: record ? cmsPackageToPackageData(record) : staticPackage,
+    tiers,
+    tags,
   };
 }
 
@@ -77,11 +71,18 @@ export default async function PackageDetailPage({
   params: Promise<PackageRouteParams>;
 }) {
   const routeParams = await params;
-  const { categoryName, pkg } = await getPackage(routeParams);
+  const { categoryName, pkg, tiers, tags } = await getPackage(routeParams);
 
   if (!categoryName || !pkg) {
     notFound();
   }
 
-  return <PackageDetailPageClient pkg={pkg} categoryName={categoryName} />;
+  return (
+    <PackageDetailPageClient
+      pkg={pkg}
+      categoryName={categoryName}
+      tiers={tiers ?? []}
+      tags={tags ?? []}
+    />
+  );
 }
