@@ -3,136 +3,71 @@
 Working document. Findings are ranked worst-first within each section, with
 `file:line` references so anything here can be checked or disputed.
 
-Reviewed against commit `729e6fd` on 2026-08-22.
+Parts 2 and 3 reviewed against commit `729e6fd`.
+Part 1 was implemented in commit `1da1616` — what remains of it is below.
 
 ---
 
 # Part 1 — Systems design review
 
-## 🔴 Critical: RLS grants every logged-in user full admin
+## Done
 
-Every policy in the schema is role-blind:
+Shipped in `1da1616`, with `supabase/migrations/008_admin_roles.sql` applied:
+
+- **Admin role on every RLS policy.** `admin_users` + `is_admin()` now back
+  packages, enquiries, tiers, tags and storage. Middleware checks admin status;
+  a signed-in non-admin gets a clear refusal instead of a broken dashboard.
+- **Public pages render server-side.** Home, catalog and detail read packages
+  and the registries through a cached loader, so names and prices are in the
+  server HTML and cards no longer swap in after hydration.
+- **Caching enabled.** The global `cache: "no-store"` is gone; routes carry a 1h
+  revalidate and admin saves clear the tag immediately.
+- **Taxonomy N+1 fixed** — registries fetched once, not four times per page.
+  `ManagedPackageCard` deleted, duplicate detail-route fetch removed.
+- **Sitemap reads the CMS**, so admin-created packages are discoverable.
+- **Unsaved-changes guard** in the package editor.
+- **`next.config.ts`** derives the Supabase image host from env.
+
+## 🔴 Still outstanding — disable public signup
+
+A Supabase dashboard setting, not a code change:
+Authentication → Providers → Email → turn off "Enable Sign Ups".
+
+RLS now blocks a stranger who signs up from reaching anything, so this is
+defence in depth rather than the last line. Still worth doing — there is no
+reason for the public to be able to create accounts on this project at all.
+
+Related: `admin_users` was seeded from every account that existed when the
+migration ran. Check the list and remove anyone who should not be an admin:
 
 ```sql
--- 001_create_packages.sql:47
-create policy "Authenticated users manage packages"
-on public.packages for all to authenticated
-using (true) with check (true);
+select email, created_at from public.admin_users order by created_at;
+delete from public.admin_users where email <> 'you@example.com';
 ```
 
-Same shape in `004_create_enquiries.sql:26`, `002_package_image_storage.sql`, and
-the two added in `006_tier_and_tag_registry.sql`. There is no admin check
-anywhere — `authenticated` just means "holds any valid JWT".
+## 🟡 Static price files still exist
 
-The anon key is public by design; it ships in the client bundle. So the question
-that decides whether this is a live vulnerability is: **is email signup enabled
-in Supabase Auth settings?** It is ON by default. If it is, anyone can call
-`signUp()` against the project and immediately get:
+`components/Prices/*.ts` and the mostly-commented `components/packageData.ts`
+remain, and the three fixed-group city routes render from them directly.
 
-- write and delete on every package, including prices
-- **read on every row of `enquiries`** — customer names, emails, phone numbers,
-  travel dates
-- upload and delete on the image bucket
+The dangerous half is fixed — a failed CMS read no longer silently swaps in
+stale static prices. What remains is duplication: the same package can be
+described in two places and drift. Consolidating means moving those three city
+pages onto the CMS and deleting the static files.
 
-That third one is a customer data breach, not just a defacement risk.
+## 🟡 Session timeout is still a fixed timer
 
-**Immediate mitigation:** Supabase Dashboard → Authentication → Providers →
-Email → disable "Enable Sign Ups".
+`AdminSessionTimeout.tsx:5` now explains itself when it fires, and the editor
+warns before discarding work. But the timer still runs 15 minutes from
+**sign-in** rather than from last activity, and remains client-side JS, so it is
+a convenience rather than a security control. Real session length belongs in
+Supabase JWT expiry settings.
 
-**Real fix:** a role claim — an `admin_users` table or a JWT claim — with
-policies reading `using (public.is_admin())` instead of `using (true)`.
-`middleware.ts:31` has the same gap: it checks that `getUser()` returns
-*someone*, never *who*.
+## 🟡 No error tracking, no tests, no CI
 
-Treat this as the only item that matters until it is closed.
-
-## 🟠 Public content is fetched client-side, so search engines cannot see it
-
-`ManagedPackagesCatalog.tsx:29` and `ManagedPackageCard.tsx:30` fetch packages in
-`useEffect`. The server HTML contains only the fallback — package names, prices
-and descriptions arrive after hydration.
-
-1. **SEO.** For a business whose funnel is "Umrah package Mumbai price"
-   searches, CMS-managed package content is absent from the server HTML.
-2. **Performance.** Fallback paints, then swaps — layout shift and a slow LCP on
-   mobile, which is most of the traffic.
-3. **Cost and blast radius.** Every visitor's browser hits Supabase directly,
-   with no CDN in front. A traffic spike goes straight at the database.
-
-The detail page (`packages/[category]/[slug]/page.tsx:32`) already does this
-correctly as a server component. The home and catalog pages were never migrated.
-
-## 🟠 Caching is globally disabled on purpose
-
-```ts
-// src/lib/supabase/server.ts:13
-fetch: (input, init) => fetch(input, { ...init, cache: "no-store" })
-```
-
-On the browser client this is fine. On the **server** client it defeats Next's
-data cache entirely — every request to every package page is a fresh round trip
-to Supabase. There is no ISR, no `revalidate`, no tag-based invalidation.
-
-Package prices change perhaps weekly. `revalidate: 3600` plus
-`revalidateTag('packages')` fired on admin save would cut database reads by
-orders of magnitude. Highest performance-per-effort change available.
-
-## 🟠 Three sources of truth for prices
-
-Prices live in `components/Prices/*.ts` (static), `components/packageData.ts`
-(mostly commented out), and Supabase. The card components fall back silently
-from CMS to static.
-
-If Supabase is misconfigured or down, the site quietly serves stale hardcoded
-prices instead of erroring. For a travel business, silently displaying a wrong
-price is worse than displaying nothing — you may be held to it.
-
-The fallback was a sensible migration net. Now that the CMS works, it is a
-liability. Pick one source and delete the other.
-
-## 🟡 Introduced during the tier/tag work — needs fixing
-
-**N+1 on the taxonomy registries.** `useTaxonomy()` fires per component
-instance: `ManagedPackageCard.tsx:22`, `ManagedPackagesCatalog.tsx:22`, and
-twice in `PackageDetailExperience.tsx` (lines 300 and 400). The home page makes
-**4 redundant queries** for data that never changes between them. Needs to be a
-React context, or fetched server-side and passed down.
-
-**`sitemap.ts:6` only reads static `packageData`.** Any package created through
-the admin — every Hajj and Ramzan package about to be added — will never appear
-in the sitemap. Predates this work, but directly undercuts it.
-
-## 🟡 Operational gaps
-
-- **`AdminSessionTimeout.tsx:5`** is a 15-minute timer from *sign-in*, not from
-  last activity, and is client-side JS — trivially bypassed, so not a real
-  security control. Worse, it can fire mid-edit and **lose unsaved work**,
-  because the editor has no dirty-state guard. Real session control belongs in
-  Supabase JWT expiry settings.
-- **No error tracking.** A failed save for a real user surfaces by phone call,
-  if at all.
-- **No tests, no CI.** Pushes go straight to `main` → production, with no gate.
-- **`next.config.ts:8`** hardcodes the Supabase project hostname. Should be an
-  env var.
-
-## What is genuinely well built
-
-The middleware auth redirect is correct. The detail page's server-component data
-flow is the right pattern. `generateMetadata` per package is properly done. The
-image pipeline through Supabase Storage with `next/image` is sound. Enquiries
-having insert-for-anon but manage-for-auth is the right *shape* of policy — it
-just needs the role check.
-
-## Suggested order
-
-1. **Turn off public signup** — 5 minutes, closes the breach
-2. **Add a real admin role to RLS + middleware** — half a day
-3. **Delete the static price fallback** — an hour, removes wrong-price risk
-4. **Move home/catalog to server components + `revalidate`** — half a day
-5. Fix the taxonomy N+1 and the sitemap
-6. Unsaved-changes guard, then error tracking
-
-Items 1 and 2 are security. Everything below is quality.
+A failed save for a real user still surfaces by phone call, if at all. Pushes go
+straight to `main` → production with no gate. Both are decisions about tooling
+and spend rather than code changes.
 
 ---
 
