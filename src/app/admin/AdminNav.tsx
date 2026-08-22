@@ -10,6 +10,7 @@ const sections = [
   { href: "/admin/packages", label: "Packages" },
   { href: "/admin/enquiries", label: "Enquiries" },
   { href: "/admin/tags", label: "Tags & Tiers" },
+  { href: "/admin/content", label: "Inclusions & Policies" },
   { href: "/admin/hajj", label: "Hajj" },
   { href: "/admin/ramzan", label: "Ramzan" },
 ];

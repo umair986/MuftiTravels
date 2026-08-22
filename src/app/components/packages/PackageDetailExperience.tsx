@@ -24,11 +24,14 @@ import {
 
 import Footer from "@/app/components/Footer";
 import {
-  exclusions,
-  inclusions,
-  notes,
-  policies,
-} from "@/app/components/policyData";
+  CONTENT_SECTIONS,
+  contentOrDefaults,
+  listsInSection,
+  sectionsWithContent,
+  type ContentSection,
+  type ContentTone,
+  type SiteContentList,
+} from "@/lib/siteContent";
 import {
   PackageData,
   PackageTier,
@@ -258,6 +261,39 @@ function Field({
   );
 }
 
+/**
+ * One tab's worth of content lists.
+ *
+ * Inclusions are short phrases and read well in two columns; policy clauses
+ * are full sentences and do not, so the layout comes from the section rather
+ * than from the data.
+ */
+function ContentPanel({
+  section,
+  lists,
+}: {
+  section: ContentSection;
+  lists: SiteContentList[];
+}) {
+  const isColumns = CONTENT_SECTIONS[section].layout === "columns";
+  return (
+    <div
+      className={
+        isColumns ? "grid gap-10 md:grid-cols-2" : "space-y-10"
+      }
+    >
+      {lists.map((list) => (
+        <InfoList
+          key={list.id}
+          title={list.title}
+          items={list.items}
+          tone={list.tone}
+        />
+      ))}
+    </div>
+  );
+}
+
 function InfoList({
   title,
   items,
@@ -265,7 +301,7 @@ function InfoList({
 }: {
   title: string;
   items: string[];
-  tone?: "gold" | "emerald" | "rose";
+  tone?: ContentTone;
 }) {
   const iconClass =
     tone === "emerald"
@@ -413,9 +449,12 @@ export default function PackageDetailExperience({
   categoryName,
   tiers,
   tags: heroTags,
+  content,
 }: DetailProps & {
   tiers: PackageTierRecord[];
   tags: PackageTagRecord[];
+  /** Editable from /admin/content; omitted callers get the built-in text. */
+  content?: SiteContentList[];
 }) {
   const [activeTab, setActiveTab] = useState("Overview");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -425,7 +464,15 @@ export default function PackageDetailExperience({
       document.body.style.overflow = "";
     };
   }, [isFormOpen]);
-  const tabs = ["Overview", "Inclusions", "Policies", "Important notes"];
+
+  // Tabs after Overview are whatever the dashboard has content for, so an
+  // emptied section disappears rather than opening onto a blank panel.
+  const lists = useMemo(() => contentOrDefaults(content), [content]);
+  const sections = useMemo(() => sectionsWithContent(lists), [lists]);
+  const tabs = [
+    "Overview",
+    ...sections.map((section) => CONTENT_SECTIONS[section].label),
+  ];
   return (
     <>
       <AnimatePresence>
@@ -571,45 +618,14 @@ export default function PackageDetailExperience({
                       </div>
                     </div>
                   )}
-                  {activeTab === "Inclusions" && (
-                    <div className="grid gap-10 md:grid-cols-2">
-                      <InfoList
-                        title="What is included"
-                        items={inclusions}
-                        tone="emerald"
+                  {sections.map((section) =>
+                    activeTab === CONTENT_SECTIONS[section].label ? (
+                      <ContentPanel
+                        key={section}
+                        section={section}
+                        lists={listsInSection(lists, section)}
                       />
-                      <InfoList
-                        title="Not included"
-                        items={exclusions}
-                        tone="rose"
-                      />
-                    </div>
-                  )}
-                  {activeTab === "Policies" && (
-                    <div className="space-y-10">
-                      <InfoList
-                        title="Payment policy"
-                        items={policies.payment}
-                      />
-                      <InfoList
-                        title="Cancellation policy"
-                        items={policies.cancellation}
-                        tone="rose"
-                      />
-                    </div>
-                  )}
-                  {activeTab === "Important notes" && (
-                    <div className="space-y-10">
-                      <InfoList
-                        title="Important travel notes"
-                        items={notes.main}
-                      />
-                      <InfoList
-                        title="Required documents"
-                        items={notes.documents}
-                        tone="emerald"
-                      />
-                    </div>
+                    ) : null,
                   )}
                 </motion.div>
               </AnimatePresence>

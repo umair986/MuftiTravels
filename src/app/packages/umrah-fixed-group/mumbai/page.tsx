@@ -10,9 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default async function MumbaiPackagePage() {
-  // These pages are statically priced, but tier and tag names still come from
-  // the registries so a rename shows up here too.
-  const { tiers, tags } = await getPublicCatalog();
+  // These pages are statically priced, but tier and tag names — and the shared
+  // inclusions, policies and notes — still come from the database, so an edit
+  // in the dashboard shows up here too.
+  const { tiers, tags, content } = await getPublicCatalog();
 
   return (
     <PackageDetailExperience
@@ -20,6 +21,7 @@ export default async function MumbaiPackagePage() {
       categoryName="Umrah Fixed Group"
       tiers={tiers}
       tags={tags}
+      content={content}
     />
   );
 }

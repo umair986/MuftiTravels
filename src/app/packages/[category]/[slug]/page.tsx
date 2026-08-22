@@ -24,7 +24,7 @@ async function getPackage({ category, slug }: PackageRouteParams) {
 
   if (!categoryName) return { categoryName, pkg: undefined };
 
-  const { packages, tiers, tags } = await getPublicCatalog();
+  const { packages, tiers, tags, content } = await getPublicCatalog();
   const record = packages.find(
     (item) => item.category === categoryName && item.slug === slug,
   );
@@ -34,6 +34,7 @@ async function getPackage({ category, slug }: PackageRouteParams) {
     pkg: record ? cmsPackageToPackageData(record) : staticPackage,
     tiers,
     tags,
+    content,
   };
 }
 
@@ -70,7 +71,8 @@ export default async function PackageDetailPage({
   params: Promise<PackageRouteParams>;
 }) {
   const routeParams = await params;
-  const { categoryName, pkg, tiers, tags } = await getPackage(routeParams);
+  const { categoryName, pkg, tiers, tags, content } =
+    await getPackage(routeParams);
 
   if (!categoryName || !pkg) {
     notFound();
@@ -82,6 +84,7 @@ export default async function PackageDetailPage({
       categoryName={categoryName}
       tiers={tiers ?? []}
       tags={tags ?? []}
+      content={content ?? []}
     />
   );
 }

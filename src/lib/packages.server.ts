@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import type { CmsPackageRecord } from "@/lib/packages";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
+import type { SiteContentList } from "@/lib/siteContent";
 
 /**
  * Server-side reads for published package content.
@@ -26,6 +27,8 @@ export type PublicCatalog = {
   packages: CmsPackageRecord[];
   tiers: PackageTierRecord[];
   tags: PackageTagRecord[];
+  /** Inclusions, policies and notes, shared by every package page. */
+  content: SiteContentList[];
   /** False when Supabase is unreachable or unconfigured. */
   isAvailable: boolean;
 };
@@ -34,6 +37,7 @@ const emptyCatalog: PublicCatalog = {
   packages: [],
   tiers: [],
   tags: [],
+  content: [],
   isAvailable: false,
 };
 
@@ -41,30 +45,38 @@ async function loadCatalog(): Promise<PublicCatalog> {
   const supabase = createServerClient();
   if (!supabase) return emptyCatalog;
 
-  const [packagesResult, tiersResult, tagsResult] = await Promise.all([
-    supabase
-      .from("packages")
-      .select("*")
-      .eq("is_published", true)
-      .order("sort_order", { ascending: true }),
-    supabase
-      .from("package_tiers")
-      .select("*")
-      .order("sort_order", { ascending: true }),
-    supabase
-      .from("package_tags")
-      .select("*")
-      .order("sort_order", { ascending: true }),
-  ]);
+  const [packagesResult, tiersResult, tagsResult, contentResult] =
+    await Promise.all([
+      supabase
+        .from("packages")
+        .select("*")
+        .eq("is_published", true)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("package_tiers")
+        .select("*")
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("package_tags")
+        .select("*")
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("site_content_lists")
+        .select("*")
+        .order("sort_order", { ascending: true }),
+    ]);
 
   // A missing tier/tag registry is survivable — cards fall back to plain
-  // labels. A failed package read is not, and must not be cached as "empty".
+  // labels. Missing content is survivable too: the detail page falls back to
+  // DEFAULT_CONTENT_LISTS, which is what ships before migration 011 is run.
+  // A failed package read is not, and must not be cached as "empty".
   if (packagesResult.error) return emptyCatalog;
 
   return {
     packages: (packagesResult.data as CmsPackageRecord[]) ?? [],
     tiers: (tiersResult.data as PackageTierRecord[]) ?? [],
     tags: (tagsResult.data as PackageTagRecord[]) ?? [],
+    content: (contentResult.data as SiteContentList[]) ?? [],
     isAvailable: true,
   };
 }

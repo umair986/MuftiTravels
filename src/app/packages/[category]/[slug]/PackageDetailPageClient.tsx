@@ -3,12 +3,14 @@
 import PackageDetailExperience from "@/app/components/packages/PackageDetailExperience";
 import { CategoryType, PackageData } from "@/app/components/packageData";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
+import type { SiteContentList } from "@/lib/siteContent";
 
 type PackageDetailPageClientProps = {
   pkg: PackageData;
   categoryName: CategoryType;
   tiers: PackageTierRecord[];
   tags: PackageTagRecord[];
+  content: SiteContentList[];
 };
 
 /**
@@ -24,6 +26,7 @@ export default function PackageDetailPageClient({
   categoryName,
   tiers,
   tags,
+  content,
 }: PackageDetailPageClientProps) {
   return (
     <PackageDetailExperience
@@ -31,6 +34,7 @@ export default function PackageDetailPageClient({
       categoryName={categoryName}
       tiers={tiers}
       tags={tags}
+      content={content}
     />
   );
 }

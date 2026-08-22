@@ -120,6 +120,11 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
                 href="/admin/tags"
               />
               <DashboardAction
+                title="Inclusions & Policies"
+                description="Edit the text shared by every package page"
+                href="/admin/content"
+              />
+              <DashboardAction
                 title="Ramzan Packages"
                 description="Create and edit Ramadan offers"
                 href="/admin/ramzan"
