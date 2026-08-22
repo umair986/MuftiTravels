@@ -6,6 +6,14 @@ import Image from "next/image";
 import { FiMenu, FiX, FiPhone, FiCompass, FiShield } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 
+/**
+ * The header's one call to action. WhatsApp is where enquiries actually get
+ * answered, so the button says so rather than scrolling to the form — the
+ * form is still reachable from the footer and the contact section itself.
+ */
+const WHATSAPP_ENQUIRY_URL =
+  "https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20enquire%20about%20Umrah%20packages.";
+
 const Header = () => {
   const [navOpen, setNavOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -31,7 +39,6 @@ const Header = () => {
     { name: "Spiritual Blueprint", href: "/#journey" },
     { name: "About Us", href: "/#about" },
     { name: "Gallery", href: "/#gallery" },
-    { name: "Contact", href: "/#contact" },
   ];
 
   const handleSmoothScroll = (
@@ -169,37 +176,29 @@ const Header = () => {
             ))}
           </nav>
 
-          {/* Action CTA & Contact */}
-          <div className="hidden md:flex items-center space-x-3">
+          {/* Action CTA */}
+          <div className="hidden md:flex items-center">
             <a
-              href="https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20consult%20for%20Umrah."
+              href={WHATSAPP_ENQUIRY_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all duration-300 shadow-sm"
-              title="Instant WhatsApp Consultation"
+              className="px-4 lg:px-5 py-2 rounded-full font-semibold text-xs lg:text-sm text-white bg-[#25D366] hover:bg-[#1EBE5A] shadow-lg hover:shadow-[#25D366]/25 transition-all duration-200 flex items-center gap-1.5 cursor-pointer"
             >
               <FaWhatsapp className="w-4 h-4" />
-            </a>
-            <Link
-              href="/#contact"
-              onClick={(e) => handleSmoothScroll(e, "/#contact")}
-              className="px-4 lg:px-5 py-2 rounded-full font-semibold text-xs lg:text-sm text-[#06131D] gold-gradient-bg hover:brightness-110 shadow-lg hover:shadow-[#D4AF37]/20 transition-all duration-200 flex items-center gap-1.5 cursor-pointer"
-            >
               <span>Enquire Now</span>
-              <FiCompass className="w-4 h-4" />
-            </Link>
+            </a>
           </div>
 
           {/* Mobile Hamburger Button */}
           <div className="flex items-center gap-2 md:hidden">
             <a
-              href="https://wa.me/919323063712"
+              href={WHATSAPP_ENQUIRY_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-              aria-label="WhatsApp Us"
+              className="px-3 py-1.5 rounded-full bg-[#25D366] text-white font-semibold text-xs flex items-center gap-1.5 shadow-md"
             >
               <FaWhatsapp className="w-4 h-4" />
+              <span>Enquire Now</span>
             </a>
             <button
               onClick={toggleMenu}
