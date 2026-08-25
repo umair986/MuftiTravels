@@ -45,7 +45,7 @@ export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
       );
       setSelectedSharing(firstAvailableSharing || "Quad");
     }
-  }, [selectedTier, selectedSharing, pkg.prices]);
+  }, [selectedTier, selectedSharing, pkg.prices, allSharingTypes]);
 
   const currentPrice = useMemo(() => {
     const price = pkg.prices[selectedTier]?.[selectedSharing];
