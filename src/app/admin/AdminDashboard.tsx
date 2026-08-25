@@ -12,6 +12,7 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [packageCount, setPackageCount] = useState<number | null>(null);
   const [enquiryCount, setEnquiryCount] = useState<number | null>(null);
+  const [galleryCount, setGalleryCount] = useState<number | null>(null);
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -26,7 +27,7 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
     const client = supabase;
 
     async function loadCounts() {
-      const [{ count: packages }, { count: enquiries }] = await Promise.all([
+      const [{ count: packages }, { count: enquiries }, { count: gallery }] = await Promise.all([
         client
           .from("packages")
           .select("id", { count: "exact", head: true })
@@ -35,10 +36,14 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
           .from("enquiries")
           .select("id", { count: "exact", head: true })
           .eq("status", "new"),
+        client
+          .from("gallery_photos")
+          .select("id", { count: "exact", head: true }),
       ]);
 
       setPackageCount(packages ?? 0);
       setEnquiryCount(enquiries ?? 0);
+      setGalleryCount(gallery ?? 0);
     }
 
     void loadCounts();
@@ -79,7 +84,10 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
             value={enquiryCount === null ? "..." : String(enquiryCount)}
           />
           <DashboardMetric label="Testimonials" value="-" />
-          <DashboardMetric label="Gallery Items" value="-" />
+          <DashboardMetric
+            label="Gallery Items"
+            value={galleryCount === null ? "..." : String(galleryCount)}
+          />
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -112,7 +120,8 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
               />
               <DashboardAction
                 title="Gallery"
-                description="Coming soon — edited in code for now"
+                description="Create collections and upload photos"
+                href="/admin/gallery"
               />
               <DashboardAction
                 title="Tags & Tiers"

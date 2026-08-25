@@ -75,7 +75,11 @@ export const CONTENT_TONE_KEYS = Object.keys(CONTENT_TONES) as ContentTone[];
 /* Keys                                                                       */
 /* -------------------------------------------------------------------------- */
 
-/** Mirrors public.taxonomy_slugify in the database. */
+/**
+ * Mirrors public.taxonomy_slugify in the database. Shared with the gallery
+ * (src/lib/gallery.ts) rather than duplicated — the rule is the same slug
+ * everywhere: lowercase, non-alphanumerics collapsed to a single hyphen.
+ */
 export function slugifyContentKey(value: string): string {
   return value
     .toLowerCase()

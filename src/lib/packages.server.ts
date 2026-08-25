@@ -81,17 +81,29 @@ async function loadCatalog(): Promise<PublicCatalog> {
   };
 }
 
-const loadCatalogCached = unstable_cache(loadCatalog, ["public-catalog"], {
-  tags: [PACKAGES_CACHE_TAG],
-  revalidate: CACHE_SECONDS,
-});
+/**
+ * Throwing on an unavailable read keeps the failure out of the cache —
+ * unstable_cache only stores a resolved value, so a rejected promise here
+ * means a transient outage retries on the next request instead of serving an
+ * empty catalog for the full hour.
+ */
+const loadCatalogCached = unstable_cache(
+  async () => {
+    const catalog = await loadCatalog();
+    if (!catalog.isAvailable) throw new Error("package catalog unavailable");
+    return catalog;
+  },
+  ["public-catalog"],
+  { tags: [PACKAGES_CACHE_TAG], revalidate: CACHE_SECONDS },
+);
 
 /** Every published package, plus the tier and tag registries. */
 export async function getPublicCatalog(): Promise<PublicCatalog> {
-  const catalog = await loadCatalogCached();
-  // Never cache a failed read: retry on the next request instead of serving an
-  // empty catalog for an hour.
-  return catalog.isAvailable ? catalog : loadCatalog();
+  try {
+    return await loadCatalogCached();
+  } catch {
+    return loadCatalog();
+  }
 }
 
 /** Published packages in one category, with the registries alongside. */

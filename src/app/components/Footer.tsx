@@ -143,7 +143,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/#gallery"
+                  href="/gallery"
                   className="hover:text-[#D4AF37] transition-colors"
                 >
                   Sacred Gallery

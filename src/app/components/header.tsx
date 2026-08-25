@@ -38,7 +38,7 @@ const Header = () => {
     { name: "Why Mufti Travels", href: "/#why-us" },
     { name: "Spiritual Blueprint", href: "/#journey" },
     { name: "About Us", href: "/#about" },
-    { name: "Gallery", href: "/#gallery" },
+    { name: "Gallery", href: "/gallery" },
   ];
 
   const handleSmoothScroll = (

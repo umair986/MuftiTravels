@@ -11,6 +11,7 @@ const sections = [
   { href: "/admin/enquiries", label: "Enquiries" },
   { href: "/admin/tags", label: "Tags & Tiers" },
   { href: "/admin/content", label: "Inclusions & Policies" },
+  { href: "/admin/gallery", label: "Gallery" },
   { href: "/admin/hajj", label: "Hajj" },
   { href: "/admin/ramzan", label: "Ramzan" },
 ];

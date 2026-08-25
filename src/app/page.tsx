@@ -1,4 +1,5 @@
 import { getPublicCatalog } from "@/lib/packages.server";
+import { getHomeCollections } from "@/lib/gallery.server";
 import { organizationSchema, websiteSchema } from "@/lib/seo";
 import JsonLd from "./components/JsonLd";
 import Hero from "./components/Hero";
@@ -14,7 +15,10 @@ import ContactSection from "./components/ContactSection";
 import Footer from "./components/Footer";
 
 export default async function Home() {
-  const { packages, tiers, tags } = await getPublicCatalog();
+  const [{ packages, tiers, tags }, galleryCollections] = await Promise.all([
+    getPublicCatalog(),
+    getHomeCollections(),
+  ]);
 
   return (
     <main className="min-h-screen bg-[#FAF8F5]">
@@ -45,7 +49,7 @@ export default async function Home() {
       <Testimonials />
 
       {/* 9. Sacred Moments & Holy Sites Gallery */}
-      <GallerySection />
+      <GallerySection collections={galleryCollections} />
 
       {/* 10. Consultation & Contact Experience */}
       <ContactSection />

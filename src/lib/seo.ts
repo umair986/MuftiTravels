@@ -11,6 +11,7 @@
 
 import { categorySlug } from "@/lib/categories";
 import type { CmsPackageRecord } from "@/lib/packages";
+import type { GalleryCollectionWithPhotos } from "@/lib/gallery";
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://muftitravels.com";
@@ -154,6 +155,26 @@ export function packageSchema(pkg: CmsPackageRecord) {
           },
         }
       : {}),
+  };
+}
+
+/** A gallery collection page, so its photos are eligible for Google Images. */
+export function galleryCollectionSchema(collection: GalleryCollectionWithPhotos) {
+  const url = `${SITE_URL}/gallery/${collection.slug}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "ImageGallery",
+    name: collection.title,
+    description: collection.description || BUSINESS.description,
+    url,
+    image: collection.photos.map((photo) => ({
+      "@type": "ImageObject",
+      contentUrl: photo.image_url.startsWith("http")
+        ? photo.image_url
+        : `${SITE_URL}${photo.image_url}`,
+      name: photo.title || collection.title,
+      description: photo.caption || undefined,
+    })),
   };
 }
 
