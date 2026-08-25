@@ -13,6 +13,7 @@ import {
 import { FaWhatsapp, FaKaaba } from "react-icons/fa";
 import CustomDropdown, { DropdownOption } from "./ui/CustomDropdown";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "./ui/toast/useToast";
 
 const cityOptions: DropdownOption[] = [
   { value: "Mumbai", label: "Mumbai (Direct)", badge: "BOM" },
@@ -36,6 +37,7 @@ const packagePreferenceOptions: DropdownOption[] = [
 ];
 
 export default function ContactForm() {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -125,12 +127,14 @@ export default function ContactForm() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to send enquiry.";
+      const displayMessage = message.includes("Too many enquiries")
+        ? "You have sent several enquiries recently. Please message us on WhatsApp and we will reply straight away."
+        : "Failed to send enquiry. Please try again or message us directly on WhatsApp.";
       setSubmitStatus("error");
-      setSubmitMessage(
-        message.includes("Too many enquiries")
-          ? "You have sent several enquiries recently. Please message us on WhatsApp and we will reply straight away."
-          : "Failed to send enquiry. Please try again or message us directly on WhatsApp.",
-      );
+      setSubmitMessage(displayMessage);
+      // A failed submit at the bottom of a long form is easy to miss — the
+      // toast catches it even if the inline message above is off-screen.
+      toast.error(displayMessage);
     } finally {
       setIsSubmitting(false);
     }

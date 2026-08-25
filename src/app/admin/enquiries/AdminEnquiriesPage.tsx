@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiDownload, FiMail, FiPhone, FiSave } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "../../components/ui/toast/useToast";
 import AdminLoginForm from "../AdminLoginForm";
 import AdminNav from "../AdminNav";
 
@@ -67,8 +68,10 @@ export default function AdminEnquiriesPage() {
   const [totalMatching, setTotalMatching] = useState(0);
   const [email, setEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Reserved for page-load failure — write outcomes go through toast.
   const [error, setError] = useState("");
   const [supabase] = useState(createClient);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -164,7 +167,7 @@ export default function AdminEnquiriesPage() {
       .eq("id", id);
 
     if (updateError) {
-      setError(`Could not update that enquiry: ${updateError.message}`);
+      toast.error("Could not update that enquiry.", { description: updateError.message });
       if (previous) {
         setEnquiries((current) =>
           current.map((item) =>
@@ -174,7 +177,8 @@ export default function AdminEnquiriesPage() {
       }
       return;
     }
-    setError("");
+    const label = STATUSES.find((option) => option.value === status)?.label ?? status;
+    toast.success(`Marked as ${label.toLowerCase()}.`, { key: `status-${id}` });
     void load();
   }
 
@@ -185,10 +189,10 @@ export default function AdminEnquiriesPage() {
       .update({ admin_notes: adminNotes })
       .eq("id", id);
     if (saveError) {
-      setError(`Could not save that note: ${saveError.message}`);
+      toast.error("Could not save that note.", { description: saveError.message });
       return { ok: false };
     }
-    setError("");
+    toast.success("Note saved.");
     setEnquiries((current) =>
       current.map((item) =>
         item.id === id ? { ...item, admin_notes: adminNotes } : item,
@@ -222,7 +226,7 @@ export default function AdminEnquiriesPage() {
       exportQuery = exportQuery.eq("status", statusFilter);
     const { data: rows, error: exportError } = await exportQuery;
     if (exportError) {
-      setError(`Could not export: ${exportError.message}`);
+      toast.error("Could not export.", { description: exportError.message });
       return;
     }
     const exportRows = (rows as Enquiry[]) ?? [];
@@ -258,6 +262,11 @@ export default function AdminEnquiriesPage() {
     link.download = `enquiries-${statusFilter}-${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    toast.success(
+      exportRows.length === 1
+        ? "1 enquiry exported."
+        : `${exportRows.length} enquiries exported.`,
+    );
   }
 
   if (isLoading) {

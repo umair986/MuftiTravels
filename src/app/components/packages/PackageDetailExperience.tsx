@@ -41,6 +41,7 @@ import { createClient } from "@/lib/supabase/client";
 import { tierName } from "@/lib/taxonomy";
 import PackageTagBadges from "@/app/components/PackageTagBadges";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
+import { useToast } from "@/app/components/ui/toast/useToast";
 
 const sharingTypes: SharingType[] = ["Quint", "Quad", "Triple", "Double"];
 
@@ -53,6 +54,7 @@ function EnquiryDialog({
   pkgName: string;
   onClose: () => void;
 }) {
+  const toast = useToast();
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -131,11 +133,14 @@ function EnquiryDialog({
                   });
 
                 if (insertError) {
-                  setError(
-                    insertError.message.includes("Too many enquiries")
-                      ? "You have sent several enquiries recently. Please message us on WhatsApp instead."
-                      : "We could not save your enquiry. Please try again.",
-                  );
+                  const displayMessage = insertError.message.includes("Too many enquiries")
+                    ? "You have sent several enquiries recently. Please message us on WhatsApp instead."
+                    : "We could not save your enquiry. Please try again.";
+                  setError(displayMessage);
+                  // The modal already carries the inline error, but the toast
+                  // is above z-[70] and stays legible against the modal's
+                  // own backdrop-blur.
+                  toast.error(displayMessage);
                   setIsSubmitting(false);
                   return;
                 }

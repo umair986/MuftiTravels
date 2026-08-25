@@ -138,7 +138,7 @@ export default function CreatePackageDialog({
         </div>
 
         {error && (
-          <p className="mt-5 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
+          <p role="alert" className="mt-5 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
             {error}
           </p>
         )}

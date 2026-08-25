@@ -19,6 +19,7 @@ import CategoryDetailsFields from "./CategoryDetailsFields";
 import { PACKAGE_CATEGORIES } from "@/lib/categoryFields";
 import Image from "next/image";
 import { revalidatePackages } from "@/lib/revalidate";
+import { useToast } from "../components/ui/toast/useToast";
 
 const packageSlug = "14-days-umrah-land-package";
 const sharingTypes = ["Quint", "Quad", "Triple", "Double"] as const;
@@ -103,8 +104,11 @@ export default function ManagedPackageEditor({
   const [savedForm, setSavedForm] = useState<FormState>(emptyForm);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  // Reserved for conditions that block the whole editor (Supabase unreachable,
+  // the table not seeded yet) — action outcomes (save, upload) go through
+  // toast instead, see docs/notifications-plan.md.
   const [error, setError] = useState("");
+  const toast = useToast();
 
   useEffect(() => {
     const supabase = createClient();
@@ -176,8 +180,6 @@ export default function ManagedPackageEditor({
     value: FormState[Key],
   ) {
     setForm((current) => ({ ...current, [key]: value }));
-    setMessage("");
-    setError("");
   }
 
   async function handleImageUpload(event: ChangeEvent<HTMLInputElement>) {
@@ -185,18 +187,16 @@ export default function ManagedPackageEditor({
     if (!file) return;
 
     setIsSaving(true);
-    setMessage("");
-    setError("");
 
     const supabase = createClient();
     if (!supabase) {
-      setError("Supabase is not configured for this deployment.");
+      toast.error("Supabase is not configured for this deployment.");
       setIsSaving(false);
       return;
     }
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
-      setError("Please sign in again before uploading an image.");
+      toast.error("Please sign in again before uploading an image.");
       setIsSaving(false);
       return;
     }
@@ -208,7 +208,7 @@ export default function ManagedPackageEditor({
       .upload(filePath, file, { upsert: true, contentType: file.type });
 
     if (uploadError) {
-      setError(uploadError.message);
+      toast.error("Image upload failed.", { description: uploadError.message });
       setIsSaving(false);
       return;
     }
@@ -217,7 +217,9 @@ export default function ManagedPackageEditor({
       .from("package-images")
       .getPublicUrl(filePath);
     updateField("imageUrl", data.publicUrl);
-    setMessage("Image uploaded. Save the package to apply it.");
+    toast.success("Image uploaded.", {
+      description: "Save the package to apply it.",
+    });
     setIsSaving(false);
   }
 
@@ -246,8 +248,6 @@ export default function ManagedPackageEditor({
     if (!record) return;
 
     setIsSaving(true);
-    setMessage("");
-    setError("");
 
     const nextPrices = rowsToPrices(form.prices);
     const amounts = form.prices
@@ -257,7 +257,7 @@ export default function ManagedPackageEditor({
 
     const supabase = createClient();
     if (!supabase) {
-      setError("Supabase is not configured for this deployment.");
+      toast.error("Supabase is not configured for this deployment.");
       setIsSaving(false);
       return;
     }
@@ -301,7 +301,7 @@ export default function ManagedPackageEditor({
     setIsSaving(false);
 
     if (saveError) {
-      setError(saveError.message);
+      toast.error("Could not save the package.", { description: saveError.message });
       return;
     }
 
@@ -309,9 +309,7 @@ export default function ManagedPackageEditor({
     setSavedForm(form);
     // Drop the cached public catalog so the change is live immediately.
     await revalidatePackages();
-    setMessage(
-      "Package saved. Refresh the homepage or detail page to see the update.",
-    );
+    toast.success("Package saved.", { description: "Live on the site now." });
   }
 
   if (isLoading) {
@@ -340,13 +338,8 @@ export default function ManagedPackageEditor({
       </div>
 
       {error && (
-        <p className="mt-4 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
+        <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
           {error}
-        </p>
-      )}
-      {message && (
-        <p className="mt-4 rounded-lg bg-emerald-50 p-3 font-body text-sm text-emerald-700">
-          {message}
         </p>
       )}
 

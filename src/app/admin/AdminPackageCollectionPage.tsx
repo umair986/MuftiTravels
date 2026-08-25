@@ -8,6 +8,7 @@ import AdminLoginForm from "./AdminLoginForm";
 import AdminNav from "./AdminNav";
 import ManagedPackageEditor from "./ManagedPackageEditor";
 import CreatePackageDialog from "./CreatePackageDialog";
+import { useToast } from "../components/ui/toast/useToast";
 
 export default function AdminPackageCollectionPage({
   title,
@@ -22,13 +23,14 @@ export default function AdminPackageCollectionPage({
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Reserved for page-load failure — write outcomes go through toast.
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<CmsPackageRecord | null>(
     null,
   );
   const [supabase] = useState(createClient);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -64,11 +66,11 @@ export default function AdminPackageCollectionPage({
       .delete()
       .eq("id", record.id);
     if (deleteError) {
-      setError(deleteError.message);
+      toast.error("Could not delete that package.", { description: deleteError.message });
       return;
     }
     if (selectedSlug === record.slug) setSelectedSlug(null);
-    setMessage(`"${record.name}" deleted.`);
+    toast.success(`"${record.name}" deleted.`);
     void load();
   }
 
@@ -113,13 +115,8 @@ export default function AdminPackageCollectionPage({
         </header>
 
         {error && (
-          <p className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <p role="alert" className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-700">
             {error}
-          </p>
-        )}
-        {message && !error && (
-          <p className="mt-6 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
-            {message}
           </p>
         )}
 
@@ -189,8 +186,9 @@ export default function AdminPackageCollectionPage({
         knownCategories={records.map((item) => item.category)}
         onCreated={(slug, name) => {
           setIsCreateOpen(false);
-          setError("");
-          setMessage(`"${name}" created as a draft. Fill it in and publish.`);
+          toast.success(`"${name}" created as a draft.`, {
+            description: "Fill it in and publish.",
+          });
           setSelectedSlug(slug);
           void load();
         }}

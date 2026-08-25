@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Plus_Jakarta_Sans, Amiri } from "next/font/google";
 import Header from "./components/header";
 import SetVh from "./components/SetVh";
+import { ToastProvider } from "./components/ui/toast/ToastProvider";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -88,8 +89,10 @@ export default function RootLayout({
     >
       <body className="font-sans antialiased bg-[#FAF8F5] text-[#1A1A1A] selection:bg-[#D4AF37]/30 selection:text-[#06131D]">
         <SetVh />
-        <Header />
-        {children}
+        <ToastProvider>
+          <Header />
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );

@@ -23,6 +23,7 @@ import {
   type ContentTone,
   type SiteContentList,
 } from "@/lib/siteContent";
+import { useToast } from "../../components/ui/toast/useToast";
 import AdminLoginForm from "../AdminLoginForm";
 import AdminNav from "../AdminNav";
 
@@ -38,9 +39,12 @@ export default function AdminContentPage() {
   const [email, setEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lists, setLists] = useState<SiteContentList[]>([]);
+  // Reserved for page-load failure — write outcomes go through toast, and
+  // "give it a heading"/"already exists" validation lives next to each
+  // section's own add-form (see addError in SectionPanel).
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [isSeeding, setIsSeeding] = useState(false);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -65,10 +69,9 @@ export default function AdminContentPage() {
   }, [load]);
 
   /** Every save clears the public cache, so the site is current immediately. */
-  async function afterWrite(text: string) {
+  async function afterWrite(text: string, key?: string) {
     await revalidatePackages();
-    setMessage(text);
-    setError("");
+    toast.success(text, key ? { key } : undefined);
     void load();
   }
 
@@ -77,7 +80,8 @@ export default function AdminContentPage() {
     changes: { title: string; tone: ContentTone; items: string[] },
   ) {
     if (!supabase) return;
-    if (!changes.title.trim()) return setError("A list needs a heading.");
+    // The card's Save button is disabled while its heading is blank.
+    if (!changes.title.trim()) return;
 
     const { error: updateError } = await supabase
       .from("site_content_lists")
@@ -87,16 +91,21 @@ export default function AdminContentPage() {
         items: changes.items,
       })
       .eq("id", list.id);
-    if (updateError) return setError(updateError.message);
+    if (updateError)
+      return toast.error("Could not save that list.", { description: updateError.message });
     await afterWrite(`"${changes.title.trim()}" updated on every package page.`);
   }
 
-  async function addList(section: ContentSection, title: string) {
+  /** Returns a validation message on failure, undefined on success — see SectionPanel. */
+  async function addList(
+    section: ContentSection,
+    title: string,
+  ): Promise<string | undefined> {
     if (!supabase) return;
     const key = slugifyContentKey(title);
-    if (!key) return setError("Give the list a heading first.");
+    if (!key) return "Give the list a heading first.";
     if (lists.some((list) => list.key === key))
-      return setError(`A list with the key "${key}" already exists.`);
+      return `A list with the key "${key}" already exists.`;
 
     const siblings = listsInSection(lists, section);
     const nextOrder = Math.max(0, ...siblings.map((l) => l.sort_order)) + 10;
@@ -110,7 +119,10 @@ export default function AdminContentPage() {
         items: [],
         sort_order: nextOrder,
       });
-    if (insertError) return setError(insertError.message);
+    if (insertError) {
+      toast.error("Could not add that list.", { description: insertError.message });
+      return;
+    }
     await afterWrite(`"${title.trim()}" added. Add its lines below.`);
   }
 
@@ -121,7 +133,7 @@ export default function AdminContentPage() {
     const swapWith = siblings[index + direction];
     if (!swapWith) return;
 
-    await Promise.all([
+    const [first, second] = await Promise.all([
       supabase
         .from("site_content_lists")
         .update({ sort_order: swapWith.sort_order })
@@ -131,7 +143,12 @@ export default function AdminContentPage() {
         .update({ sort_order: list.sort_order })
         .eq("id", swapWith.id),
     ]);
-    await afterWrite("Order updated.");
+    const failure = first.error ?? second.error;
+    if (failure)
+      return toast.error("Could not reorder.", {
+        description: `The order may be inconsistent: ${failure.message}`,
+      });
+    await afterWrite("Order updated.", "content-reorder");
   }
 
   async function deleteList(list: SiteContentList) {
@@ -140,7 +157,8 @@ export default function AdminContentPage() {
       .from("site_content_lists")
       .delete()
       .eq("id", list.id);
-    if (deleteError) return setError(deleteError.message);
+    if (deleteError)
+      return toast.error("Could not delete that list.", { description: deleteError.message });
     await afterWrite(`"${list.title}" deleted.`);
   }
 
@@ -165,7 +183,8 @@ export default function AdminContentPage() {
         })),
       );
     setIsSeeding(false);
-    if (insertError) return setError(insertError.message);
+    if (insertError)
+      return toast.error("Could not load the standard text.", { description: insertError.message });
     await afterWrite("Standard text loaded. It is now editable below.");
   }
 
@@ -206,13 +225,8 @@ export default function AdminContentPage() {
         </header>
 
         {error && (
-          <p className="mt-6 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
+          <p role="alert" className="mt-6 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
             {error}
-          </p>
-        )}
-        {message && !error && (
-          <p className="mt-6 rounded-lg bg-emerald-50 p-3 font-body text-sm text-emerald-700">
-            {message}
           </p>
         )}
 
@@ -269,7 +283,7 @@ function SectionPanel({
 }: {
   section: ContentSection;
   lists: SiteContentList[];
-  onAdd: (section: ContentSection, title: string) => void;
+  onAdd: (section: ContentSection, title: string) => Promise<string | undefined>;
   onSave: (
     list: SiteContentList,
     changes: { title: string; tone: ContentTone; items: string[] },
@@ -278,7 +292,15 @@ function SectionPanel({
   onDelete: (list: SiteContentList) => void;
 }) {
   const [newTitle, setNewTitle] = useState("");
+  const [addError, setAddError] = useState("");
   const { label, hint } = CONTENT_SECTIONS[section];
+
+  async function handleAdd() {
+    const validationError = await onAdd(section, newTitle);
+    if (validationError) return setAddError(validationError);
+    setAddError("");
+    setNewTitle("");
+  }
 
   return (
     <section className="rounded-2xl border border-[#06131D]/10 bg-white p-6 shadow-sm">
@@ -312,30 +334,37 @@ function SectionPanel({
         )}
       </div>
 
-      <div className="mt-5 flex gap-2 border-t border-stone-200 pt-5">
-        <input
-          value={newTitle}
-          onChange={(event) => setNewTitle(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              onAdd(section, newTitle);
-              setNewTitle("");
-            }
-          }}
-          placeholder={`New heading in ${label}, e.g. Baggage policy`}
-          className="h-11 flex-1 rounded-lg border border-stone-200 px-3.5 font-body text-sm outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
-        />
-        <button
-          type="button"
-          onClick={() => {
-            onAdd(section, newTitle);
-            setNewTitle("");
-          }}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#06131D] px-4 font-body text-sm font-bold text-[#F3E5AB] hover:bg-[#0D2A3A]"
-        >
-          <FiPlus /> Add list
-        </button>
+      <div className="mt-5 border-t border-stone-200 pt-5">
+        <div className="flex gap-2">
+          <input
+            value={newTitle}
+            onChange={(event) => {
+              setNewTitle(event.target.value);
+              setAddError("");
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void handleAdd();
+              }
+            }}
+            placeholder={`New heading in ${label}, e.g. Baggage policy`}
+            className="h-11 flex-1 rounded-lg border border-stone-200 px-3.5 font-body text-sm outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+          />
+          <button
+            type="button"
+            onClick={() => void handleAdd()}
+            disabled={!newTitle.trim()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#06131D] px-4 font-body text-sm font-bold text-[#F3E5AB] hover:bg-[#0D2A3A] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <FiPlus /> Add list
+          </button>
+        </div>
+        {addError && (
+          <p role="alert" className="mt-2 font-body text-xs font-semibold text-red-700">
+            {addError}
+          </p>
+        )}
       </div>
     </section>
   );
@@ -392,6 +421,7 @@ function ListCard({
     title.trim() !== list.title ||
     tone !== list.tone ||
     toText(items) !== toText(list.items);
+  const canSave = isDirty && Boolean(title.trim());
 
   return (
     <div className="rounded-xl border border-stone-200 bg-[#FAF8F5] p-4">
@@ -473,7 +503,8 @@ function ListCard({
         <button
           type="button"
           onClick={() => onSave(list, { title, tone, items })}
-          disabled={!isDirty}
+          disabled={!canSave}
+          title={title.trim() ? undefined : "Give the list a heading first"}
           className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-[#D4AF37] px-4 font-body text-xs font-bold text-[#06131D] transition disabled:cursor-not-allowed disabled:opacity-40"
         >
           <FiSave /> Save

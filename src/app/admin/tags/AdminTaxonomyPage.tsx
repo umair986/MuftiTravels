@@ -21,6 +21,7 @@ import {
   type PackageTierRecord,
   type TagColor,
 } from "@/lib/taxonomy";
+import { useToast } from "../../components/ui/toast/useToast";
 import AdminLoginForm from "../AdminLoginForm";
 import AdminNav from "../AdminNav";
 
@@ -34,8 +35,11 @@ export default function AdminTaxonomyPage() {
   const [tags, setTags] = useState<PackageTagRecord[]>([]);
   const [tierUsage, setTierUsage] = useState<UsageMap>({});
   const [tagUsage, setTagUsage] = useState<UsageMap>({});
+  // Reserved for page-load failure — write outcomes go through toast, and
+  // "give it a name"/"already exists" validation lives next to each panel's
+  // own add-form (see addError in TierPanel/TagPanel).
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const toast = useToast();
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -80,26 +84,25 @@ export default function AdminTaxonomyPage() {
     void load();
   }, [load]);
 
-  function flash(text: string) {
-    setMessage(text);
-    setError("");
-  }
-
   /* ---------------------------------------------------------------- tiers */
 
-  async function addTier(name: string) {
+  /** Returns a validation message on failure, undefined on success — see TierPanel. */
+  async function addTier(name: string): Promise<string | undefined> {
     if (!supabase) return;
     const key = slugifyKey(name);
-    if (!key) return setError("Give the tier a name first.");
+    if (!key) return "Give the tier a name first.";
     if (tiers.some((tier) => tier.key === key))
-      return setError(`A tier with the key "${key}" already exists.`);
+      return `A tier with the key "${key}" already exists.`;
 
     const nextOrder = Math.max(0, ...tiers.map((t) => t.sort_order)) + 10;
     const { error: insertError } = await supabase
       .from("package_tiers")
       .insert({ key, name: name.trim(), sort_order: nextOrder });
-    if (insertError) return setError(insertError.message);
-    flash(`Tier "${name.trim()}" added.`);
+    if (insertError) {
+      toast.error("Could not add that tier.", { description: insertError.message });
+      return;
+    }
+    toast.success(`Tier "${name.trim()}" added.`);
     void load();
   }
 
@@ -111,8 +114,11 @@ export default function AdminTaxonomyPage() {
       .from("package_tiers")
       .update({ name: name.trim() })
       .eq("id", tier.id);
-    if (updateError) return setError(updateError.message);
-    flash(`Renamed to "${name.trim()}". Every package using it updated.`);
+    if (updateError)
+      return toast.error("Could not rename that tier.", { description: updateError.message });
+    toast.success(`Renamed to "${name.trim()}".`, {
+      description: "Every package using it updated.",
+    });
     void load();
   }
 
@@ -123,7 +129,7 @@ export default function AdminTaxonomyPage() {
     const swapWith = ordered[index + direction];
     if (!swapWith) return;
 
-    await Promise.all([
+    const [first, second] = await Promise.all([
       supabase
         .from("package_tiers")
         .update({ sort_order: swapWith.sort_order })
@@ -133,6 +139,12 @@ export default function AdminTaxonomyPage() {
         .update({ sort_order: tier.sort_order })
         .eq("id", swapWith.id),
     ]);
+    const failure = first.error ?? second.error;
+    if (failure)
+      return toast.error("Could not reorder.", {
+        description: `The order may be inconsistent: ${failure.message}`,
+      });
+    toast.success("Order updated.", { key: "tier-reorder" });
     void load();
   }
 
@@ -140,34 +152,39 @@ export default function AdminTaxonomyPage() {
     if (!supabase) return;
     const inUse = tierUsage[tier.key] ?? [];
     if (inUse.length) {
-      return setError(
-        `"${tier.name}" is priced on ${inUse.length} package${inUse.length > 1 ? "s" : ""}: ${inUse.join(", ")}. Remove those prices first.`,
-      );
+      return toast.error(`"${tier.name}" is still in use.`, {
+        description: `Priced on ${inUse.length} package${inUse.length > 1 ? "s" : ""}: ${inUse.join(", ")}. Remove those prices first.`,
+      });
     }
     const { error: deleteError } = await supabase
       .from("package_tiers")
       .delete()
       .eq("id", tier.id);
-    if (deleteError) return setError(deleteError.message);
-    flash(`Tier "${tier.name}" deleted.`);
+    if (deleteError)
+      return toast.error("Could not delete that tier.", { description: deleteError.message });
+    toast.success(`Tier "${tier.name}" deleted.`);
     void load();
   }
 
   /* ----------------------------------------------------------------- tags */
 
-  async function addTag(label: string, color: TagColor) {
+  /** Returns a validation message on failure, undefined on success — see TagPanel. */
+  async function addTag(label: string, color: TagColor): Promise<string | undefined> {
     if (!supabase) return;
     const key = slugifyKey(label);
-    if (!key) return setError("Give the tag a label first.");
+    if (!key) return "Give the tag a label first.";
     if (tags.some((tag) => tag.key === key))
-      return setError(`A tag with the key "${key}" already exists.`);
+      return `A tag with the key "${key}" already exists.`;
 
     const nextOrder = Math.max(0, ...tags.map((t) => t.sort_order)) + 10;
     const { error: insertError } = await supabase
       .from("package_tags")
       .insert({ key, label: label.trim(), color, sort_order: nextOrder });
-    if (insertError) return setError(insertError.message);
-    flash(`Tag "${label.trim()}" added.`);
+    if (insertError) {
+      toast.error("Could not add that tag.", { description: insertError.message });
+      return;
+    }
+    toast.success(`Tag "${label.trim()}" added.`);
     void load();
   }
 
@@ -183,8 +200,9 @@ export default function AdminTaxonomyPage() {
         ...(changes.color !== undefined ? { color: changes.color } : {}),
       })
       .eq("id", tag.id);
-    if (updateError) return setError(updateError.message);
-    flash("Tag updated everywhere it appears.");
+    if (updateError)
+      return toast.error("Could not update that tag.", { description: updateError.message });
+    toast.success("Tag updated everywhere it appears.");
     void load();
   }
 
@@ -194,7 +212,7 @@ export default function AdminTaxonomyPage() {
     const swapWith = tags[index + direction];
     if (!swapWith) return;
 
-    await Promise.all([
+    const [first, second] = await Promise.all([
       supabase
         .from("package_tags")
         .update({ sort_order: swapWith.sort_order })
@@ -204,6 +222,12 @@ export default function AdminTaxonomyPage() {
         .update({ sort_order: tag.sort_order })
         .eq("id", swapWith.id),
     ]);
+    const failure = first.error ?? second.error;
+    if (failure)
+      return toast.error("Could not reorder.", {
+        description: `The order may be inconsistent: ${failure.message}`,
+      });
+    toast.success("Order updated.", { key: "tag-reorder" });
     void load();
   }
 
@@ -211,16 +235,17 @@ export default function AdminTaxonomyPage() {
     if (!supabase) return;
     const inUse = tagUsage[tag.key] ?? [];
     if (inUse.length) {
-      return setError(
-        `"${tag.label}" is on ${inUse.length} package${inUse.length > 1 ? "s" : ""}: ${inUse.join(", ")}. Untick it there first.`,
-      );
+      return toast.error(`"${tag.label}" is still in use.`, {
+        description: `On ${inUse.length} package${inUse.length > 1 ? "s" : ""}: ${inUse.join(", ")}. Untick it there first.`,
+      });
     }
     const { error: deleteError } = await supabase
       .from("package_tags")
       .delete()
       .eq("id", tag.id);
-    if (deleteError) return setError(deleteError.message);
-    flash(`Tag "${tag.label}" deleted.`);
+    if (deleteError)
+      return toast.error("Could not delete that tag.", { description: deleteError.message });
+    toast.success(`Tag "${tag.label}" deleted.`);
     void load();
   }
 
@@ -261,13 +286,8 @@ export default function AdminTaxonomyPage() {
         </header>
 
         {error && (
-          <p className="mt-6 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
+          <p role="alert" className="mt-6 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
             {error}
-          </p>
-        )}
-        {message && !error && (
-          <p className="mt-6 rounded-lg bg-emerald-50 p-3 font-body text-sm text-emerald-700">
-            {message}
           </p>
         )}
 
@@ -308,12 +328,22 @@ function TierPanel({
 }: {
   tiers: PackageTierRecord[];
   usage: UsageMap;
-  onAdd: (name: string) => void;
+  onAdd: (name: string) => Promise<string | undefined>;
   onRename: (tier: PackageTierRecord, name: string) => void;
   onMove: (tier: PackageTierRecord, direction: -1 | 1) => void;
   onDelete: (tier: PackageTierRecord) => void;
 }) {
   const [newName, setNewName] = useState("");
+  // Shown right below the input it's about, rather than a page-wide banner
+  // that could sit far from where the admin is looking.
+  const [addError, setAddError] = useState("");
+
+  async function handleAdd() {
+    const validationError = await onAdd(newName);
+    if (validationError) return setAddError(validationError);
+    setAddError("");
+    setNewName("");
+  }
 
   return (
     <section className="rounded-2xl border border-[#06131D]/10 bg-white p-6 shadow-sm">
@@ -328,12 +358,14 @@ function TierPanel({
       <div className="mt-5 flex gap-2">
         <input
           value={newName}
-          onChange={(event) => setNewName(event.target.value)}
+          onChange={(event) => {
+            setNewName(event.target.value);
+            setAddError("");
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
-              onAdd(newName);
-              setNewName("");
+              void handleAdd();
             }
           }}
           placeholder="New tier name, e.g. Budget"
@@ -341,15 +373,18 @@ function TierPanel({
         />
         <button
           type="button"
-          onClick={() => {
-            onAdd(newName);
-            setNewName("");
-          }}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#06131D] px-4 font-body text-sm font-bold text-[#F3E5AB] hover:bg-[#0D2A3A]"
+          onClick={() => void handleAdd()}
+          disabled={!newName.trim()}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[#06131D] px-4 font-body text-sm font-bold text-[#F3E5AB] hover:bg-[#0D2A3A] disabled:cursor-not-allowed disabled:opacity-40"
         >
           <FiPlus /> Add
         </button>
       </div>
+      {addError && (
+        <p role="alert" className="mt-2 font-body text-xs font-semibold text-red-700">
+          {addError}
+        </p>
+      )}
 
       <div className="mt-5 space-y-2.5">
         {tiers.map((tier, index) => (
@@ -469,7 +504,7 @@ function TagPanel({
 }: {
   tags: PackageTagRecord[];
   usage: UsageMap;
-  onAdd: (label: string, color: TagColor) => void;
+  onAdd: (label: string, color: TagColor) => Promise<string | undefined>;
   onUpdate: (
     tag: PackageTagRecord,
     changes: { label?: string; color?: TagColor },
@@ -479,6 +514,14 @@ function TagPanel({
 }) {
   const [newLabel, setNewLabel] = useState("");
   const [newColor, setNewColor] = useState<TagColor>("gold");
+  const [addError, setAddError] = useState("");
+
+  async function handleAdd() {
+    const validationError = await onAdd(newLabel, newColor);
+    if (validationError) return setAddError(validationError);
+    setAddError("");
+    setNewLabel("");
+  }
 
   return (
     <section className="rounded-2xl border border-[#06131D]/10 bg-white p-6 shadow-sm">
@@ -493,7 +536,10 @@ function TagPanel({
       <div className="mt-5 space-y-3 rounded-xl border border-stone-200 bg-[#FAF8F5] p-3">
         <input
           value={newLabel}
-          onChange={(event) => setNewLabel(event.target.value)}
+          onChange={(event) => {
+            setNewLabel(event.target.value);
+            setAddError("");
+          }}
           placeholder="New tag label, e.g. Best Selling"
           className="h-11 w-full rounded-lg border border-stone-200 bg-white px-3.5 font-body text-sm outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
         />
@@ -501,15 +547,18 @@ function TagPanel({
           <ColorPicker value={newColor} onChange={setNewColor} />
           <button
             type="button"
-            onClick={() => {
-              onAdd(newLabel, newColor);
-              setNewLabel("");
-            }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#06131D] px-4 py-2.5 font-body text-sm font-bold text-[#F3E5AB] hover:bg-[#0D2A3A]"
+            onClick={() => void handleAdd()}
+            disabled={!newLabel.trim()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#06131D] px-4 py-2.5 font-body text-sm font-bold text-[#F3E5AB] hover:bg-[#0D2A3A] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <FiPlus /> Add
           </button>
         </div>
+        {addError && (
+          <p role="alert" className="font-body text-xs font-semibold text-red-700">
+            {addError}
+          </p>
+        )}
       </div>
 
       <div className="mt-5 space-y-2.5">
