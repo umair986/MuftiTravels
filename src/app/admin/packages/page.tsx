@@ -2,16 +2,17 @@ import type { Metadata } from "next";
 import AdminPackageCollectionPage from "../AdminPackageCollectionPage";
 
 export const metadata: Metadata = {
-  title: "Manage Packages",
-  description: "Manage Mufti Travels pilgrimage packages.",
+  title: "Umrah Packages",
+  description: "Manage Mufti Travels Umrah packages.",
   robots: { index: false, follow: false },
 };
 
 export default function AdminPackagesRoute() {
   return (
     <AdminPackageCollectionPage
-      title="Packages"
-      description="Create, edit and publish the packages shown on your website."
+      title="Umrah Packages"
+      description="Create, edit and publish Umrah packages shown on your website."
+      categories={["Umrah Fixed Group", "Umrah Land Package", "Ziyarat"]}
     />
   );
 }

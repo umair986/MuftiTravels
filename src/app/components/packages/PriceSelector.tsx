@@ -8,18 +8,29 @@ interface PriceSelectorProps {
   onEnquire: () => void;
 }
 
-// CORRECTED: Moved the array outside the component.
-// This prevents it from being recreated on every render and resolves the warning.
-const allSharingTypes: SharingType[] = ["Quint", "Quad", "Triple", "Double"];
-
 export const PriceSelector: FC<PriceSelectorProps> = ({ pkg, onEnquire }) => {
   const availableTiers = Object.keys(pkg.prices) as PackageTier[];
+
+  // Derive all sharing types from the package data itself.
+  const allSharingTypes: SharingType[] = useMemo(() => {
+    const seen = new Set<string>();
+    for (const tierPrices of Object.values(pkg.prices)) {
+      if (tierPrices) {
+        for (const key of Object.keys(tierPrices)) {
+          seen.add(key);
+        }
+      }
+    }
+    return Array.from(seen);
+  }, [pkg.prices]);
 
   const initialTier = availableTiers.includes("Silver")
     ? "Silver"
     : availableTiers[0];
   const [selectedTier, setSelectedTier] = useState<PackageTier>(initialTier);
-  const [selectedSharing, setSelectedSharing] = useState<SharingType>("Quad");
+  const [selectedSharing, setSelectedSharing] = useState<SharingType>(
+    allSharingTypes[0] ?? "Quad",
+  );
 
   useEffect(() => {
     if (!availableTiers.includes(selectedTier)) {

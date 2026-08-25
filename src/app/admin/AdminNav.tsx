@@ -7,7 +7,7 @@ import { FiArrowLeft, FiLogOut } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 
 const sections = [
-  { href: "/admin/packages", label: "Packages" },
+  { href: "/admin/packages", label: "Umrah Packages" },
   { href: "/admin/enquiries", label: "Enquiries" },
   { href: "/admin/tags", label: "Tags & Tiers" },
   { href: "/admin/content", label: "Inclusions & Policies" },

@@ -204,9 +204,9 @@ export type StaticCategoryType =
 
 // Define the types for our new dynamic pricing structure
 export type PackageTier = 'Super Saver' | 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
-export type SharingType = 'Quint' | 'Quad' | 'Triple' | 'Double';
+export type SharingType = string;
 export type PriceMap = {
-  [key in SharingType]?: number;
+  [key: string]: number | undefined;
 };
 
 export type TierPriceMap = {

@@ -63,10 +63,16 @@ function ManagedPackageCard({
   const preferredPrices = preferredTier
     ? record.prices[preferredTier.key as keyof typeof record.prices]
     : undefined;
-  const preferredPrice =
-    preferredPrices?.Quint ??
-    Object.values(preferredPrices ?? {})[0] ??
-    record.starting_price;
+  const preferredPrice = (() => {
+    const prices = preferredPrices ?? {};
+    const firstKey = Object.keys(prices)[0];
+    return (firstKey ? prices[firstKey] : undefined) ??
+      Object.values(prices)[0] ??
+      record.starting_price;
+  })();
+  const preferredSharingLabel = preferredPrices
+    ? Object.keys(preferredPrices)[0]
+    : undefined;
   // A package can legitimately carry no price yet — a Hajj season still being
   // costed, for instance. Show that rather than a confident "₹0".
   const hasPrice = Number(preferredPrice) > 0;
@@ -117,7 +123,7 @@ function ManagedPackageCard({
               {!hasPrice
                 ? "Pricing"
                 : preferredTier
-                  ? `${preferredTier.name} · Quint`
+                  ? `${preferredTier.name}${preferredSharingLabel ? ` · ${preferredSharingLabel}` : ""}`
                   : "Starting from"}
             </p>
             <p className="font-display text-2xl font-bold text-[#06131D]">

@@ -22,13 +22,13 @@ import { revalidatePackages } from "@/lib/revalidate";
 import { useToast } from "../components/ui/toast/useToast";
 
 const packageSlug = "14-days-umrah-land-package";
-const sharingTypes = ["Quint", "Quad", "Triple", "Double"] as const;
 
 type PriceRow = {
   id: number;
   /** A key from public.package_tiers, never a display name. */
   tier: string;
-  sharing: (typeof sharingTypes)[number];
+  /** Free-text label the admin gives this row (e.g. Quint, Double, Per Person). */
+  sharing: string;
   amount: string;
 };
 
@@ -75,9 +75,7 @@ function pricesToRows(prices: CmsPackageRecord["prices"]): PriceRow[] {
     Object.entries(sharingPrices ?? {}).map(([sharing, amount], rowIndex) => ({
       id: tierIndex * 100 + rowIndex,
       tier,
-      sharing: sharingTypes.includes(sharing as PriceRow["sharing"])
-        ? (sharing as PriceRow["sharing"])
-        : "Quad",
+      sharing,
       amount: String(amount),
     })),
   );
@@ -230,7 +228,7 @@ export default function ManagedPackageEditor({
       {
         id: nextId,
         tier: tiers[0]?.key ?? "",
-        sharing: "Quad",
+        sharing: "",
         amount: "",
       },
     ]);
@@ -473,14 +471,11 @@ export default function ManagedPackageEditor({
                   }))}
                   onChange={(value) => updatePriceRow(row.id, { tier: value })}
                 />
-                <EditorSelect
+                <EditorField
                   label="Sharing"
                   value={row.sharing}
-                  options={sharingTypes}
                   onChange={(value) =>
-                    updatePriceRow(row.id, {
-                      sharing: value as PriceRow["sharing"],
-                    })
+                    updatePriceRow(row.id, { sharing: value })
                   }
                 />
                 <EditorField

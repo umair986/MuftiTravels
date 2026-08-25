@@ -14,10 +14,14 @@ export default function AdminPackageCollectionPage({
   title,
   description,
   category,
+  categories,
 }: {
   title: string;
   description: string;
+  /** Single category filter (e.g. Hajj, Ramzan). */
   category?: string;
+  /** Multi-category filter (e.g. Umrah). Takes precedence over `category`. */
+  categories?: string[];
 }) {
   const [records, setRecords] = useState<CmsPackageRecord[]>([]);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
@@ -45,14 +49,18 @@ export default function AdminPackageCollectionPage({
       return;
     }
     let query = supabase.from("packages").select("*");
-    if (category) query = query.eq("category", category);
+    if (categories?.length) {
+      query = query.in("category", categories);
+    } else if (category) {
+      query = query.eq("category", category);
+    }
     const { data, error: queryError } = await query.order("sort_order", {
       ascending: true,
     });
     if (queryError) setError(queryError.message);
     setRecords((data as CmsPackageRecord[]) ?? []);
     setIsLoading(false);
-  }, [category, supabase]);
+  }, [category, categories, supabase]);
 
   useEffect(() => {
     void load();
@@ -160,7 +168,7 @@ export default function AdminPackageCollectionPage({
               ))}
               {!records.length && (
                 <p className="rounded-xl border border-dashed border-stone-300 p-6 text-center text-sm text-[#526168]">
-                  No {(category ?? "").toLowerCase()} packages yet. Use Create
+                  No {(category ?? "").toLowerCase() || "umrah"} packages yet. Use Create
                   new package to add one.
                 </p>
               )}
@@ -182,6 +190,7 @@ export default function AdminPackageCollectionPage({
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         fixedCategory={category || undefined}
+        allowedCategories={categories}
         existingSlugs={records.map((item) => item.slug)}
         knownCategories={records.map((item) => item.category)}
         onCreated={(slug, name) => {

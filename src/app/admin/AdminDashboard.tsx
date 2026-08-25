@@ -105,8 +105,8 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <DashboardAction
-                title="Packages"
-                description="Edit offers and prices"
+                title="Umrah Packages"
+                description="Edit Umrah offers and prices"
                 href="/admin/packages"
               />
               <DashboardAction

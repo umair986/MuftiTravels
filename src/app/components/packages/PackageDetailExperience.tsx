@@ -43,7 +43,7 @@ import PackageTagBadges from "@/app/components/PackageTagBadges";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
 import { useToast } from "@/app/components/ui/toast/useToast";
 
-const sharingTypes: SharingType[] = ["Quint", "Quad", "Triple", "Double"];
+
 
 type DetailProps = { pkg: PackageData; categoryName: string };
 
@@ -355,14 +355,30 @@ function PriceSelector({
   const [tier, setTier] = useState<PackageTier>(
     availableTiers.includes("Silver") ? "Silver" : availableTiers[0],
   );
-  const [sharing, setSharing] = useState<SharingType>("Quad");
+  // Derive sharing types from the package data itself.
+  const dynamicSharingTypes: SharingType[] = useMemo(() => {
+    const seen = new Set<string>();
+    for (const tierPrices of Object.values(pkg.prices)) {
+      if (tierPrices) {
+        for (const key of Object.keys(tierPrices)) {
+          seen.add(key);
+        }
+      }
+    }
+    return Array.from(seen);
+  }, [pkg.prices]);
+
+  const [sharing, setSharing] = useState<SharingType>(
+    dynamicSharingTypes[0] ?? "Quad",
+  );
   useEffect(() => {
     if (!pkg.prices[tier]?.[sharing])
       setSharing(
-        sharingTypes.find((type) => pkg.prices[tier]?.[type] !== undefined) ??
-          "Quad",
+        dynamicSharingTypes.find(
+          (type) => pkg.prices[tier]?.[type] !== undefined,
+        ) ?? dynamicSharingTypes[0] ?? "Quad",
       );
-  }, [pkg.prices, sharing, tier]);
+  }, [pkg.prices, sharing, tier, dynamicSharingTypes]);
   const price = pkg.prices[tier]?.[sharing];
   return (
     <aside className="sticky top-24 overflow-hidden rounded-2xl border border-[#D4AF37]/25 bg-[#06131D] shadow-2xl">
@@ -401,7 +417,7 @@ function PriceSelector({
             Room sharing
           </legend>
           <div className="flex flex-wrap gap-2">
-            {sharingTypes.map((item) => {
+            {dynamicSharingTypes.map((item) => {
               const enabled = pkg.prices[tier]?.[item] !== undefined;
               return (
                 <button

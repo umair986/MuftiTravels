@@ -19,6 +19,7 @@ export default function CreatePackageDialog({
   onClose,
   onCreated,
   fixedCategory,
+  allowedCategories,
   existingSlugs,
   knownCategories = [],
 }: {
@@ -27,13 +28,15 @@ export default function CreatePackageDialog({
   onCreated: (slug: string, name: string) => void;
   /** Set on a single-category screen (Hajj, Ramzan) to lock the picker. */
   fixedCategory?: string;
+  /** Restrict the picker to these categories (e.g. Umrah screens). */
+  allowedCategories?: string[];
   existingSlugs: string[];
   /** Categories already present in the database. */
   knownCategories?: string[];
 }) {
   const [name, setName] = useState("");
   const [category, setCategory] = useState(
-    fixedCategory || PACKAGE_CATEGORIES[0],
+    fixedCategory || allowedCategories?.[0] || PACKAGE_CATEGORIES[0],
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -43,18 +46,25 @@ export default function CreatePackageDialog({
       ...PACKAGE_CATEGORIES,
       ...knownCategories.filter(Boolean),
     ]);
-    return [...merged].sort();
-  }, [knownCategories]);
+    let list = [...merged].sort();
+    // When an allowed list is provided (e.g. Umrah screen), restrict to those.
+    if (allowedCategories?.length) {
+      list = list.filter((c) => allowedCategories.includes(c));
+    }
+    return list;
+  }, [knownCategories, allowedCategories]);
 
   // Reset each time the dialog opens, so a cancelled attempt leaves nothing.
   useEffect(() => {
     if (open) {
       setName("");
-      setCategory(fixedCategory || PACKAGE_CATEGORIES[0]);
+      setCategory(
+        fixedCategory || allowedCategories?.[0] || PACKAGE_CATEGORIES[0],
+      );
       setError("");
       setIsSaving(false);
     }
-  }, [open, fixedCategory]);
+  }, [open, fixedCategory, allowedCategories]);
 
   useEffect(() => {
     if (!open) return;
