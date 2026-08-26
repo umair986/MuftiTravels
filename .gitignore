@@ -29,8 +29,9 @@
 # Environment variables
 #
 # IMPORTANT: Never commit your secret keys to a public repository.
-# The .env.local file contains your secret RESEND_API_KEY.
-# By adding it here, you ensure it stays on your local machine only.
+# Today .env.local holds only NEXT_PUBLIC_* values, which are meant to reach
+# the browser — but keep it ignored so the first genuine secret added here is
+# not committed by accident.
 .env.local
 .env.development.local
 .env.test.local
@@ -40,3 +41,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Security audit — kept out of the public repo; it details unfixed weaknesses.
+docs/security-audit.md

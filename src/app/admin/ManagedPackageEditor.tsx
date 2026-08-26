@@ -23,6 +23,19 @@ import { useToast } from "../components/ui/toast/useToast";
 
 const packageSlug = "14-days-umrah-land-package";
 
+/**
+ * What the package-images bucket accepts, mirroring migration 016. The value is
+ * the extension to store under, so a file called `payload.html` cannot decide
+ * how it is served back from a public bucket.
+ */
+const UPLOAD_TYPES = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+} as const;
+
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
 type PriceRow = {
   id: number;
   /** A key from public.package_tiers, never a display name. */
@@ -199,8 +212,24 @@ export default function ManagedPackageEditor({
       return;
     }
 
-    const fileExtension = file.name.split(".").pop() || "jpg";
-    const filePath = `${userData.user.id}/${slug}-${Date.now()}.${fileExtension}`;
+    // The bucket enforces these too (migration 016) — this is here so the admin
+    // gets a clear message instead of an opaque storage error. The extension and
+    // content type are derived from the allowlist rather than from the file
+    // name or file.type, both of which the uploader controls.
+    const extension = UPLOAD_TYPES[file.type as keyof typeof UPLOAD_TYPES];
+    if (!extension) {
+      toast.error(`"${file.name}" is not a JPEG, PNG or WebP image.`);
+      setIsSaving(false);
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast.error(`"${file.name}" is larger than 8 MB.`);
+      setIsSaving(false);
+      return;
+    }
+
+    const safeSlug = slug.replace(/[^a-z0-9-]/gi, "-");
+    const filePath = `${userData.user.id}/${safeSlug}-${Date.now()}.${extension}`;
     const { error: uploadError } = await supabase.storage
       .from("package-images")
       .upload(filePath, file, { upsert: true, contentType: file.type });
@@ -299,7 +328,9 @@ export default function ManagedPackageEditor({
     setIsSaving(false);
 
     if (saveError) {
-      toast.error("Could not save the package.", { description: saveError.message });
+      toast.error("Could not save the package.", {
+        description: saveError.message,
+      });
       return;
     }
 
@@ -336,7 +367,10 @@ export default function ManagedPackageEditor({
       </div>
 
       {error && (
-        <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
+        <p
+          role="alert"
+          className="mt-4 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700"
+        >
           {error}
         </p>
       )}
@@ -534,11 +568,7 @@ export default function ManagedPackageEditor({
           disabled={isSaving || !record || !isDirty}
           className="rounded-lg bg-[#06131D] px-5 py-3 font-body text-sm font-bold text-[#F3E5AB] transition hover:bg-[#0D2A3A] disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
         >
-          {isSaving
-            ? "Saving package..."
-            : isDirty
-              ? "Save package"
-              : "Saved"}
+          {isSaving ? "Saving package..." : isDirty ? "Save package" : "Saved"}
         </button>
       </form>
     </div>
@@ -569,7 +599,6 @@ function EditorField({
     </label>
   );
 }
-
 
 /**
  * A select backed by the tier registry. Values are stable keys; the operator
@@ -665,7 +694,10 @@ function CardTagPicker({
       </div>
       <p className="text-xs font-normal text-[#526168]">
         Manage the list itself in{" "}
-        <a href="/admin/tags" className="font-semibold text-[#997A15] underline">
+        <a
+          href="/admin/tags"
+          className="font-semibold text-[#997A15] underline"
+        >
           Tags &amp; Tiers
         </a>
         .

@@ -27,6 +27,8 @@ import AdminShell from "../AdminShell";
 const PAGE_SIZE = 25;
 /** Supabase rejects very large single inserts; 500 rows per call is comfortable. */
 const INSERT_CHUNK = 500;
+/** Far above any realistic Meta export; guards the browser, not the server. */
+const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
 
 type StatusFilter = MetaLeadStatus | "all";
 
@@ -125,6 +127,15 @@ export default function AdminMetaLeadsPage() {
 
   async function onFilePicked(file: File | undefined) {
     if (!file) return;
+    // Parsing happens in this tab. A very large workbook freezes the browser
+    // before it ever reaches the mapping code, so stop it here.
+    if (file.size > MAX_IMPORT_BYTES) {
+      toast.error(`"${file.name}" is larger than 10 MB.`, {
+        description:
+          "Export a shorter date range from Meta and upload that instead.",
+      });
+      return;
+    }
     setIsReading(true);
     setPreview(null);
     try {
