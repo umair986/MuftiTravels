@@ -25,7 +25,7 @@ import {
 } from "@/lib/siteContent";
 import { useToast } from "../../components/ui/toast/useToast";
 import AdminLoginForm from "../AdminLoginForm";
-import AdminNav from "../AdminNav";
+import AdminShell from "../AdminShell";
 
 /**
  * Editor for the text every package page shares.
@@ -92,8 +92,12 @@ export default function AdminContentPage() {
       })
       .eq("id", list.id);
     if (updateError)
-      return toast.error("Could not save that list.", { description: updateError.message });
-    await afterWrite(`"${changes.title.trim()}" updated on every package page.`);
+      return toast.error("Could not save that list.", {
+        description: updateError.message,
+      });
+    await afterWrite(
+      `"${changes.title.trim()}" updated on every package page.`,
+    );
   }
 
   /** Returns a validation message on failure, undefined on success — see SectionPanel. */
@@ -120,7 +124,9 @@ export default function AdminContentPage() {
         sort_order: nextOrder,
       });
     if (insertError) {
-      toast.error("Could not add that list.", { description: insertError.message });
+      toast.error("Could not add that list.", {
+        description: insertError.message,
+      });
       return;
     }
     await afterWrite(`"${title.trim()}" added. Add its lines below.`);
@@ -158,7 +164,9 @@ export default function AdminContentPage() {
       .delete()
       .eq("id", list.id);
     if (deleteError)
-      return toast.error("Could not delete that list.", { description: deleteError.message });
+      return toast.error("Could not delete that list.", {
+        description: deleteError.message,
+      });
     await afterWrite(`"${list.title}" deleted.`);
   }
 
@@ -173,18 +181,22 @@ export default function AdminContentPage() {
     const { error: insertError } = await supabase
       .from("site_content_lists")
       .insert(
-        DEFAULT_CONTENT_LISTS.map(({ section, key, title, tone, items, sort_order }) => ({
-          section,
-          key,
-          title,
-          tone,
-          items,
-          sort_order,
-        })),
+        DEFAULT_CONTENT_LISTS.map(
+          ({ section, key, title, tone, items, sort_order }) => ({
+            section,
+            key,
+            title,
+            tone,
+            items,
+            sort_order,
+          }),
+        ),
       );
     setIsSeeding(false);
     if (insertError)
-      return toast.error("Could not load the standard text.", { description: insertError.message });
+      return toast.error("Could not load the standard text.", {
+        description: insertError.message,
+      });
     await afterWrite("Standard text loaded. It is now editable below.");
   }
 
@@ -210,62 +222,62 @@ export default function AdminContentPage() {
     );
 
   return (
-    <main className="min-h-screen bg-[#F3EFEA] px-5 py-8 sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-5xl">
-        <AdminNav />
-        <header className="border-b border-[#06131D]/10 pb-7">
-          <h1 className="font-display text-4xl font-semibold text-[#06131D] sm:text-5xl">
-            Inclusions &amp; Policies
-          </h1>
-          <p className="mt-2 max-w-2xl font-body text-sm text-[#526168]">
-            The Inclusions, Policies and Important notes tabs on every package
-            page. This text is shared — one edit here changes every package at
-            once, which is why there is no per-package copy to keep in sync.
+    <AdminShell
+      title="Inclusions & Policies"
+      description="Shared text on every package page."
+      contentWidth="narrow"
+      email={email}
+    >
+      <p className="max-w-2xl font-body text-sm text-[#526168]">
+        The Inclusions, Policies and Important notes tabs on every package page.
+        This text is shared — one edit here changes every package at once, which
+        is why there is no per-package copy to keep in sync.
+      </p>
+
+      {error && (
+        <p
+          role="alert"
+          className="mt-6 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700"
+        >
+          {error}
+        </p>
+      )}
+
+      {!lists.length && (
+        <section className="mt-8 rounded-2xl border border-dashed border-[#D4AF37] bg-[#FFFCF3] p-6">
+          <h2 className="font-display text-2xl font-semibold text-[#06131D]">
+            Nothing stored yet
+          </h2>
+          <p className="mt-1 max-w-2xl font-body text-sm text-[#526168]">
+            Your package pages are currently showing the standard text built
+            into the site. Load it here to make it editable — visitors will see
+            no change.
           </p>
-        </header>
+          <button
+            type="button"
+            onClick={seedDefaults}
+            disabled={isSeeding}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#06131D] px-4 py-2.5 font-body text-sm font-bold text-[#F3E5AB] hover:bg-[#0D2A3A] disabled:opacity-60"
+          >
+            {isSeeding ? "Loading..." : "Load the standard text"}
+          </button>
+        </section>
+      )}
 
-        {error && (
-          <p role="alert" className="mt-6 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
-            {error}
-          </p>
-        )}
-
-        {!lists.length && (
-          <section className="mt-8 rounded-2xl border border-dashed border-[#D4AF37] bg-[#FFFCF3] p-6">
-            <h2 className="font-display text-2xl font-semibold text-[#06131D]">
-              Nothing stored yet
-            </h2>
-            <p className="mt-1 max-w-2xl font-body text-sm text-[#526168]">
-              Your package pages are currently showing the standard text built
-              into the site. Load it here to make it editable — visitors will
-              see no change.
-            </p>
-            <button
-              type="button"
-              onClick={seedDefaults}
-              disabled={isSeeding}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#06131D] px-4 py-2.5 font-body text-sm font-bold text-[#F3E5AB] hover:bg-[#0D2A3A] disabled:opacity-60"
-            >
-              {isSeeding ? "Loading..." : "Load the standard text"}
-            </button>
-          </section>
-        )}
-
-        <div className="mt-8 space-y-8">
-          {CONTENT_SECTION_KEYS.map((section) => (
-            <SectionPanel
-              key={section}
-              section={section}
-              lists={listsInSection(lists, section)}
-              onAdd={addList}
-              onSave={saveList}
-              onMove={moveList}
-              onDelete={deleteList}
-            />
-          ))}
-        </div>
+      <div className="mt-8 space-y-8">
+        {CONTENT_SECTION_KEYS.map((section) => (
+          <SectionPanel
+            key={section}
+            section={section}
+            lists={listsInSection(lists, section)}
+            onAdd={addList}
+            onSave={saveList}
+            onMove={moveList}
+            onDelete={deleteList}
+          />
+        ))}
       </div>
-    </main>
+    </AdminShell>
   );
 }
 
@@ -283,7 +295,10 @@ function SectionPanel({
 }: {
   section: ContentSection;
   lists: SiteContentList[];
-  onAdd: (section: ContentSection, title: string) => Promise<string | undefined>;
+  onAdd: (
+    section: ContentSection,
+    title: string,
+  ) => Promise<string | undefined>;
   onSave: (
     list: SiteContentList,
     changes: { title: string; tone: ContentTone; items: string[] },
@@ -361,7 +376,10 @@ function SectionPanel({
           </button>
         </div>
         {addError && (
-          <p role="alert" className="mt-2 font-body text-xs font-semibold text-red-700">
+          <p
+            role="alert"
+            className="mt-2 font-body text-xs font-semibold text-red-700"
+          >
             {addError}
           </p>
         )}
@@ -522,7 +540,11 @@ function TonePicker({
   onChange: (tone: ContentTone) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5" role="group" aria-label="Heading colour">
+    <div
+      className="flex items-center gap-1.5"
+      role="group"
+      aria-label="Heading colour"
+    >
       {CONTENT_TONE_KEYS.map((tone) => (
         <button
           key={tone}

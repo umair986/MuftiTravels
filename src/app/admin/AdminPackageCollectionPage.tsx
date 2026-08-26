@@ -5,7 +5,7 @@ import { FiEdit3, FiPlus, FiTrash2 } from "react-icons/fi";
 import { CmsPackageRecord } from "@/lib/packages";
 import { createClient } from "@/lib/supabase/client";
 import AdminLoginForm from "./AdminLoginForm";
-import AdminNav from "./AdminNav";
+import AdminShell from "./AdminShell";
 import ManagedPackageEditor from "./ManagedPackageEditor";
 import CreatePackageDialog from "./CreatePackageDialog";
 import { useToast } from "../components/ui/toast/useToast";
@@ -74,7 +74,9 @@ export default function AdminPackageCollectionPage({
       .delete()
       .eq("id", record.id);
     if (deleteError) {
-      toast.error("Could not delete that package.", { description: deleteError.message });
+      toast.error("Could not delete that package.", {
+        description: deleteError.message,
+      });
       return;
     }
     if (selectedSlug === record.slug) setSelectedSlug(null);
@@ -101,90 +103,85 @@ export default function AdminPackageCollectionPage({
     );
 
   return (
-    <main className="min-h-screen bg-[#F3EFEA] px-5 py-8 sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-7xl">
-        <AdminNav />
-        <header className="flex flex-col gap-5 border-b border-[#06131D]/10 pb-7 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="font-display text-4xl font-semibold text-[#06131D] sm:text-5xl">
-              {title}
-            </h1>
-            <p className="mt-2 font-body text-sm text-[#526168]">
-              {description}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsCreateOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#06131D] px-4 py-3 font-body text-sm font-bold text-[#F3E5AB] transition hover:bg-[#0D2A3A]"
-          >
-            <FiPlus /> Create new package
-          </button>
-        </header>
+    <AdminShell
+      title={title}
+      description={description}
+      email={email}
+      headerAction={
+        <button
+          type="button"
+          onClick={() => setIsCreateOpen(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-[#06131D] px-4 py-3 font-body text-sm font-bold text-[#F3E5AB] transition hover:bg-[#0D2A3A]"
+        >
+          <FiPlus /> Create new package
+        </button>
+      }
+    >
+      {error && (
+        <p
+          role="alert"
+          className="mb-6 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+        >
+          {error}
+        </p>
+      )}
 
-        {error && (
-          <p role="alert" className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </p>
-        )}
-
-        <section className="mt-8 grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-          <div className="rounded-2xl border border-[#06131D]/10 bg-white p-6 shadow-sm">
-            <h2 className="font-display text-3xl font-semibold text-[#06131D]">
-              Package list
-            </h2>
-            <div className="mt-5 space-y-3">
-              {records.map((record) => (
-                <div
-                  key={record.id}
-                  className={`flex items-center justify-between gap-3 rounded-xl border p-4 ${selectedSlug === record.slug ? "border-[#D4AF37] bg-[#FFFCF3]" : "border-stone-200 bg-[#FAF8F5]"}`}
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-body text-sm font-semibold text-[#06131D]">
-                      {record.name}
-                    </p>
-                    <p className="mt-1 text-xs text-[#526168]">
-                      {record.is_published ? "Published" : "Draft"}
-                    </p>
-                  </div>
-                  <div className="flex flex-shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSlug(record.slug)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#06131D]/15 px-3 py-2 text-xs font-bold"
-                    >
-                      <FiEdit3 /> Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPendingDelete(record)}
-                      aria-label={`Delete ${record.name}`}
-                      className="inline-flex items-center rounded-lg border border-red-200 px-2.5 py-2 text-red-600 transition hover:bg-red-50"
-                    >
-                      <FiTrash2 />
-                    </button>
-                  </div>
+      <section className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="rounded-2xl border border-[#06131D]/10 bg-white p-6 shadow-sm">
+          <h2 className="font-display text-3xl font-semibold text-[#06131D]">
+            Package list
+          </h2>
+          <div className="mt-5 space-y-3">
+            {records.map((record) => (
+              <div
+                key={record.id}
+                className={`flex items-center justify-between gap-3 rounded-xl border p-4 ${selectedSlug === record.slug ? "border-[#D4AF37] bg-[#FFFCF3]" : "border-stone-200 bg-[#FAF8F5]"}`}
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-body text-sm font-semibold text-[#06131D]">
+                    {record.name}
+                  </p>
+                  <p className="mt-1 text-xs text-[#526168]">
+                    {record.is_published ? "Published" : "Draft"}
+                  </p>
                 </div>
-              ))}
-              {!records.length && (
-                <p className="rounded-xl border border-dashed border-stone-300 p-6 text-center text-sm text-[#526168]">
-                  No {(category ?? "").toLowerCase() || "umrah"} packages yet. Use Create
-                  new package to add one.
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-[#06131D]/10 bg-white p-6 shadow-sm">
-            {selectedSlug ? (
-              <ManagedPackageEditor slug={selectedSlug} />
-            ) : (
-              <div className="grid min-h-64 place-items-center text-center text-sm text-[#526168]">
-                Select a package to edit its details, tags and tiers.
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSlug(record.slug)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#06131D]/15 px-3 py-2 text-xs font-bold"
+                  >
+                    <FiEdit3 /> Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingDelete(record)}
+                    aria-label={`Delete ${record.name}`}
+                    className="inline-flex items-center rounded-lg border border-red-200 px-2.5 py-2 text-red-600 transition hover:bg-red-50"
+                  >
+                    <FiTrash2 />
+                  </button>
+                </div>
               </div>
+            ))}
+            {!records.length && (
+              <p className="rounded-xl border border-dashed border-stone-300 p-6 text-center text-sm text-[#526168]">
+                No {(category ?? "").toLowerCase() || "umrah"} packages yet. Use
+                Create new package to add one.
+              </p>
             )}
           </div>
-        </section>
-      </div>
+        </div>
+        <div className="rounded-2xl border border-[#06131D]/10 bg-white p-6 shadow-sm">
+          {selectedSlug ? (
+            <ManagedPackageEditor slug={selectedSlug} />
+          ) : (
+            <div className="grid min-h-64 place-items-center text-center text-sm text-[#526168]">
+              Select a package to edit its details, tags and tiers.
+            </div>
+          )}
+        </div>
+      </section>
 
       <CreatePackageDialog
         open={isCreateOpen}
@@ -236,6 +233,6 @@ export default function AdminPackageCollectionPage({
           </div>
         </div>
       )}
-    </main>
+    </AdminShell>
   );
 }

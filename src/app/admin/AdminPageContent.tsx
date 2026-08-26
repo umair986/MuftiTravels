@@ -22,7 +22,10 @@ export default function AdminPageContent() {
       return;
     }
 
-    async function resolve(userId: string | undefined, userEmail: string | null) {
+    async function resolve(
+      userId: string | undefined,
+      userEmail: string | null,
+    ) {
       if (!isMounted) return;
       setEmail(userEmail);
       if (userId) {
@@ -56,7 +59,7 @@ export default function AdminPageContent() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-[#06131D] px-6">
+      <main className="flex min-h-screen items-center justify-center bg-[#06131D] px-6">
         <p className="font-body text-sm text-[#B8C2C5]">Loading dashboard...</p>
       </main>
     );
@@ -70,7 +73,7 @@ export default function AdminPageContent() {
   // dashboard whose every query will fail.
   if (email && !isAdmin) {
     return (
-      <main className="islamic-pattern flex min-h-[calc(100vh-5rem)] items-center justify-center bg-[#06131D] px-6 py-16">
+      <main className="islamic-pattern flex min-h-screen items-center justify-center bg-[#06131D] px-6 py-16">
         <section className="w-full max-w-md rounded-2xl border border-[#D4AF37]/30 bg-[#0B1E28] p-8 text-center shadow-2xl sm:p-10">
           <h1 className="font-display text-4xl font-semibold text-[#FAF8F5]">
             No admin access
@@ -95,7 +98,7 @@ export default function AdminPageContent() {
   }
 
   return (
-    <main className="islamic-pattern flex min-h-[calc(100vh-5rem)] items-center justify-center bg-[#06131D] px-6 py-16">
+    <main className="islamic-pattern flex min-h-screen items-center justify-center bg-[#06131D] px-6 py-16">
       <section className="w-full max-w-md rounded-2xl border border-[#D4AF37]/30 bg-[#0B1E28] p-8 shadow-2xl shadow-black/20 sm:p-10">
         <div className="mb-8 text-center">
           <p className="mb-3 font-body text-xs font-semibold uppercase tracking-[0.25em] text-[#D4AF37]">

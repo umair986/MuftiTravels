@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { FiMenu, FiX, FiPhone, FiCompass, FiShield } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 
@@ -17,6 +18,7 @@ const WHATSAPP_ENQUIRY_URL =
 const Header = () => {
   const [navOpen, setNavOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -79,6 +81,11 @@ const Header = () => {
       }
     }
   };
+
+  // The admin area is its own surface with its own sidebar chrome (AdminShell).
+  // The marketing header is both irrelevant there and, being sticky z-50, would
+  // sit on top of the sidebar. Placed after the hooks above so hook order holds.
+  if (pathname?.startsWith("/admin")) return null;
 
   return (
     <>

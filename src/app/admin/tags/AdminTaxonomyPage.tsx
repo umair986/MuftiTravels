@@ -23,7 +23,7 @@ import {
 } from "@/lib/taxonomy";
 import { useToast } from "../../components/ui/toast/useToast";
 import AdminLoginForm from "../AdminLoginForm";
-import AdminNav from "../AdminNav";
+import AdminShell from "../AdminShell";
 
 type UsageMap = Record<string, string[]>;
 
@@ -99,7 +99,9 @@ export default function AdminTaxonomyPage() {
       .from("package_tiers")
       .insert({ key, name: name.trim(), sort_order: nextOrder });
     if (insertError) {
-      toast.error("Could not add that tier.", { description: insertError.message });
+      toast.error("Could not add that tier.", {
+        description: insertError.message,
+      });
       return;
     }
     toast.success(`Tier "${name.trim()}" added.`);
@@ -115,7 +117,9 @@ export default function AdminTaxonomyPage() {
       .update({ name: name.trim() })
       .eq("id", tier.id);
     if (updateError)
-      return toast.error("Could not rename that tier.", { description: updateError.message });
+      return toast.error("Could not rename that tier.", {
+        description: updateError.message,
+      });
     toast.success(`Renamed to "${name.trim()}".`, {
       description: "Every package using it updated.",
     });
@@ -161,7 +165,9 @@ export default function AdminTaxonomyPage() {
       .delete()
       .eq("id", tier.id);
     if (deleteError)
-      return toast.error("Could not delete that tier.", { description: deleteError.message });
+      return toast.error("Could not delete that tier.", {
+        description: deleteError.message,
+      });
     toast.success(`Tier "${tier.name}" deleted.`);
     void load();
   }
@@ -169,7 +175,10 @@ export default function AdminTaxonomyPage() {
   /* ----------------------------------------------------------------- tags */
 
   /** Returns a validation message on failure, undefined on success — see TagPanel. */
-  async function addTag(label: string, color: TagColor): Promise<string | undefined> {
+  async function addTag(
+    label: string,
+    color: TagColor,
+  ): Promise<string | undefined> {
     if (!supabase) return;
     const key = slugifyKey(label);
     if (!key) return "Give the tag a label first.";
@@ -181,7 +190,9 @@ export default function AdminTaxonomyPage() {
       .from("package_tags")
       .insert({ key, label: label.trim(), color, sort_order: nextOrder });
     if (insertError) {
-      toast.error("Could not add that tag.", { description: insertError.message });
+      toast.error("Could not add that tag.", {
+        description: insertError.message,
+      });
       return;
     }
     toast.success(`Tag "${label.trim()}" added.`);
@@ -201,7 +212,9 @@ export default function AdminTaxonomyPage() {
       })
       .eq("id", tag.id);
     if (updateError)
-      return toast.error("Could not update that tag.", { description: updateError.message });
+      return toast.error("Could not update that tag.", {
+        description: updateError.message,
+      });
     toast.success("Tag updated everywhere it appears.");
     void load();
   }
@@ -244,7 +257,9 @@ export default function AdminTaxonomyPage() {
       .delete()
       .eq("id", tag.id);
     if (deleteError)
-      return toast.error("Could not delete that tag.", { description: deleteError.message });
+      return toast.error("Could not delete that tag.", {
+        description: deleteError.message,
+      });
     toast.success(`Tag "${tag.label}" deleted.`);
     void load();
   }
@@ -271,46 +286,45 @@ export default function AdminTaxonomyPage() {
     );
 
   return (
-    <main className="min-h-screen bg-[#F3EFEA] px-5 py-8 sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-7xl">
-        <AdminNav />
-        <header className="border-b border-[#06131D]/10 pb-7">
-          <h1 className="font-display text-4xl font-semibold text-[#06131D] sm:text-5xl">
-            Tags &amp; Tiers
-          </h1>
-          <p className="mt-2 max-w-2xl font-body text-sm text-[#526168]">
-            Anything you create here becomes selectable when you edit a package.
-            Renaming is safe — packages point at a fixed key, so a rename
-            updates every package at once without touching their prices.
-          </p>
-        </header>
+    <AdminShell
+      title="Tags & Tiers"
+      description="Labels and price tiers that packages can point at."
+      email={email}
+    >
+      <p className="max-w-2xl font-body text-sm text-[#526168]">
+        Anything you create here becomes selectable when you edit a package.
+        Renaming is safe — packages point at a fixed key, so a rename updates
+        every package at once without touching their prices.
+      </p>
 
-        {error && (
-          <p role="alert" className="mt-6 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700">
-            {error}
-          </p>
-        )}
+      {error && (
+        <p
+          role="alert"
+          className="mt-6 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700"
+        >
+          {error}
+        </p>
+      )}
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-2">
-          <TierPanel
-            tiers={tiers}
-            usage={tierUsage}
-            onAdd={addTier}
-            onRename={renameTier}
-            onMove={moveTier}
-            onDelete={deleteTier}
-          />
-          <TagPanel
-            tags={tags}
-            usage={tagUsage}
-            onAdd={addTag}
-            onUpdate={updateTag}
-            onMove={moveTag}
-            onDelete={deleteTag}
-          />
-        </div>
+      <div className="mt-8 grid gap-8 lg:grid-cols-2">
+        <TierPanel
+          tiers={tiers}
+          usage={tierUsage}
+          onAdd={addTier}
+          onRename={renameTier}
+          onMove={moveTier}
+          onDelete={deleteTier}
+        />
+        <TagPanel
+          tags={tags}
+          usage={tagUsage}
+          onAdd={addTag}
+          onUpdate={updateTag}
+          onMove={moveTag}
+          onDelete={deleteTag}
+        />
       </div>
-    </main>
+    </AdminShell>
   );
 }
 
@@ -381,7 +395,10 @@ function TierPanel({
         </button>
       </div>
       {addError && (
-        <p role="alert" className="mt-2 font-body text-xs font-semibold text-red-700">
+        <p
+          role="alert"
+          className="mt-2 font-body text-xs font-semibold text-red-700"
+        >
           {addError}
         </p>
       )}
@@ -481,7 +498,9 @@ function TierRow({
       </div>
 
       <p className="mt-2 pl-8 font-body text-xs text-[#526168]">
-        <code className="rounded bg-stone-200/70 px-1.5 py-0.5">{tier.key}</code>{" "}
+        <code className="rounded bg-stone-200/70 px-1.5 py-0.5">
+          {tier.key}
+        </code>{" "}
         {usageCount
           ? `· priced on ${usageCount} package${usageCount > 1 ? "s" : ""}`
           : "· not used yet"}
@@ -555,7 +574,10 @@ function TagPanel({
           </button>
         </div>
         {addError && (
-          <p role="alert" className="font-body text-xs font-semibold text-red-700">
+          <p
+            role="alert"
+            className="font-body text-xs font-semibold text-red-700"
+          >
             {addError}
           </p>
         )}

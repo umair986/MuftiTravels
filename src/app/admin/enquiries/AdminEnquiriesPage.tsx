@@ -6,7 +6,7 @@ import { FaWhatsapp } from "react-icons/fa";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "../../components/ui/toast/useToast";
 import AdminLoginForm from "../AdminLoginForm";
-import AdminNav from "../AdminNav";
+import AdminShell from "../AdminShell";
 
 type Status = "new" | "contacted" | "closed";
 
@@ -167,7 +167,9 @@ export default function AdminEnquiriesPage() {
       .eq("id", id);
 
     if (updateError) {
-      toast.error("Could not update that enquiry.", { description: updateError.message });
+      toast.error("Could not update that enquiry.", {
+        description: updateError.message,
+      });
       if (previous) {
         setEnquiries((current) =>
           current.map((item) =>
@@ -177,7 +179,8 @@ export default function AdminEnquiriesPage() {
       }
       return;
     }
-    const label = STATUSES.find((option) => option.value === status)?.label ?? status;
+    const label =
+      STATUSES.find((option) => option.value === status)?.label ?? status;
     toast.success(`Marked as ${label.toLowerCase()}.`, { key: `status-${id}` });
     void load();
   }
@@ -189,7 +192,9 @@ export default function AdminEnquiriesPage() {
       .update({ admin_notes: adminNotes })
       .eq("id", id);
     if (saveError) {
-      toast.error("Could not save that note.", { description: saveError.message });
+      toast.error("Could not save that note.", {
+        description: saveError.message,
+      });
       return { ok: false };
     }
     toast.success("Note saved.");
@@ -271,7 +276,7 @@ export default function AdminEnquiriesPage() {
 
   if (isLoading) {
     return (
-      <main className="grid min-h-[calc(100vh-5rem)] place-items-center bg-[#F3EFEA] font-body text-sm text-[#526168]">
+      <main className="grid min-h-screen place-items-center bg-[#F3EFEA] font-body text-sm text-[#526168]">
         Loading enquiries...
       </main>
     );
@@ -294,125 +299,116 @@ export default function AdminEnquiriesPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-5rem)] bg-[#F3EFEA] px-5 py-8 sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-7xl">
-        <AdminNav />
+    <AdminShell
+      title="Enquiries"
+      description="Every enquiry submitted through the website appears here."
+      email={email}
+      headerAction={
+        <button
+          type="button"
+          onClick={() => void exportCsv()}
+          disabled={!totalMatching}
+          className="inline-flex items-center gap-2 rounded-lg border border-[#06131D]/15 px-4 py-2.5 font-body text-sm font-semibold text-[#06131D] transition hover:border-[#997A15] hover:text-[#997A15] disabled:opacity-50"
+        >
+          <FiDownload /> Export CSV
+        </button>
+      }
+    >
+      {error && (
+        <p
+          role="alert"
+          className="mb-6 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700"
+        >
+          {error}
+        </p>
+      )}
 
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="font-display text-4xl font-semibold text-[#06131D] sm:text-5xl">
-              Enquiries
-            </h1>
-            <p className="mt-2 font-body text-sm text-[#526168]">
-              Every enquiry submitted through the website appears here.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void exportCsv()}
-            disabled={!totalMatching}
-            className="inline-flex items-center gap-2 self-start rounded-lg border border-[#06131D]/15 px-4 py-2.5 font-body text-sm font-semibold text-[#06131D] transition hover:border-[#997A15] hover:text-[#997A15] disabled:opacity-50"
-          >
-            <FiDownload /> Export CSV
-          </button>
-        </header>
-
-        {error && (
-          <p
-            role="alert"
-            className="mt-6 rounded-lg bg-red-50 p-3 font-body text-sm text-red-700"
-          >
-            {error}
-          </p>
-        )}
-
-        {/* Status filter — the page opens on New, which is what needs action */}
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {STATUSES.map((option) => {
-              const isCurrent = statusFilter === option.value;
-              const count = counts[option.value] ?? 0;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setStatusFilter(option.value)}
-                  aria-pressed={isCurrent}
-                  className={`rounded-full px-4 py-2 font-body text-sm font-semibold transition ${
-                    isCurrent
-                      ? "bg-[#06131D] text-[#F3E5AB]"
-                      : "border border-stone-200 bg-white text-[#526168] hover:border-[#D4AF37]"
-                  }`}
+      {/* Status filter — the page opens on New, which is what needs action */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2">
+          {STATUSES.map((option) => {
+            const isCurrent = statusFilter === option.value;
+            const count = counts[option.value] ?? 0;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setStatusFilter(option.value)}
+                aria-pressed={isCurrent}
+                className={`rounded-full px-4 py-2 font-body text-sm font-semibold transition ${
+                  isCurrent
+                    ? "bg-[#06131D] text-[#F3E5AB]"
+                    : "border border-stone-200 bg-white text-[#526168] hover:border-[#D4AF37]"
+                }`}
+              >
+                {option.label}
+                <span
+                  className={`ml-2 text-xs ${isCurrent ? "text-[#D4AF37]" : "text-stone-400"}`}
                 >
-                  {option.label}
-                  <span
-                    className={`ml-2 text-xs ${isCurrent ? "text-[#D4AF37]" : "text-stone-400"}`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <label className="sm:w-72">
-            <span className="sr-only">Search enquiries</span>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search this page"
-              className="w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-body text-sm outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
-            />
-          </label>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <section className="mt-6 space-y-4">
-          {visible.map((enquiry) => (
-            <EnquiryCard
-              key={enquiry.id}
-              enquiry={enquiry}
-              onStatusChange={updateStatus}
-              onSaveNotes={saveNotes}
-            />
-          ))}
-
-          {!filtered.length && (
-            <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center font-body text-sm text-[#526168]">
-              {search
-                ? `Nothing matches "${search}".`
-                : statusFilter === "all"
-                  ? "No enquiries yet."
-                  : `No ${statusFilter} enquiries.`}
-            </div>
-          )}
-
-          {pageCount > 1 && (
-            <div className="flex items-center justify-between gap-3 pt-2">
-              <button
-                type="button"
-                disabled={page === 0}
-                onClick={() => setPage((current) => Math.max(0, current - 1))}
-                className="rounded-lg border border-stone-200 bg-white px-4 py-2.5 font-body text-sm font-semibold text-[#06131D] transition hover:border-[#D4AF37] disabled:opacity-40"
-              >
-                Previous
-              </button>
-              <p className="font-body text-sm text-[#526168]">
-                Page {page + 1} of {pageCount} · {totalMatching} total
-              </p>
-              <button
-                type="button"
-                disabled={page + 1 >= pageCount}
-                onClick={() => setPage((current) => current + 1)}
-                className="rounded-lg border border-stone-200 bg-white px-4 py-2.5 font-body text-sm font-semibold text-[#06131D] transition hover:border-[#D4AF37] disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </section>
+        <label className="sm:w-72">
+          <span className="sr-only">Search enquiries</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search this page"
+            className="w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-body text-sm outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+          />
+        </label>
       </div>
-    </main>
+
+      <section className="mt-6 space-y-4">
+        {visible.map((enquiry) => (
+          <EnquiryCard
+            key={enquiry.id}
+            enquiry={enquiry}
+            onStatusChange={updateStatus}
+            onSaveNotes={saveNotes}
+          />
+        ))}
+
+        {!filtered.length && (
+          <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center font-body text-sm text-[#526168]">
+            {search
+              ? `Nothing matches "${search}".`
+              : statusFilter === "all"
+                ? "No enquiries yet."
+                : `No ${statusFilter} enquiries.`}
+          </div>
+        )}
+
+        {pageCount > 1 && (
+          <div className="flex items-center justify-between gap-3 pt-2">
+            <button
+              type="button"
+              disabled={page === 0}
+              onClick={() => setPage((current) => Math.max(0, current - 1))}
+              className="rounded-lg border border-stone-200 bg-white px-4 py-2.5 font-body text-sm font-semibold text-[#06131D] transition hover:border-[#D4AF37] disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <p className="font-body text-sm text-[#526168]">
+              Page {page + 1} of {pageCount} · {totalMatching} total
+            </p>
+            <button
+              type="button"
+              disabled={page + 1 >= pageCount}
+              onClick={() => setPage((current) => current + 1)}
+              className="rounded-lg border border-stone-200 bg-white px-4 py-2.5 font-body text-sm font-semibold text-[#06131D] transition hover:border-[#D4AF37] disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </section>
+    </AdminShell>
   );
 }
 
