@@ -549,7 +549,7 @@ export default function PackageDetailExperience({
               <span>{pkg.reviews} pilgrim reviews</span>
               <span className="inline-flex items-center gap-1.5">
                 <FiShield className="text-emerald-400" />
-                MoFA-authorized service
+                Government-authorized service
               </span>
             </div>
           </div>

@@ -68,7 +68,7 @@ const seasonOptions: DropdownOption[] = [
     value: "Upcoming",
     label: "Next Available Departures",
     badge: "Immediate",
-    sublabel: "Fastest MoFA visa processing",
+    sublabel: "Fastest visa processing",
   },
   {
     value: "Ramadan Special",
@@ -199,7 +199,7 @@ export default function Hero() {
             </div>
             <div>
               <p className="text-white font-bold text-xs sm:text-sm">
-                MoFA Certified
+                Govt. Certified
               </p>
               <p className="text-stone-400 text-[11px] leading-tight">
                 Verified Umrah Visas

@@ -141,7 +141,7 @@ export default function Offers() {
                   Buffet Inclusions
                 </p>
                 <p className="flex items-center gap-2">
-                  <FiCheck className="text-emerald-400" /> Guaranteed MoFA
+                  <FiCheck className="text-emerald-400" /> Guaranteed
                   Ramadan Visa Quota
                 </p>
               </div>

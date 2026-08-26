@@ -63,7 +63,7 @@ export default function PackageCardMumbai({
               <span className="text-xs text-stone-500">(33 reviews)</span>
             </div>
             <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              MoFA Guaranteed
+              Visa Guaranteed
             </span>
           </div>
 

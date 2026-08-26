@@ -122,7 +122,7 @@ export const CATEGORY_LANDING: Record<CategoryType, CategoryLanding> = {
     // No brand suffix here — the root layout's title template appends it.
     metaTitle: "Hajj Packages from India",
     metaDescription:
-      "Hajj packages from India with Mina tent categories, Azizia accommodation, Mashaer train options and Qurbani — arranged by a MoFA authorized operator.",
+      "Hajj packages from India with Mina tent categories, Azizia accommodation, Mashaer train options and Qurbani — arranged by a government authorized operator.",
     eyebrow: "The fifth pillar",
     heading: "Hajj Packages from India",
     intro: [

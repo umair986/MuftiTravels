@@ -195,7 +195,7 @@ export default function Packages({
           </h2>
           <p className="text-stone-600 font-body text-base sm:text-lg leading-relaxed">
             All packages feature 4★ & 5★ Haram-adjacent accommodation, authentic
-            scholar guidance, MoFA verified visas, and dedicated Khadim care.
+            scholar guidance, verified visas, and dedicated Khadim care.
           </p>
         </div>
 

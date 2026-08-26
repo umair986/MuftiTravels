@@ -74,7 +74,7 @@ export default function PackageCard14Days({
               <FaBus className="text-[#D4AF37] w-3 h-3" /> Ground Transport
             </span>
             <span className="flex items-center gap-1.5 font-medium">
-              <FaShieldAlt className="text-[#D4AF37] w-3 h-3" /> MoFA Visa Included
+              <FaShieldAlt className="text-[#D4AF37] w-3 h-3" /> Visa Included
             </span>
             <span className="flex items-center gap-1.5 font-medium">
               <FiClock className="text-[#D4AF37] w-3 h-3" /> 24/7 Assistance

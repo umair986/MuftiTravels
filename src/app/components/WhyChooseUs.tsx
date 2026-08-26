@@ -123,7 +123,7 @@ const WhyChooseUs = () => {
             </div>
           </motion.div>
 
-          {/* Bento Card 4: MoFA Verified & Visas */}
+          {/* Bento Card 4: Verified Visas & Insurance */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -139,10 +139,10 @@ const WhyChooseUs = () => {
                 Official Authorization
               </span>
               <h3 className="font-serif text-xl font-bold text-[#06131D] mt-1 mb-2">
-                MoFA & Insurance Verified
+                Visa & Insurance Verified
               </h3>
               <p className="text-stone-600 font-body text-sm leading-relaxed">
-                Direct integration with the Saudi Ministry of Foreign Affairs (MoFA) ensures fast Umrah visa stamping and mandatory medical health coverage.
+                Direct integration with official visa processing ensures fast Umrah visa stamping and mandatory medical health coverage.
               </p>
             </div>
 

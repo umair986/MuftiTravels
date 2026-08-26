@@ -38,7 +38,7 @@ export default function Footer() {
             </Link>
 
             <p className="text-stone-400 font-body text-xs sm:text-sm leading-relaxed max-w-sm">
-              Providing devout Muslim pilgrims with world-class, spiritual, and comfortable Hajj, Umrah, and Ziyarat experiences. Certified MoFA authorized partner with 15+ years of trusted service.
+              Providing devout Muslim pilgrims with world-class, spiritual, and comfortable Hajj, Umrah, and Ziyarat experiences. A trusted, government authorized partner with 15+ years of service.
             </p>
 
             <div className="pt-2 flex items-center gap-3">
@@ -185,7 +185,7 @@ export default function Footer() {
               <div className="pt-2">
                 <span className="inline-flex items-center gap-1 text-[11px] text-[#F3E5AB] bg-white/5 border border-[#D4AF37]/20 px-2.5 py-1 rounded-full">
                   <FiShield className="w-3 h-3 text-[#D4AF37]" />
-                  <span>MoFA Authorized & Verified</span>
+                  <span>Government Authorized & Verified</span>
                 </span>
               </div>
             </div>

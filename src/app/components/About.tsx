@@ -16,7 +16,7 @@ export default function About() {
     },
     {
       title: "Transparent, Honest Pricing",
-      desc: "What you see is what you pay. Full inclusions: direct airfare, MoFA visas, verified accommodation, and hygienic Indian buffet catering.",
+      desc: "What you see is what you pay. Full inclusions: direct airfare, visa processing, verified accommodation, and hygienic Indian buffet catering.",
     },
     {
       title: "24/7 Ground Khadim Support",
@@ -115,7 +115,7 @@ export default function About() {
               </div>
               <div>
                 <p className="font-display text-2xl sm:text-3xl font-bold text-[#946E19]">100%</p>
-                <p className="text-[11px] sm:text-xs text-stone-500 uppercase tracking-wider font-medium mt-0.5">MoFA Visa Success</p>
+                <p className="text-[11px] sm:text-xs text-stone-500 uppercase tracking-wider font-medium mt-0.5">Visa Success Rate</p>
               </div>
               <div>
                 <p className="font-display text-2xl sm:text-3xl font-bold text-[#06131D]">4.9 / 5★</p>

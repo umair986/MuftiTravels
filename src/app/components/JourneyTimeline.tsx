@@ -13,8 +13,8 @@ export default function JourneyTimeline() {
       icon: <FaPlaneDeparture className="w-5 h-5 text-[#D4AF37]" />,
       title: "Preparation & Spiritual Orientation",
       location: "India Departure (Mumbai / Delhi / Lucknow)",
-      desc: "Prior to departure, receive comprehensive MoFA visa documentation, insurance, and attend our exclusive Scholar-led Umrah & Ihram orientation seminar with complimentary guide kit.",
-      highlights: ["Official MoFA Umrah Visa", "Ihram Kit & Du'a Booklet", "Baggage & Flight Tags"],
+      desc: "Prior to departure, receive comprehensive visa documentation, insurance, and attend our exclusive Scholar-led Umrah & Ihram orientation seminar with complimentary guide kit.",
+      highlights: ["Official Umrah Visa", "Ihram Kit & Du'a Booklet", "Baggage & Flight Tags"],
     },
     {
       number: "02",

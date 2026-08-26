@@ -89,7 +89,7 @@ const Header = () => {
             <span className="flex items-center gap-1.5 text-[#E5C058]">
               <FiShield className="w-3.5 h-3.5" />
               <span className="font-medium tracking-wide">
-                Government & MoFA Authorized Umrah Operator
+                Government Authorized Umrah Operator
               </span>
             </span>
             <span className="text-stone-500">|</span>
