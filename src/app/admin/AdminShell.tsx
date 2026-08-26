@@ -14,6 +14,7 @@ import {
   FiMoon,
   FiPackage,
   FiTag,
+  FiTrendingUp,
   FiX,
 } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
@@ -34,6 +35,7 @@ const SECTIONS = [
   { href: "/admin/hajj", label: "Hajj", icon: FiCompass },
   { href: "/admin/ramzan", label: "Ramzan", icon: FiMoon },
   { href: "/admin/enquiries", label: "Enquiries", icon: FiInbox },
+  { href: "/admin/meta-ads", label: "Meta Ads", icon: FiTrendingUp },
   { href: "/admin/gallery", label: "Gallery", icon: FiImage },
   { href: "/admin/tags", label: "Tags & Tiers", icon: FiTag },
   { href: "/admin/content", label: "Inclusions & Policies", icon: FiFileText },
