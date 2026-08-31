@@ -6,10 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "tsx --test src/lib/*.test.ts",
+    "test:pdf": "esbuild scripts/render-invoice-check.mts --bundle --platform=node --format=esm --target=node22 --jsx=automatic --external:pdfkit --outfile=node_modules/.cache/mt/render-check.mjs --log-level=error && node node_modules/.cache/mt/render-check.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.6",
+    "@react-pdf/renderer": "^4.9.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
     "framer-motion": "^12.16.0",
@@ -33,6 +36,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }

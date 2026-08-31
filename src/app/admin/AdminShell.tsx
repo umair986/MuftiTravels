@@ -3,16 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { IconType } from "react-icons";
 import {
+  FiBarChart2,
+  FiBookOpen,
   FiCompass,
+  FiCreditCard,
   FiFileText,
   FiGrid,
   FiImage,
   FiInbox,
   FiLogOut,
+  FiMapPin,
   FiMenu,
   FiMoon,
   FiPackage,
+  FiSettings,
   FiTag,
   FiTrendingUp,
   FiX,
@@ -29,16 +35,60 @@ import { createClient } from "@/lib/supabase/client";
  * two used max-w-5xl).
  */
 
-const SECTIONS = [
-  { href: "/admin", label: "Overview", icon: FiGrid },
-  { href: "/admin/packages", label: "Umrah Packages", icon: FiPackage },
-  { href: "/admin/hajj", label: "Hajj", icon: FiCompass },
-  { href: "/admin/ramzan", label: "Ramzan", icon: FiMoon },
-  { href: "/admin/enquiries", label: "Enquiries", icon: FiInbox },
-  { href: "/admin/meta-ads", label: "Meta Ads", icon: FiTrendingUp },
-  { href: "/admin/gallery", label: "Gallery", icon: FiImage },
-  { href: "/admin/tags", label: "Tags & Tiers", icon: FiTag },
-  { href: "/admin/content", label: "Inclusions & Policies", icon: FiFileText },
+type NavLink = { href: string; label: string; icon: IconType };
+type NavGroup = { label?: string; links: NavLink[] };
+
+/**
+ * Grouped rather than flat. Nine links already sat at the edge of what scans as
+ * a single list, and the finance section adds four more — past the point where
+ * the eye can find "Enquiries" without reading every label. The first group is
+ * unlabelled because Overview belongs to no category.
+ */
+const SECTION_GROUPS: NavGroup[] = [
+  {
+    links: [{ href: "/admin", label: "Overview", icon: FiGrid }],
+  },
+  {
+    label: "Catalogue",
+    links: [
+      { href: "/admin/packages", label: "Umrah Packages", icon: FiPackage },
+      { href: "/admin/hajj", label: "Hajj", icon: FiCompass },
+      { href: "/admin/ramzan", label: "Ramzan", icon: FiMoon },
+      { href: "/admin/gallery", label: "Gallery", icon: FiImage },
+      { href: "/admin/tags", label: "Tags & Tiers", icon: FiTag },
+      {
+        href: "/admin/content",
+        label: "Inclusions & Policies",
+        icon: FiBookOpen,
+      },
+    ],
+  },
+  {
+    label: "Leads",
+    links: [
+      { href: "/admin/enquiries", label: "Enquiries", icon: FiInbox },
+      { href: "/admin/meta-ads", label: "Meta Ads", icon: FiTrendingUp },
+    ],
+  },
+  {
+    label: "Finance",
+    links: [
+      { href: "/admin/invoices", label: "Invoices", icon: FiFileText },
+      { href: "/admin/expenses", label: "Expenses", icon: FiCreditCard },
+      { href: "/admin/trips", label: "Departures", icon: FiMapPin },
+      { href: "/admin/finance", label: "Reports", icon: FiBarChart2 },
+    ],
+  },
+  {
+    label: "Settings",
+    links: [
+      {
+        href: "/admin/settings/business",
+        label: "Business details",
+        icon: FiSettings,
+      },
+    ],
+  },
 ];
 
 type AdminShellProps = {
@@ -176,25 +226,34 @@ export default function AdminShell({
           aria-label="Admin sections"
           className="flex-1 overflow-y-auto px-3 pb-4"
         >
-          {SECTIONS.map((section) => {
-            const isCurrent = pathname === section.href;
-            const Icon = section.icon;
-            return (
-              <Link
-                key={section.href}
-                href={section.href}
-                aria-current={isCurrent ? "page" : undefined}
-                className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 font-body text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-[#D4AF37] ${
-                  isCurrent
-                    ? "bg-[#D4AF37] text-[#06131D]"
-                    : "text-[#B8C2C5] hover:bg-white/5 hover:text-[#FAF8F5]"
-                }`}
-              >
-                <Icon className="h-4 w-4 flex-shrink-0" />
-                {section.label}
-              </Link>
-            );
-          })}
+          {SECTION_GROUPS.map((group, index) => (
+            <div key={group.label ?? "overview"} className={index ? "mt-5" : ""}>
+              {group.label && (
+                <p className="mb-1.5 px-3 font-body text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6F8087]">
+                  {group.label}
+                </p>
+              )}
+              {group.links.map((link) => {
+                const isCurrent = pathname === link.href;
+                const Icon = link.icon;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    aria-current={isCurrent ? "page" : undefined}
+                    className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 font-body text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-[#D4AF37] ${
+                      isCurrent
+                        ? "bg-[#D4AF37] text-[#06131D]"
+                        : "text-[#B8C2C5] hover:bg-white/5 hover:text-[#FAF8F5]"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="border-t border-white/10 px-5 py-5">

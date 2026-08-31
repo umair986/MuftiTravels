@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FiAlertTriangle,
+  FiFileText,
   FiSave,
   FiUploadCloud,
   FiMail,
   FiPhone,
 } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { createDraftFromLead } from "@/lib/invoices";
 import {
   META_LEAD_STATUSES,
   STATUS_STYLES,
@@ -59,6 +62,28 @@ export default function AdminMetaLeadsPage() {
   const [supabase] = useState(createClient);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+  const router = useRouter();
+
+  /**
+   * Lead to bill in two clicks. Details are copied into an editable draft,
+   * never linked back — see createDraftFromLead.
+   */
+  async function createInvoice(lead: MetaLeadRecord) {
+    if (!supabase) return;
+    const { id, error: createError } = await createDraftFromLead(supabase, {
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      metaLeadId: lead.id,
+    });
+    if (!id) {
+      toast.error("Could not start an invoice.", {
+        description: createError ?? undefined,
+      });
+      return;
+    }
+    router.push(`/admin/invoices/${id}`);
+  }
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -394,6 +419,7 @@ export default function AdminMetaLeadsPage() {
             lead={lead}
             onStatusChange={updateStatus}
             onSaveNotes={saveNotes}
+            onCreateInvoice={createInvoice}
           />
         ))}
 
@@ -571,10 +597,12 @@ function LeadCard({
   lead,
   onStatusChange,
   onSaveNotes,
+  onCreateInvoice,
 }: {
   lead: MetaLeadRecord;
   onStatusChange: (id: string, status: MetaLeadStatus) => void;
   onSaveNotes: (id: string, notes: string) => Promise<{ ok: boolean }>;
+  onCreateInvoice: (lead: MetaLeadRecord) => void;
 }) {
   const [notes, setNotes] = useState(lead.admin_notes ?? "");
   const [isSaving, setIsSaving] = useState(false);
@@ -620,6 +648,13 @@ function LeadCard({
               <FaWhatsapp className="h-4 w-4" /> WhatsApp
             </a>
           )}
+          <button
+            type="button"
+            onClick={() => onCreateInvoice(lead)}
+            className="inline-flex items-center gap-2 rounded-lg border border-stone-200 px-3.5 py-2.5 font-body text-sm font-bold text-[#526168] transition hover:border-[#D4AF37] hover:text-[#997A15]"
+          >
+            <FiFileText className="h-4 w-4" /> Invoice
+          </button>
           <label className="sr-only" htmlFor={`status-${lead.id}`}>
             Status for {lead.name || "this lead"}
           </label>

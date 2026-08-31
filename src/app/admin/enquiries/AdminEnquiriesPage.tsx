@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FiDownload, FiMail, FiPhone, FiSave } from "react-icons/fi";
+import { FiDownload, FiFileText, FiMail, FiPhone, FiSave } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { createDraftFromLead } from "@/lib/invoices";
 import { useToast } from "../../components/ui/toast/useToast";
 import AdminLoginForm from "../AdminLoginForm";
 import AdminShell from "../AdminShell";
@@ -72,6 +74,7 @@ export default function AdminEnquiriesPage() {
   const [error, setError] = useState("");
   const [supabase] = useState(createClient);
   const toast = useToast();
+  const router = useRouter();
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -204,6 +207,25 @@ export default function AdminEnquiriesPage() {
       ),
     );
     return { ok: true };
+  }
+
+  /**
+   * Lead to bill in two clicks. The details are copied into an editable draft,
+   * not linked — see createDraftFromLead.
+   */
+  async function createInvoice(enquiry: Enquiry) {
+    if (!supabase) return;
+    const { id, error: createError } = await createDraftFromLead(supabase, {
+      name: enquiry.name,
+      phone: enquiry.phone,
+      email: enquiry.email,
+      enquiryId: enquiry.id,
+    });
+    if (!id) {
+      toast.error("Could not start an invoice.", { description: createError ?? undefined });
+      return;
+    }
+    router.push(`/admin/invoices/${id}`);
   }
 
   const filtered = useMemo(() => {
@@ -371,6 +393,7 @@ export default function AdminEnquiriesPage() {
             enquiry={enquiry}
             onStatusChange={updateStatus}
             onSaveNotes={saveNotes}
+            onCreateInvoice={createInvoice}
           />
         ))}
 
@@ -416,10 +439,12 @@ function EnquiryCard({
   enquiry,
   onStatusChange,
   onSaveNotes,
+  onCreateInvoice,
 }: {
   enquiry: Enquiry;
   onStatusChange: (id: string, status: Status) => void;
   onSaveNotes: (id: string, notes: string) => Promise<{ ok: boolean }>;
+  onCreateInvoice: (enquiry: Enquiry) => void;
 }) {
   const [notes, setNotes] = useState(enquiry.admin_notes ?? "");
   const [isSaving, setIsSaving] = useState(false);
@@ -464,6 +489,13 @@ function EnquiryCard({
               <FaWhatsapp className="h-4 w-4" /> WhatsApp
             </a>
           )}
+          <button
+            type="button"
+            onClick={() => onCreateInvoice(enquiry)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 px-3 py-2 font-body text-xs font-bold text-[#526168] transition hover:border-[#D4AF37] hover:text-[#997A15]"
+          >
+            <FiFileText className="h-4 w-4" /> Invoice
+          </button>
           <label>
             <span className="sr-only">Status for {enquiry.name}</span>
             <select
