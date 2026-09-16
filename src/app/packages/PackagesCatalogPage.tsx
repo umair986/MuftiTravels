@@ -1,20 +1,11 @@
 "use client";
 
 import { FaKaaba, FaHotel, FaMosque, FaMoon, FaStarAndCrescent } from "react-icons/fa";
-import PackageCardMumbai from "@/app/components/PackageCard/UmrahFixedGroup/PackageCardMumbai";
-import PackageCardLucknow from "@/app/components/PackageCard/UmrahFixedGroup/PackageCardLucknow";
-import PackageCardDelhi from "@/app/components/PackageCard/UmrahFixedGroup/PackageCardDelhi";
-import PackageCard14Days from "@/app/components/PackageCard/UmrahLandPackage/PackageCard14Days";
-import PackageCard30Days from "@/app/components/PackageCard/UmrahLandPackage/PackageCard30Days";
-import PackageCard25Days from "@/app/components/PackageCard/UmrahLandPackage/PackageCard25Days";
-import ZiyaratCard from "@/app/components/PackageCard/Ziyarat/ZiyaratCard";
 import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
 import Footer from "@/app/components/Footer";
 import type { CmsPackageRecord } from "@/lib/packages";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
 import CatalogFilters, { type CatalogFilter } from "./CatalogFilters";
-
-const noop = () => undefined;
 
 const groupDefinitions = [
   {
@@ -51,73 +42,6 @@ const groupDefinitions = [
     icon: <FaMoon />,
   },
 ];
-
-/** Static cards shown only when a category has no published CMS packages. */
-function fallbackFor(category: string) {
-  // Hajj and Ramzan are CMS-only: with nothing published the section hides
-  // itself rather than showing unrelated packages.
-  if (category === "Hajj" || category === "Ramzan") return null;
-  if (category === "Umrah Fixed Group") {
-    return (
-      <>
-        <PackageCardMumbai handleBookNow={noop} />
-        <PackageCardLucknow handleBookNow={noop} />
-        <PackageCardDelhi handleBookNow={noop} />
-      </>
-    );
-  }
-  if (category === "Umrah Land Package") {
-    return (
-      <>
-        <PackageCard14Days handleBookNow={noop} />
-        <PackageCard30Days handleBookNow={noop} />
-        <PackageCard25Days handleBookNow={noop} />
-      </>
-    );
-  }
-  return (
-    <>
-      <ZiyaratCard
-        title="Umrah Plus Turkey Heritage Tour"
-        image="/packages/package1.webp"
-        price="₹2,30,786"
-        days="18 Days / 17 Nights"
-        destinations="Makkah • Madinah • Istanbul • Bursa"
-        inclusions={["Umrah Visa", "Turkey E-Visa", "Bosphorus Cruise", "5★ Hotels"]}
-        reviews={26}
-        badgeText="Turkey Combo"
-        handleBookNow={noop}
-      />
-      <ZiyaratCard
-        title="Umrah Plus Dubai Luxury City Break"
-        image="/packages/package2.webp"
-        price="₹1,49,786"
-        days="16 Days / 15 Nights"
-        destinations="Makkah • Madinah • Dubai Marina"
-        inclusions={["Umrah Visa", "Dubai Visa", "Desert Safari", "4★/5★ Hotels"]}
-        reviews={28}
-        badgeText="Dubai Combo"
-        handleBookNow={noop}
-      />
-      <ZiyaratCard
-        title="Umrah Plus Baitul Muqaddas (Al-Aqsa)"
-        image="/packages/package3.webp"
-        price="₹1,75,786"
-        days="20 Days / 19 Nights"
-        destinations="Makkah • Madinah • Jerusalem • Jordan"
-        inclusions={[
-          "Masjid Al-Aqsa Visit",
-          "Jordan Visa",
-          "Historical Ziyarat",
-          "VIP Transport",
-        ]}
-        reviews={33}
-        badgeText="3 Sacred Mosques"
-        handleBookNow={noop}
-      />
-    </>
-  );
-}
 
 /**
  * Narrow the catalog to what the visitor asked for in the hero search.
@@ -184,11 +108,11 @@ export default function PackagesCatalogPage({
             <CatalogFilters filter={filter} matchCount={matches.length} />
           )}
 
+          {/* Every package comes from the admin; a category with nothing
+              published is left out rather than padded with placeholders. */}
           {groups
-            .filter(
-              (group) =>
-                visible.some((item) => item.category === group.category) ||
-                fallbackFor(group.category) !== null,
+            .filter((group) =>
+              visible.some((item) => item.category === group.category),
             )
             .map((group) => (
             <PackageGroup
@@ -201,7 +125,6 @@ export default function PackagesCatalogPage({
               )}
               tiers={tiers}
               tags={tags}
-              fallback={fallbackFor(group.category)}
             />
           ))}
         </div>
@@ -218,7 +141,6 @@ function PackageGroup({
   packages,
   tiers,
   tags,
-  fallback,
 }: {
   title: string;
   description: string;
@@ -226,7 +148,6 @@ function PackageGroup({
   packages: CmsPackageRecord[];
   tiers: PackageTierRecord[];
   tags: PackageTagRecord[];
-  fallback: React.ReactNode;
 }) {
   return (
     <section className="mt-20 first:mt-16">
@@ -244,7 +165,7 @@ function PackageGroup({
           packages={packages}
           tiers={tiers}
           tags={tags}
-          fallback={fallback}
+          fallback={null}
         />
       </div>
     </section>

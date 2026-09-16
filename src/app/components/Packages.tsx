@@ -1,26 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FaKaaba, FaHotel, FaMosque, FaMoon, FaStarAndCrescent } from "react-icons/fa";
 import { FiArrowRight, FiPhoneCall } from "react-icons/fi";
 
-// Umrah Fixed Group Cards
-import PackageCardMumbai from "./PackageCard/UmrahFixedGroup/PackageCardMumbai";
-import PackageCardLucknow from "./PackageCard/UmrahFixedGroup/PackageCardLucknow";
-import PackageCardDelhi from "./PackageCard/UmrahFixedGroup/PackageCardDelhi";
-
-// Umrah Land Package Cards
-import PackageCard14Days from "./PackageCard/UmrahLandPackage/PackageCard14Days";
-import PackageCard30Days from "./PackageCard/UmrahLandPackage/PackageCard30Days";
-import PackageCard25Days from "./PackageCard/UmrahLandPackage/PackageCard25Days";
 import ManagedPackagesCatalog from "./ManagedPackagesCatalog";
 import type { CmsPackageRecord } from "@/lib/packages";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
-
-// Ziyarat Card
-import ZiyaratCard from "./PackageCard/Ziyarat/ZiyaratCard";
 
 const tabs = [
   {
@@ -47,132 +34,21 @@ export default function Packages({
   tiers: PackageTierRecord[];
   tags: PackageTagRecord[];
 }) {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState("Umrah Fixed Group");
+  const activeLabel =
+    tabs.find((tab) => tab.id === activeTab)?.label ?? activeTab;
 
-  // Fixed Group handlers
-  const handleBookNowMumbai = () => {
-    router.push("/packages/umrah-fixed-group/mumbai");
-  };
-  const handleBookNowLucknow = () => {
-    router.push("/packages/umrah-fixed-group/lucknow");
-  };
-  const handleBookNowDelhi = () => {
-    router.push("/packages/umrah-fixed-group/delhi");
-  };
-
-  // Land Package handlers
-  const handleBookNow14DaysLand = () => {
-    router.push("/packages/umrah-land-package/14-days-umrah-land-package");
-  };
-  const handleBookNow30DaysLand = () => {
-    router.push(
-      "/packages/umrah-land-package/30-days-super-saver-land-package",
-    );
-  };
-  const handleBookNow25DaysLand = () => {
-    router.push(
-      "/packages/umrah-land-package/25-days-super-saver-land-package",
-    );
-  };
-
-  // Ziyarat handlers
-  const handleBookNowZiyarat = (slug: string) => {
-    router.push(`/packages/ziyarat/${slug}`);
-  };
-
-  const renderCards = () => {
-    if (activeTab === "Umrah Fixed Group") {
-      return (
-        <>
-          <PackageCardMumbai handleBookNow={handleBookNowMumbai} />
-          <PackageCardLucknow handleBookNow={handleBookNowLucknow} />
-          <PackageCardDelhi handleBookNow={handleBookNowDelhi} />
-        </>
-      );
-    }
-    if (activeTab === "Umrah Land Package") {
-      return (
-        <>
-          <PackageCard14Days handleBookNow={handleBookNow14DaysLand} />
-          <PackageCard30Days handleBookNow={handleBookNow30DaysLand} />
-          <PackageCard25Days handleBookNow={handleBookNow25DaysLand} />
-        </>
-      );
-    }
-    if (activeTab === "Hajj" || activeTab === "Ramzan") {
-      return (
-        <p className="col-span-full rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center font-body text-sm text-stone-600">
-          No {activeTab === "Hajj" ? "Hajj" : "Ramadan"} packages are published
-          yet.{" "}
-          <Link
-            href="/#contact"
-            className="font-semibold text-[#946E19] underline"
-          >
-            Ask us what is coming
-          </Link>
-          .
-        </p>
-      );
-    }
-    if (activeTab === "Ziyarat") {
-      return (
-        <>
-          <ZiyaratCard
-            title="Umrah Plus Turkey Heritage Tour"
-            image="/packages/package1.webp"
-            price="₹2,30,786"
-            days="18 Days / 17 Nights"
-            destinations="Makkah • Madinah • Istanbul • Bursa"
-            inclusions={[
-              "Umrah Visa",
-              "Turkey E-Visa",
-              "Bosphorus Cruise",
-              "5★ Hotels",
-            ]}
-            reviews={26}
-            badgeText="Turkey Combo"
-            handleBookNow={() => handleBookNowZiyarat("umrah-plus-turkey")}
-          />
-          <ZiyaratCard
-            title="Umrah Plus Dubai Luxury City Break"
-            image="/packages/package2.webp"
-            price="₹1,49,786"
-            days="16 Days / 15 Nights"
-            destinations="Makkah • Madinah • Dubai Marina"
-            inclusions={[
-              "Umrah Visa",
-              "Dubai Visa",
-              "Desert Safari",
-              "4★/5★ Hotels",
-            ]}
-            reviews={28}
-            badgeText="Dubai Combo"
-            handleBookNow={() => handleBookNowZiyarat("umrah-plus-dubai")}
-          />
-          <ZiyaratCard
-            title="Umrah Plus Baitul Muqaddas (Al-Aqsa)"
-            image="/packages/package3.webp"
-            price="₹1,75,786"
-            days="20 Days / 19 Nights"
-            destinations="Makkah • Madinah • Jerusalem • Jordan"
-            inclusions={[
-              "Masjid Al-Aqsa Visit",
-              "Jordan Visa",
-              "Historical Ziyarat",
-              "VIP Transport",
-            ]}
-            reviews={33}
-            badgeText="3 Sacred Mosques"
-            handleBookNow={() =>
-              handleBookNowZiyarat("umrah-plus-baitul-muqaddas")
-            }
-          />
-        </>
-      );
-    }
-    return null;
-  };
+  // Every card comes from the admin. A tab with nothing published says so
+  // rather than showing placeholder packages with invented prices.
+  const emptyTab = (
+    <p className="col-span-full rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center font-body text-sm text-stone-600">
+      No {activeLabel} packages are published right now.{" "}
+      <Link href="/#contact" className="font-semibold text-[#946E19] underline">
+        Ask us what is coming
+      </Link>
+      .
+    </p>
+  );
 
   return (
     <section
@@ -229,7 +105,7 @@ export default function Packages({
             packages={packages.filter((item) => item.category === activeTab)}
             tiers={tiers}
             tags={tags}
-            fallback={renderCards()}
+            fallback={emptyTab}
           />
         </div>
 

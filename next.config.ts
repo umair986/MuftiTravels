@@ -33,6 +33,21 @@ const nextConfig: NextConfig = {
    * meaningful CSP needs nonces and would break the site if bolted on blind.
    * Worth doing as its own change, in Report-Only first.
    */
+  /**
+   * The fixed-group city packages used to be hardcoded pages at
+   * /packages/umrah-fixed-group/{mumbai,delhi,lucknow}, priced separately from
+   * the admin. They are gone; the admin records are the only copy. Permanent
+   * redirects keep links already shared on WhatsApp working and pass their
+   * search ranking to the pages that replaced them.
+   */
+  async redirects() {
+    return ["mumbai", "delhi", "lucknow"].map((city) => ({
+      source: `/packages/umrah-fixed-group/${city}`,
+      destination: `/packages/umrah-fixed-group/15-days-regular-umrah-from-${city}`,
+      permanent: true,
+    }));
+  },
+
   async headers() {
     return [
       {

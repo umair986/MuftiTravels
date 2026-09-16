@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { packageData } from "@/app/components/packageData";
 import { CATEGORY_BY_SLUG } from "@/lib/categories";
 import { cmsPackageToPackageData } from "@/lib/packages";
 import { getPublicCatalog } from "@/lib/packages.server";
@@ -16,13 +15,7 @@ type PackageRouteParams = {
 
 async function getPackage({ category, slug }: PackageRouteParams) {
   const categoryName = CATEGORY_BY_SLUG[category];
-  // Only three categories carry hardcoded fallbacks; the rest are CMS-only.
-  const staticPackage =
-    categoryName && categoryName in packageData
-      ? packageData[categoryName as keyof typeof packageData].find(
-          (item) => item.slug === slug,
-        )
-      : undefined;
+  // Every package comes from the admin; there is no hardcoded fallback.
 
   if (!categoryName) return { categoryName, pkg: undefined };
 
@@ -33,7 +26,7 @@ async function getPackage({ category, slug }: PackageRouteParams) {
 
   return {
     categoryName,
-    pkg: record ? cmsPackageToPackageData(record) : staticPackage,
+    pkg: record ? cmsPackageToPackageData(record) : undefined,
     // Kept alongside the display shape so the page can emit Product schema
     // from the real prices rather than re-deriving them.
     record,

@@ -7,7 +7,6 @@ import About from "./components/About";
 import WhyChooseUs from "./components/WhyChooseUs";
 import JourneyTimeline from "./components/JourneyTimeline";
 import Packages from "./components/Packages";
-import Offers from "./components/Offers";
 import AffiliatedPartners from "./components/AffiliatedPartners";
 import Testimonials from "./components/Testimonials";
 import GallerySection from "./components/GallerySection";
@@ -42,19 +41,16 @@ export default async function Home() {
       {/* 6. Why Choose Us (Bento Grid Architecture) */}
       <WhyChooseUs />
 
-      {/* 7. Special Offers & Ramadan Early Bird Perks */}
-      <Offers />
-
-      {/* 8. Pilgrim Reflections & Testimonials */}
+      {/* 7. Pilgrim Reflections & Testimonials */}
       <Testimonials />
 
-      {/* 9. Sacred Moments & Holy Sites Gallery */}
+      {/* 8. Sacred Moments & Holy Sites Gallery */}
       <GallerySection collections={galleryCollections} />
 
-      {/* 10. Consultation & Contact Experience */}
+      {/* 9. Consultation & Contact Experience */}
       <ContactSection />
 
-      {/* 11. Luxury Obsidian Footer */}
+      {/* 10. Luxury Obsidian Footer */}
       <Footer />
     </main>
   );
