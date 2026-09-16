@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FiDownload, FiFileText, FiMail, FiPhone, FiSave } from "react-icons/fi";
+import {
+  FiDownload,
+  FiFileText,
+  FiMail,
+  FiPhone,
+  FiSave,
+  FiTrash2,
+} from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -96,6 +103,7 @@ export default function AdminEnquiriesPage() {
     let query = supabase
       .from("enquiries")
       .select("*", { count: "exact" })
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
     if (statusFilter !== "all") query = query.eq("status", statusFilter);
@@ -104,7 +112,8 @@ export default function AdminEnquiriesPage() {
     const countFor = (status?: Status) => {
       let q = supabase
         .from("enquiries")
-        .select("id", { count: "exact", head: true });
+        .select("id", { count: "exact", head: true })
+        .is("deleted_at", null);
       if (status) q = q.eq("status", status);
       return q;
     };
@@ -210,6 +219,53 @@ export default function AdminEnquiriesPage() {
   }
 
   /**
+   * Soft delete. The row keeps its place in the table and simply stops being
+   * listed — a customer's phone number is not recoverable from anywhere else,
+   * and an invoice raised from this enquiry still points at it. Undo is offered
+   * on the toast because that is when a mis-click is noticed; after that it is
+   * a `set deleted_at = null` in the SQL editor.
+   */
+  async function deleteEnquiry(enquiry: Enquiry) {
+    if (!supabase) return;
+    const { error: deleteError } = await supabase
+      .from("enquiries")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", enquiry.id);
+
+    if (deleteError) {
+      toast.error("Could not remove that enquiry.", {
+        description: deleteError.message,
+      });
+      return;
+    }
+
+    setEnquiries((current) => current.filter((item) => item.id !== enquiry.id));
+    toast.success(`${enquiry.name || "Enquiry"} removed.`, {
+      // Longer than the 4s default: undo is only useful if it is still on
+      // screen when the mistake registers.
+      duration: 10000,
+      action: { label: "Undo", onClick: () => void restoreEnquiry(enquiry.id) },
+    });
+    void load();
+  }
+
+  async function restoreEnquiry(id: string) {
+    if (!supabase) return;
+    const { error: restoreError } = await supabase
+      .from("enquiries")
+      .update({ deleted_at: null })
+      .eq("id", id);
+    if (restoreError) {
+      toast.error("Could not restore that enquiry.", {
+        description: restoreError.message,
+      });
+      return;
+    }
+    toast.success("Enquiry restored.");
+    void load();
+  }
+
+  /**
    * Lead to bill in two clicks. The details are copied into an editable draft,
    * not linked — see createDraftFromLead.
    */
@@ -247,6 +303,7 @@ export default function AdminEnquiriesPage() {
     let exportQuery = supabase
       .from("enquiries")
       .select("*")
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(5000);
     if (statusFilter !== "all")
@@ -394,6 +451,7 @@ export default function AdminEnquiriesPage() {
             onStatusChange={updateStatus}
             onSaveNotes={saveNotes}
             onCreateInvoice={createInvoice}
+            onDelete={deleteEnquiry}
           />
         ))}
 
@@ -440,14 +498,17 @@ function EnquiryCard({
   onStatusChange,
   onSaveNotes,
   onCreateInvoice,
+  onDelete,
 }: {
   enquiry: Enquiry;
   onStatusChange: (id: string, status: Status) => void;
   onSaveNotes: (id: string, notes: string) => Promise<{ ok: boolean }>;
   onCreateInvoice: (enquiry: Enquiry) => void;
+  onDelete: (enquiry: Enquiry) => void;
 }) {
   const [notes, setNotes] = useState(enquiry.admin_notes ?? "");
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   useEffect(() => setNotes(enquiry.admin_notes ?? ""), [enquiry.admin_notes]);
 
   const isDirty = notes !== (enquiry.admin_notes ?? "");
@@ -510,6 +571,40 @@ function EnquiryCard({
               <option value="closed">Closed</option>
             </select>
           </label>
+
+          {/* Two clicks, because the row carries the only copy of this
+              customer's number. */}
+          {isConfirmingDelete ? (
+            <span className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsConfirmingDelete(false);
+                  onDelete(enquiry);
+                }}
+                className="rounded-lg bg-red-600 px-3 py-2 font-body text-xs font-bold text-white transition hover:bg-red-700"
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsConfirmingDelete(false)}
+                className="rounded-lg px-2 py-2 font-body text-xs text-[#526168] hover:underline"
+              >
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsConfirmingDelete(true)}
+              aria-label={`Remove ${enquiry.name || "enquiry"}`}
+              title="Remove enquiry"
+              className="rounded-lg p-2 text-[#526168] transition hover:bg-red-50 hover:text-red-600"
+            >
+              <FiTrash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import {
   FiAlertTriangle,
   FiFileText,
   FiSave,
+  FiTrash2,
   FiUploadCloud,
   FiMail,
   FiPhone,
@@ -102,6 +103,7 @@ export default function AdminMetaLeadsPage() {
     let query = supabase
       .from("meta_leads")
       .select("*", { count: "exact" })
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
     if (statusFilter !== "all") query = query.eq("status", statusFilter);
@@ -109,7 +111,8 @@ export default function AdminMetaLeadsPage() {
     const countFor = (status?: MetaLeadStatus) => {
       let q = supabase
         .from("meta_leads")
-        .select("id", { count: "exact", head: true });
+        .select("id", { count: "exact", head: true })
+        .is("deleted_at", null);
       if (status) q = q.eq("status", status);
       return q;
     };
@@ -209,10 +212,13 @@ export default function AdminMetaLeadsPage() {
     }
 
     // The honest number of new rows is the change in total, since duplicates
-    // are silently ignored by the upsert rather than reported.
+    // are silently ignored by the upsert rather than reported. Deleted leads
+    // are excluded on both sides of the subtraction: a removed lead whose row
+    // is in this sheet again stays removed, and counts as a duplicate.
     const { count: after } = await supabase
       .from("meta_leads")
-      .select("id", { count: "exact", head: true });
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null);
     const added = Math.max(0, (after ?? 0) - before);
     const duplicates = preview.rows.length - added - failed;
 
@@ -289,6 +295,52 @@ export default function AdminMetaLeadsPage() {
       ),
     );
     return { ok: true };
+  }
+
+  /**
+   * Soft delete, and it has to be: the table dedupes on dedupe_key, so a row
+   * removed outright would come straight back — still marked New — with the
+   * next sheet upload, since every export overlaps the last one. Keeping the
+   * row keeps the key, and the import's ignoreDuplicates leaves it alone.
+   */
+  async function deleteLead(lead: MetaLeadRecord) {
+    if (!supabase) return;
+    const { error: deleteError } = await supabase
+      .from("meta_leads")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", lead.id);
+
+    if (deleteError) {
+      toast.error("Could not remove that lead.", {
+        description: deleteError.message,
+      });
+      return;
+    }
+
+    setLeads((current) => current.filter((item) => item.id !== lead.id));
+    toast.success(`${lead.name || "Lead"} removed.`, {
+      // Longer than the 4s default: undo is only useful if it is still on
+      // screen when the mistake registers.
+      duration: 10000,
+      action: { label: "Undo", onClick: () => void restoreLead(lead.id) },
+    });
+    void load();
+  }
+
+  async function restoreLead(id: string) {
+    if (!supabase) return;
+    const { error: restoreError } = await supabase
+      .from("meta_leads")
+      .update({ deleted_at: null })
+      .eq("id", id);
+    if (restoreError) {
+      toast.error("Could not restore that lead.", {
+        description: restoreError.message,
+      });
+      return;
+    }
+    toast.success("Lead restored.");
+    void load();
   }
 
   const filtered = useMemo(() => {
@@ -420,6 +472,7 @@ export default function AdminMetaLeadsPage() {
             onStatusChange={updateStatus}
             onSaveNotes={saveNotes}
             onCreateInvoice={createInvoice}
+            onDelete={deleteLead}
           />
         ))}
 
@@ -598,14 +651,17 @@ function LeadCard({
   onStatusChange,
   onSaveNotes,
   onCreateInvoice,
+  onDelete,
 }: {
   lead: MetaLeadRecord;
   onStatusChange: (id: string, status: MetaLeadStatus) => void;
   onSaveNotes: (id: string, notes: string) => Promise<{ ok: boolean }>;
   onCreateInvoice: (lead: MetaLeadRecord) => void;
+  onDelete: (lead: MetaLeadRecord) => void;
 }) {
   const [notes, setNotes] = useState(lead.admin_notes ?? "");
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   useEffect(() => setNotes(lead.admin_notes ?? ""), [lead.admin_notes]);
 
   const isDirty = notes !== (lead.admin_notes ?? "");
@@ -672,6 +728,40 @@ function LeadCard({
               </option>
             ))}
           </select>
+
+          {/* Two clicks — the sheet this row came from is not re-importable
+              once it has been removed, by design. */}
+          {isConfirmingDelete ? (
+            <span className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsConfirmingDelete(false);
+                  onDelete(lead);
+                }}
+                className="rounded-lg bg-red-600 px-3.5 py-2.5 font-body text-sm font-bold text-white transition hover:bg-red-700"
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsConfirmingDelete(false)}
+                className="rounded-lg px-2 py-2.5 font-body text-sm text-[#526168] hover:underline"
+              >
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsConfirmingDelete(true)}
+              aria-label={`Remove ${lead.name || "this lead"}`}
+              title="Remove lead"
+              className="rounded-lg p-2.5 text-[#526168] transition hover:bg-red-50 hover:text-red-600"
+            >
+              <FiTrash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 

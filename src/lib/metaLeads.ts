@@ -54,6 +54,9 @@ export type MetaLeadRecord = {
   admin_notes: string;
   created_at: string;
   imported_at: string;
+  /** Set when the lead is removed from the list; the row itself stays, so a
+      re-imported sheet cannot resurrect it. See 020_lead_soft_delete.sql. */
+  deleted_at: string | null;
 };
 
 /** A row ready to insert. Mirrors the table minus its defaults. */

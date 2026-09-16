@@ -65,7 +65,8 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
         client
           .from("enquiries")
           .select("id", { count: "exact", head: true })
-          .eq("status", "new"),
+          .eq("status", "new")
+          .is("deleted_at", null),
         client
           .from("gallery_photos")
           .select("id", { count: "exact", head: true }),
@@ -73,6 +74,7 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
           .from("enquiries")
           .select("id, name, phone, package_name, created_at")
           .eq("status", "new")
+          .is("deleted_at", null)
           .order("created_at", { ascending: false })
           .limit(5),
       ]);
