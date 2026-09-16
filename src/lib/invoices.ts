@@ -16,6 +16,7 @@ import type {
   TaxMode,
 } from "./finance";
 import { formatRupees } from "./money";
+import type { InvoicePolicyList } from "./siteContent";
 
 export type InvoiceItemRecord = {
   id: string;
@@ -62,7 +63,41 @@ export type InvoiceRecord = {
   amount_in_words: string;
 
   notes: string;
-  terms: string;
+
+  /* `terms` is gone from this type on purpose. The column still exists and
+     `select *` still returns it — migration 022 keeps it, because issued
+     invoices hold text there that was printed and sent — but nothing in the
+     app reads or writes it any more, and a field on the type is a standing
+     invitation to start again. */
+
+  /**
+   * What this invoice states about payment: settled, or pending.
+   *
+   * Set by the admin, NOT derived from invoice_payments. The invoice goes out
+   * once the money has cleared and part payments are what receipts are for, so
+   * the bill needs one plain statement rather than a running balance — and it
+   * has to still be true a year later, when the ledger has moved on.
+   *
+   * The editor warns when this and the payments ledger disagree.
+   */
+  paid_in_full: boolean;
+
+  /**
+   * Whether this invoice prints the site's policies and important notes.
+   *
+   * A package bill should; a standalone visa fee or a ticket reissue should
+   * not, which is why this is per-invoice rather than a business setting.
+   */
+  show_policies: boolean;
+  /**
+   * The policy text as it read when this invoice was issued.
+   *
+   * Written by issue_invoice() and frozen by the guard trigger (migration
+   * 021), never by this app. A draft's is empty, and the editor renders the
+   * live lists in its place so the preview shows what issuing will capture.
+   */
+  policy_snapshot: InvoicePolicyList[];
+
   pdf_path: string;
 
   issued_at: string | null;
@@ -127,7 +162,6 @@ export type BusinessProfileRecord = {
   logo_data_uri: string;
   signature_data_uri: string;
   invoice_prefix: string;
-  invoice_terms: string;
   default_tax_mode: TaxMode;
   default_tax_rate_bp: number;
 };
@@ -184,9 +218,62 @@ export function newId(): string {
  * The invoice number contains slashes (MT/26-27/0042), which Supabase storage
  * would read as folders. Flattened, and prefixed with the row id so two
  * invoices can never collide even if a number were somehow reused.
+ *
+ * The paid state is part of the path for the same reason the payment set is
+ * part of a receipt's: the invoices bucket has no update policy, on purpose —
+ * a PDF that has been sent to a customer may not be rewritten. Marking an
+ * issued invoice paid therefore writes a SECOND file beside the first rather
+ * than replacing it. The old one still opens from the link the customer was
+ * given, which is correct: it is what they were sent.
  */
-export function invoicePdfPath(invoiceId: string, number: string): string {
-  return `${invoiceId}/${number.replace(/\//g, "-")}.pdf`;
+export function invoicePdfPath(
+  invoiceId: string,
+  number: string,
+  paidInFull = false,
+): string {
+  const base = `${invoiceId}/${number.replace(/\//g, "-")}`;
+  return paidInFull ? `${base}-paid.pdf` : `${base}.pdf`;
+}
+
+/**
+ * Storage object path for a receipt.
+ *
+ * The invoices bucket has no update policy on purpose — an issued PDF is the
+ * document the customer received and may not be rewritten. A receipt is
+ * regenerated every time a payment lands, so it cannot share that path and
+ * cannot overwrite anything either. The answer is one file per payment state:
+ * the signature below changes whenever a payment is added, edited or removed,
+ * so re-sharing an unchanged receipt lands on the file that already exists (the
+ * caller signs it instead of uploading), and a changed one writes a new file.
+ *
+ * Older receipts stay behind, which is correct rather than untidy: each one was
+ * sent to a customer and should still open from the link they were given.
+ */
+export function receiptPdfPath(
+  invoiceId: string,
+  number: string,
+  payments: InvoicePayment[],
+): string {
+  return `${invoiceId}/receipts/${number.replace(/\//g, "-")}-${receiptSignature(payments)}.pdf`;
+}
+
+/**
+ * A short, stable fingerprint of a payment set. Not a security token — it only
+ * has to differ when the printed rows would differ, which the amount, the date
+ * and the row id between them cover.
+ */
+export function receiptSignature(payments: InvoicePayment[]): string {
+  const source = payments
+    .map((row) => `${row.id}:${row.paid_on}:${row.amount_paise}:${row.method}`)
+    .join("|");
+
+  // FNV-1a. Deterministic across browsers, unlike anything hash-order based.
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `${payments.length}-${hash.toString(36)}`;
 }
 
 /** How long an invoice link shared over WhatsApp stays valid. */
@@ -229,6 +316,46 @@ export function whatsappInvoiceUrl({
 }
 
 /**
+ * The same deep link for a receipt.
+ *
+ * Separate from the invoice message because the two say opposite things: one
+ * asks for money, the other confirms it arrived. Sending "please find your
+ * invoice" to somebody who has just cleared their balance is the kind of small
+ * wrongness a customer remembers.
+ */
+export function whatsappReceiptUrl({
+  phone,
+  name,
+  number,
+  paidPaise,
+  balancePaise,
+  link,
+}: {
+  phone: string;
+  name: string;
+  number: string;
+  paidPaise: number;
+  balancePaise: number;
+  link: string;
+}): string | null {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  const withCountry = digits.length === 10 ? `91${digits}` : digits;
+
+  const settled = balancePaise <= 0;
+  const message = [
+    `As-salamu alaykum ${name || ""}`.trim() + ",",
+    settled
+      ? `Thank you — we have received ${formatRupees(paidPaise, { trimZeroPaise: true })} in full against invoice ${number}. There are no dues pending. Your receipt:`
+      : `We have received ${formatRupees(paidPaise, { trimZeroPaise: true })} against invoice ${number}. The balance is ${formatRupees(balancePaise, { trimZeroPaise: true })}. Your statement:`,
+    link,
+    "This link is valid for 7 days.",
+  ].join("\n\n");
+
+  return `https://wa.me/${withCountry}?text=${encodeURIComponent(message)}`;
+}
+
+/**
  * Start a draft from an enquiry or a Meta lead.
  *
  * The customer details are COPIED into editable fields, once. The draft never
@@ -251,7 +378,7 @@ export async function createDraftFromLead(
 ): Promise<{ id: string | null; error: string | null }> {
   const { data: business } = await supabase
     .from("business_profile")
-    .select("default_tax_mode, default_tax_rate_bp, invoice_terms")
+    .select("default_tax_mode, default_tax_rate_bp")
     .eq("id", 1)
     .maybeSingle();
 
@@ -267,7 +394,6 @@ export async function createDraftFromLead(
       source_meta_lead_id: seed.metaLeadId ?? null,
       tax_mode: taxMode,
       tax_rate_bp: taxMode === "none" ? 0 : (business?.default_tax_rate_bp ?? 0),
-      terms: business?.invoice_terms ?? "",
     })
     .select("id")
     .single();

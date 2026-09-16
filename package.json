@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "tsx --test src/lib/*.test.ts",
-    "test:pdf": "esbuild scripts/render-invoice-check.mts --bundle --platform=node --format=esm --target=node22 --jsx=automatic --external:pdfkit --outfile=node_modules/.cache/mt/render-check.mjs --log-level=error && node node_modules/.cache/mt/render-check.mjs"
+    "test:pdf": "esbuild scripts/render-invoice-check.mts --bundle --platform=node --format=esm --target=node22 --jsx=automatic --external:pdfkit --outfile=node_modules/.cache/mt/render-check.mjs --log-level=error && node node_modules/.cache/mt/render-check.mjs",
+    "sample:pdf": "esbuild scripts/render-invoice-sample.mts --bundle --platform=node --format=esm --target=node22 --jsx=automatic --external:pdfkit --external:sharp --outfile=node_modules/.cache/mt/render-sample.mjs --log-level=error && node node_modules/.cache/mt/render-sample.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.6",

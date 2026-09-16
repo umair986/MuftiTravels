@@ -244,7 +244,6 @@ export default function AdminInvoicesPage() {
           business?.default_tax_mode === "none"
             ? 0
             : (business?.default_tax_rate_bp ?? 0),
-        terms: business?.invoice_terms ?? "",
       })
       .select("id")
       .single();

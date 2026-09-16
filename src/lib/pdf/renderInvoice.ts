@@ -1,8 +1,11 @@
 import type {
   BusinessProfileRecord,
   InvoiceItemRecord,
+  InvoicePayment,
   InvoiceRecord,
 } from "../invoices";
+import type { InvoicePolicyList } from "../siteContent";
+import type { InvoiceDocumentVariant } from "./InvoiceDocument";
 
 /**
  * Turn an invoice into a PDF blob, in the browser.
@@ -20,10 +23,18 @@ export async function renderInvoicePdf({
   invoice,
   items,
   business,
+  payments,
+  policies,
+  variant = "invoice",
 }: {
   invoice: InvoiceRecord;
   items: InvoiceItemRecord[];
   business: BusinessProfileRecord;
+  /** Receipts against this invoice, oldest first. Omitted on the issued bill. */
+  payments?: InvoicePayment[];
+  /** The frozen snapshot for an issued invoice, the live lists for a draft. */
+  policies?: InvoicePolicyList[];
+  variant?: InvoiceDocumentVariant;
 }): Promise<Blob> {
   const [{ pdf }, { default: InvoiceDocument }] = await Promise.all([
     import("@react-pdf/renderer"),
@@ -31,14 +42,17 @@ export async function renderInvoicePdf({
   ]);
 
   return pdf(
-    InvoiceDocument({ invoice, items, business }),
+    InvoiceDocument({ invoice, items, business, payments, policies, variant }),
   ).toBlob();
 }
 
 /** Filename for a download. Slashes in the number would break it. */
-export function invoiceFileName(invoice: InvoiceRecord): string {
+export function invoiceFileName(
+  invoice: InvoiceRecord,
+  variant: InvoiceDocumentVariant = "invoice",
+): string {
   const base = invoice.number
     ? invoice.number.replace(/\//g, "-")
     : `draft-${invoice.id.slice(0, 8)}`;
-  return `${base}.pdf`;
+  return variant === "receipt" ? `${base}-receipt.pdf` : `${base}.pdf`;
 }

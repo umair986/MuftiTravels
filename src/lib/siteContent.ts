@@ -248,6 +248,42 @@ export function listsInSection(
     .sort((a, b) => a.sort_order - b.sort_order);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Invoices                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One list as an invoice prints it — a title and its bullets, nothing else.
+ *
+ * Deliberately not SiteContentList. This shape is what gets frozen into
+ * invoices.policy_snapshot at issue (migration 021), so it has to survive any
+ * later reorganisation of the content table: an invoice from two years ago
+ * must still print even if sections, tones and keys have all been rethought
+ * since.
+ */
+export type InvoicePolicyList = { title: string; items: string[] };
+
+/**
+ * The lists an invoice carries: policies first, then important notes.
+ *
+ * Inclusions are left out on purpose. What a package covers is described by
+ * the invoice's own line items, and a generic inclusions list printed beside
+ * hand-typed lines is an invitation for the two to contradict each other.
+ *
+ * Mirrors public.invoice_policy_lists() in migration 021 — this one renders
+ * the DRAFT preview from live content, that one freezes the same text at
+ * issue. They must agree, or the preview would lie about what issuing does.
+ */
+export function invoicePolicyLists(
+  lists: SiteContentList[] | undefined,
+): InvoicePolicyList[] {
+  const sections: ContentSection[] = ["policies", "notes"];
+  return sections
+    .flatMap((section) => listsInSection(contentOrDefaults(lists), section))
+    .filter((list) => list.items.length > 0)
+    .map((list) => ({ title: list.title, items: list.items }));
+}
+
 /**
  * The tabs worth showing. A section whose lists have all been deleted is
  * dropped, so the dashboard can never leave an empty tab behind.

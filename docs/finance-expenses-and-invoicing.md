@@ -274,6 +274,60 @@ Operating costs (rent, salaries, Meta ad spend) simply leave `trip_id` null. Tha
 
 ---
 
+## Decision 8 — Policies on the invoice are a snapshot, not a lookup
+
+**Added after the first build. Migration `021_invoice_policies.sql`.**
+
+The payment policy, the cancellation policy and the travel notes already exist once, in `site_content_lists` (migration 011), and every package page renders them. A customer holding a bill should be holding the same terms — a PDF is the document they keep, not the web page they happened to read in March. So the invoice carries them, on a page of their own behind the bill.
+
+The question is what "carries" means, and there are only two answers:
+
+| | |
+|---|---|
+| **A. Read `site_content_lists` at render time** | One source of truth, no new column. But editing the cancellation policy in the dashboard then silently rewrites the terms attached to *every invoice ever issued* — including ones already in dispute, which is exactly when somebody reprints an old bill. |
+| **B. Freeze the text onto the invoice at issue** ✅ | One extra `jsonb` column. The terms an invoice states are the terms that were published the day it was issued, permanently. |
+
+B, for the same reason 017 has immutability triggers at all: an issued invoice is a historical fact. Amounts, customer and number were already frozen; leaving the cancellation policy free to change afterwards would have made the policy the one part of a bill a later edit could quietly rewrite. **`policy_snapshot` is frozen by the same `guard_issued_invoice()` trigger as everything else** — the application is careful, but the application is not the last word.
+
+Three details that follow from B:
+
+- **The snapshot is taken inside `issue_invoice()`**, in the statement that burns the number. There is then no window in which an invoice is numbered but its terms were never captured, and no way for a browser to send different text than the site publishes.
+- **A draft has no snapshot and previews the live lists.** That is the point: the preview shows what issuing is about to freeze. `src/lib/siteContent.ts`'s `invoicePolicyLists()` and SQL's `invoice_policy_lists()` must therefore agree, and they are commented as a pair.
+- **`show_policies` is per-invoice.** A standalone visa fee or a ticket reissue has no business carrying nine clauses about departure dates, and an admin who cannot turn them off will stop using the feature.
+
+Inclusions are deliberately *not* printed. What a package covers is described by the invoice's own line items, and a generic inclusions list printed beside hand-typed lines is an invitation for the two to contradict each other — on the one document where that contradiction is expensive.
+
+The annexure sits behind a `break`, so the bill stays one page and the amount due is never pushed under thirty lines of terms. `scripts/render-invoice-check.mts` counts the 8pt runs in the rendered file against the clauses that went in, because a block that overruns its page is dropped silently rather than throwing — and a cancellation clause the customer never received is worse than one never offered.
+
+**The per-invoice terms panel is gone with it.** `invoices.terms` and `business_profile.invoice_terms` both existed to fill one small box in the PDF footer with a sentence of payment terms. The annexure says all of that and says it properly, so the box was a worse copy of a better page — and two different answers to the same question on one document. The textarea, the business-wide default and the panel were all removed in migration 022. **The columns stay**, commented as deprecated: they hold text that was printed on invoices already sent, and dropping them would destroy that to tidy a schema.
+
+---
+
+## Decision 9 — "Paid" on the invoice is a flag the admin sets, not a sum
+
+**Added after the first build. Migration `022_invoice_paid_flag.sql`.**
+
+The bug that forced this: a payment was recorded, the **receipt** correctly stamped itself PAID — and the **invoice** PDF went on saying nothing at all about payment, because that file was rendered and frozen at issue, before any payment existed. Two documents about the same money, disagreeing, and nothing anywhere noticed.
+
+The obvious fix is to make the invoice read `invoice_balances` like the receipt does. That is the wrong one:
+
+- The issued invoice PDF is **frozen in storage**. Deriving a balance changes only what a re-render would say, not the file the customer holds — so the two would still disagree, just less visibly.
+- Mufti Travels sends the invoice **once the money has cleared**; part payments are what receipts are for. A running balance on the bill is noise on the common path.
+- A derived line has to stay true forever. An invoice printed in 2027 must not start showing a different balance because the ledger moved on.
+
+So `paid_in_full` is a boolean the admin ticks, and the invoice states one thing: **PAID with "no dues"**, or **"Payment pending"** with the amount. `invoice_balances` still answers *"what is outstanding across the book"*; this answers *"what does this piece of paper say"*. **They are allowed to differ while money is in transit — but never silently: the editor shows a warning line whenever the tick and the ledger disagree**, which is exactly the surprise that started this.
+
+The receipt is deliberately left alone. It settles from its own ledger, because a statement of account that stamped PAID over an outstanding balance would be worse than the bug being fixed.
+
+Two consequences worth knowing:
+
+- **The flag is editable after issue**, unlike the amounts and the customer block — it is not in `guard_issued_invoice()`'s frozen set. Whether the money arrived is a later fact about the world, not part of the document's content; same reasoning as `trip_id`.
+- **Ticking it writes a second PDF, never a replacement.** The invoices bucket has no update policy on purpose, so `invoicePdfPath()` takes the paid state and a settled invoice stores as `…-paid.pdf`. The file the customer was already sent still opens from the link they were given, which is correct — it is what they were sent.
+
+The bill must stay **one page**; it is sent over WhatsApp, and a second page holding a signature block and nothing else is a worse document to receive. Adding the payment band spilled it twice — once for the band, once for the no-dues line — and both times nothing complained, so `render-invoice-check.mts` now asserts the page count from *both* ends (`minPages` and `maxPages`). Recovering the space is what turned the amount-in-words and notes blocks into single rows.
+
+---
+
 ## Schema
 
 One migration, `supabase/migrations/017_finance.sql`, written in the house style — heavily commented, `if not exists` throughout, safe to run more than once.

@@ -33,11 +33,14 @@ import {
   blankItem,
   invoicePdfPath,
   newId,
+  receiptPdfPath,
   stateNameForCode,
   whatsappInvoiceUrl,
+  whatsappReceiptUrl,
   type BusinessProfileRecord,
   type EditableItem,
   type InvoiceItemRecord,
+  type InvoicePayment,
   type InvoiceRecord,
   type LinePreset,
 } from "@/lib/invoices";
@@ -47,6 +50,11 @@ import {
   paiseToWords,
   parsePaise,
 } from "@/lib/money";
+import {
+  invoicePolicyLists,
+  type InvoicePolicyList,
+  type SiteContentList,
+} from "@/lib/siteContent";
 import { invoiceFileName, renderInvoicePdf } from "@/lib/pdf/renderInvoice";
 import { useToast } from "../../../components/ui/toast/useToast";
 import AdminShell from "../../AdminShell";
@@ -103,7 +111,10 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
   const [taxMode, setTaxMode] = useState<TaxMode>("none");
   const [taxRatePercent, setTaxRatePercent] = useState("0");
   const [notes, setNotes] = useState("");
-  const [terms, setTerms] = useState("");
+  const [showPolicies, setShowPolicies] = useState(true);
+  const [paidInFull, setPaidInFull] = useState(false);
+  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+  const [contentLists, setContentLists] = useState<SiteContentList[]>([]);
 
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -113,9 +124,16 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
   const [isSavingTrip, setIsSavingTrip] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [paidPaise, setPaidPaise] = useState(0);
 
   const isDraft = invoice?.status === "draft";
   const isIssued = invoice?.status === "issued";
+  const isCancelled = invoice?.status === "cancelled";
+
+  const balancePaise = (invoice?.total_paise ?? 0) - paidPaise;
+  // Nothing owed, and something actually paid — a zero-total invoice is not a
+  // receipt worth stamping.
+  const isSettled = paidPaise > 0 && balancePaise <= 0;
 
   /* -------------------------------------------------------------- loading */
 
@@ -139,6 +157,8 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       { data: businessRow },
       { data: presetRows },
       { data: tripRows },
+      { data: balanceRow },
+      { data: contentRows },
     ] = await Promise.all([
       supabase.from("invoices").select("*").eq("id", invoiceId).maybeSingle(),
       supabase
@@ -157,6 +177,20 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
         .from("trips")
         .select("id, name, category, departure_date, status")
         .order("departure_date", { ascending: false, nullsFirst: false }),
+      // Summed in the database rather than here, so this screen and the
+      // receivables list can never disagree about what is still owed.
+      supabase
+        .from("invoice_balances")
+        .select("paid_paise, balance_paise")
+        .eq("id", invoiceId)
+        .maybeSingle(),
+      // The live policies, for a draft's preview. An issued invoice ignores
+      // these and prints the snapshot it froze at issue.
+      supabase
+        .from("site_content_lists")
+        .select("*")
+        .in("section", ["policies", "notes"])
+        .order("sort_order"),
     ]);
 
     if (invoiceError || !invoiceRow) {
@@ -167,6 +201,10 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
 
     const record = invoiceRow as InvoiceRecord;
     setInvoice(record);
+    setPaidPaise(
+      (balanceRow as { paid_paise: number } | null)?.paid_paise ?? 0,
+    );
+    setContentLists((contentRows as SiteContentList[]) ?? []);
     setBusiness((businessRow as BusinessProfileRecord) ?? null);
     setPresets((presetRows as LinePreset[]) ?? []);
     setTrips((tripRows as Trip[]) ?? []);
@@ -186,7 +224,9 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     setTaxMode(record.tax_mode);
     setTaxRatePercent(String(record.tax_rate_bp / 100));
     setNotes(record.notes);
-    setTerms(record.terms);
+    // Defaults on, including for rows that predate migration 021.
+    setShowPolicies(record.show_policies !== false);
+    setPaidInFull(record.paid_in_full === true);
 
     const loaded = ((itemRows as InvoiceItemRecord[]) ?? []).map((item) => ({
       id: item.id,
@@ -235,6 +275,36 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
         taxRateBp,
       }),
     [parsedItems, discount, taxMode, taxRateBp],
+  );
+
+  /**
+   * The policies this invoice prints.
+   *
+   * An issued invoice prints the snapshot it froze, and only that — editing
+   * the cancellation policy in the dashboard must not rewrite the terms
+   * attached to a bill somebody is already disputing. A draft has no snapshot
+   * yet, so it previews the live lists, which is precisely what issuing is
+   * about to capture.
+   */
+  const resolvePolicies = useCallback(
+    (record: InvoiceRecord): InvoicePolicyList[] => {
+      if (record.show_policies === false) return [];
+      // The fallback also covers invoices issued before migration 021, which
+      // have no snapshot to print. Current text beats no text at all.
+      return record.policy_snapshot?.length
+        ? record.policy_snapshot
+        : invoicePolicyLists(contentLists);
+    },
+    [contentLists],
+  );
+
+  /** What the preview and the toggle's summary below describe. */
+  const policyLists: InvoicePolicyList[] = useMemo(
+    () =>
+      invoice
+        ? resolvePolicies({ ...invoice, show_policies: showPolicies })
+        : [],
+    [invoice, showPolicies, resolvePolicies],
   );
 
   /**
@@ -289,7 +359,12 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       total_paise: totals.totalPaise,
       amount_in_words: paiseToWords(totals.totalPaise),
       notes: notes.trim(),
-      terms: terms.trim(),
+      // Read by issue_invoice() to decide whether to take a snapshot at all.
+      // The snapshot itself is never written from here.
+      show_policies: showPolicies,
+      // What the PDF states about payment. Allowed to change after issue —
+      // see migration 022 — so `markPaid` below writes it on its own too.
+      paid_in_full: paidInFull,
       // A reporting tag, not a link: nothing it points at reaches the PDF.
       // Allowed to change after issue, because attributing a bill to the batch
       // it belongs to is bookkeeping, not an edit to the document.
@@ -308,7 +383,8 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       taxMode,
       taxRateBp,
       notes,
-      terms,
+      showPolicies,
+      paidInFull,
       tripId,
     ],
   );
@@ -407,14 +483,35 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
         invoice: record,
         items: rows,
         business,
+        // From the record, not from the memo above: this runs immediately
+        // after issue(), before `invoice` state has caught up with the row
+        // that issue_invoice() just wrote the snapshot onto.
+        policies: resolvePolicies(record),
       });
-      const path = invoicePdfPath(record.id, record.number);
+      // The paid state is part of the path: the bucket has no update policy,
+      // so marking an issued invoice paid writes a second file beside the
+      // first rather than rewriting the one the customer already has.
+      const path = invoicePdfPath(
+        record.id,
+        record.number,
+        record.paid_in_full,
+      );
 
       const { error: uploadError } = await supabase.storage
         .from("invoices")
         .upload(path, blob, { contentType: "application/pdf", upsert: false });
 
-      if (uploadError) return false;
+      // Already there means this exact document — same invoice, same paid
+      // state — was stored before, which is the normal case when the Paid tick
+      // is toggled back and forth. The existing file IS the answer, so point
+      // at it rather than reporting a failure. Anything else is real.
+      const alreadyThere =
+        uploadError &&
+        /exists|duplicate|409/i.test(
+          `${uploadError.message} ${(uploadError as { statusCode?: string }).statusCode ?? ""}`,
+        );
+
+      if (uploadError && !alreadyThere) return false;
 
       const { error: pathError } = await supabase
         .from("invoices")
@@ -423,8 +520,57 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
 
       return !pathError;
     },
-    [supabase, business],
+    [supabase, business, resolvePolicies],
   );
+
+  /**
+   * Tick or untick Paid on an issued invoice.
+   *
+   * Separate from save(), which sends the whole patch — most of which the
+   * guard trigger would refuse on an issued row. This writes the one column
+   * that is allowed to move after issue, then rebuilds the PDF, because the
+   * stored file is the document and a flag nobody can see on it is worth
+   * nothing.
+   */
+  async function markPaid(next: boolean) {
+    if (!supabase || !invoice) return;
+    setIsMarkingPaid(true);
+    setPaidInFull(next);
+
+    const { error: updateError } = await supabase
+      .from("invoices")
+      .update({ paid_in_full: next })
+      .eq("id", invoice.id);
+
+    if (updateError) {
+      setPaidInFull(!next);
+      setIsMarkingPaid(false);
+      toast.error("Could not update the payment status.", {
+        description: updateError.message,
+      });
+      return;
+    }
+
+    const stored = await generateAndStorePdf(
+      { ...invoice, paid_in_full: next },
+      await fetchItems(invoice.id),
+    );
+
+    setIsMarkingPaid(false);
+    await load();
+
+    if (stored) {
+      toast.success(
+        next
+          ? "Marked paid. The invoice PDF now says no dues."
+          : "Marked pending. The invoice PDF now shows the amount due.",
+      );
+    } else {
+      toast.error("Status saved, but the PDF could not be rebuilt.", {
+        description: "Use “Store PDF” to try again.",
+      });
+    }
+  }
 
   async function fetchItems(id: string): Promise<InvoiceItemRecord[]> {
     if (!supabase) return [];
@@ -482,7 +628,10 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     const record = (issuedRow as InvoiceRecord) ?? null;
     let pdfStored = false;
     if (record) {
-      pdfStored = await generateAndStorePdf(record, await fetchItems(record.id));
+      pdfStored = await generateAndStorePdf(
+        record,
+        await fetchItems(record.id),
+      );
     }
 
     setIsIssuing(false);
@@ -535,6 +684,7 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       invoice,
       items: await fetchItems(invoice.id),
       business,
+      policies: resolvePolicies(invoice),
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -573,6 +723,7 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
         invoice: draftRecord,
         items: draftItems,
         business,
+        policies: policyLists,
       });
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(URL.createObjectURL(blob));
@@ -583,6 +734,171 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       });
     }
     setIsRendering(false);
+  }
+
+  /* ------------------------------------------------------------- receipt */
+
+  /**
+   * The receipt is the running account: the invoice plus every payment taken
+   * so far, the balance, and a PAID stamp once that balance is zero.
+   *
+   * It is rendered fresh each time rather than stored on issue, because the
+   * facts it states change with every payment. Payments are read from the
+   * database here rather than taken from PaymentsPanel's state — a document a
+   * customer keeps should never be built from what a screen happened to be
+   * showing.
+   */
+  async function buildReceipt() {
+    if (!supabase || !invoice || !business) return null;
+
+    const { data, error: paymentsError } = await supabase
+      .from("invoice_payments")
+      .select("*")
+      .eq("invoice_id", invoice.id)
+      .order("paid_on", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (paymentsError) {
+      toast.error("Could not read the payments.", {
+        description: paymentsError.message,
+      });
+      return null;
+    }
+
+    const payments = (data as InvoicePayment[]) ?? [];
+    const paidPaise = payments.reduce((sum, row) => sum + row.amount_paise, 0);
+
+    const blob = await renderInvoicePdf({
+      invoice,
+      items: await fetchItems(invoice.id),
+      business,
+      payments,
+      policies: resolvePolicies(invoice),
+      variant: "receipt",
+    });
+
+    return {
+      blob,
+      payments,
+      paidPaise,
+      balancePaise: invoice.total_paise - paidPaise,
+    };
+  }
+
+  async function previewReceipt() {
+    setIsRendering(true);
+    try {
+      const built = await buildReceipt();
+      if (built) {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(URL.createObjectURL(built.blob));
+      }
+    } catch (renderError) {
+      toast.error("Could not render the receipt.", {
+        description:
+          renderError instanceof Error ? renderError.message : undefined,
+      });
+    }
+    setIsRendering(false);
+  }
+
+  async function downloadReceipt() {
+    if (!invoice) return;
+    setIsRendering(true);
+    try {
+      const built = await buildReceipt();
+      if (built) {
+        const url = URL.createObjectURL(built.blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = invoiceFileName(invoice, "receipt");
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (renderError) {
+      toast.error("Could not render the receipt.", {
+        description:
+          renderError instanceof Error ? renderError.message : undefined,
+      });
+    }
+    setIsRendering(false);
+  }
+
+  /**
+   * Upload the receipt and hand it over on WhatsApp.
+   *
+   * The path is derived from the payment set, so re-sending an unchanged
+   * receipt finds the file already there — that 409 is the expected case, not a
+   * failure, and the existing object is signed instead of being rewritten.
+   */
+  async function shareReceiptOnWhatsApp() {
+    if (!supabase || !invoice?.number) return;
+    setIsRendering(true);
+
+    const built = await buildReceipt().catch((renderError: unknown) => {
+      toast.error("Could not render the receipt.", {
+        description:
+          renderError instanceof Error ? renderError.message : undefined,
+      });
+      return null;
+    });
+
+    if (!built) {
+      setIsRendering(false);
+      return;
+    }
+
+    const path = receiptPdfPath(invoice.id, invoice.number, built.payments);
+    const { error: uploadError } = await supabase.storage
+      .from("invoices")
+      .upload(path, built.blob, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+
+    // "already exists" means this exact receipt was shared before; anything
+    // else is a real failure and must not be papered over with a stale link.
+    const alreadyThere =
+      uploadError &&
+      /exists|duplicate|409/i.test(
+        `${uploadError.message} ${(uploadError as { statusCode?: string }).statusCode ?? ""}`,
+      );
+
+    if (uploadError && !alreadyThere) {
+      setIsRendering(false);
+      toast.error("Could not store the receipt.", {
+        description: uploadError.message,
+      });
+      return;
+    }
+
+    const { data, error: signError } = await supabase.storage
+      .from("invoices")
+      .createSignedUrl(path, INVOICE_LINK_TTL_SECONDS);
+
+    setIsRendering(false);
+
+    if (signError || !data?.signedUrl) {
+      toast.error("Could not create a share link.", {
+        description: signError?.message,
+      });
+      return;
+    }
+
+    const url = whatsappReceiptUrl({
+      phone: invoice.customer_phone,
+      name: invoice.customer_name,
+      number: invoice.number,
+      paidPaise: built.paidPaise,
+      balancePaise: built.balancePaise,
+      link: data.signedUrl,
+    });
+
+    if (!url) {
+      toast.error("That customer has no usable phone number.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   async function shareOnWhatsApp() {
@@ -995,7 +1311,9 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
                       <textarea
                         value={item.description}
                         onChange={(event) =>
-                          updateItem(item.id, { description: event.target.value })
+                          updateItem(item.id, {
+                            description: event.target.value,
+                          })
                         }
                         disabled={readOnly}
                         rows={2}
@@ -1030,7 +1348,9 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
                         <input
                           value={item.sac_code}
                           onChange={(event) =>
-                            updateItem(item.id, { sac_code: event.target.value })
+                            updateItem(item.id, {
+                              sac_code: event.target.value,
+                            })
                           }
                           disabled={readOnly}
                           maxLength={12}
@@ -1044,7 +1364,9 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
                           inputMode="decimal"
                           value={item.quantity}
                           onChange={(event) =>
-                            updateItem(item.id, { quantity: event.target.value })
+                            updateItem(item.id, {
+                              quantity: event.target.value,
+                            })
                           }
                           disabled={readOnly}
                           className={FIELD}
@@ -1087,37 +1409,87 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
             )}
           </section>
 
-          {/* ------------------------------------------- notes and terms --- */}
+          {/* ------------------------------------------------- notes ------- */}
+          {/* The Terms textarea that used to sit beside this is gone. It held
+              a sentence of payment terms that the policies annexure now says
+              in full — two answers to one question on the same document. */}
           <section className="rounded-2xl border border-stone-200 bg-white p-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className={LABEL}>Notes on this invoice</span>
-                <textarea
-                  value={notes}
+            <label className="block">
+              <span className={LABEL}>Notes on this invoice</span>
+              <textarea
+                value={notes}
+                onChange={(event) => {
+                  setNotes(event.target.value);
+                  touch();
+                }}
+                disabled={readOnly}
+                rows={3}
+                maxLength={2000}
+                className={`${FIELD} resize-y`}
+              />
+            </label>
+
+            {/* The policies are not typed here — they are the site's, edited
+                once under Content and printed as an annexure. This only
+                decides whether this particular bill carries them. */}
+            <div className="mt-5 border-t border-stone-200 pt-5">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={showPolicies}
                   onChange={(event) => {
-                    setNotes(event.target.value);
+                    setShowPolicies(event.target.checked);
                     touch();
                   }}
                   disabled={readOnly}
-                  rows={3}
-                  maxLength={2000}
-                  className={`${FIELD} resize-y`}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-stone-300 text-[#997A15] focus:ring-[#D4AF37] disabled:opacity-50"
                 />
-              </label>
-              <label className="block">
-                <span className={LABEL}>Terms</span>
-                <textarea
-                  value={terms}
-                  onChange={(event) => {
-                    setTerms(event.target.value);
-                    touch();
-                  }}
-                  disabled={readOnly}
-                  rows={3}
-                  maxLength={4000}
-                  placeholder={business?.invoice_terms || "Payment terms..."}
-                  className={`${FIELD} resize-y`}
-                />
+                <span>
+                  <span className="block font-body text-sm font-semibold text-[#06131D]">
+                    Print policies and important notes
+                  </span>
+                  <span className="mt-1 block font-body text-xs text-[#526168]">
+                    {showPolicies ? (
+                      policyLists.length ? (
+                        <>
+                          {policyLists.length} list
+                          {policyLists.length === 1 ? "" : "s"} on a separate
+                          page:{" "}
+                          {policyLists.map((list) => list.title).join(" · ")}.{" "}
+                          {isDraft ? (
+                            <>
+                              The wording is frozen onto this invoice when it is
+                              issued, so later edits under{" "}
+                              <Link
+                                href="/admin/content"
+                                className="font-semibold text-[#997A15] underline decoration-dotted underline-offset-2"
+                              >
+                                Content
+                              </Link>{" "}
+                              cannot change it.
+                            </>
+                          ) : (
+                            "Frozen as they read on the day this invoice was issued."
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          Nothing to print — no policies or important notes have
+                          been added under{" "}
+                          <Link
+                            href="/admin/content"
+                            className="font-semibold text-[#997A15] underline decoration-dotted underline-offset-2"
+                          >
+                            Content
+                          </Link>
+                          .
+                        </>
+                      )
+                    ) : (
+                      "Off. Worth leaving off for a standalone visa fee or a ticket reissue, where package terms do not apply."
+                    )}
+                  </span>
+                </span>
               </label>
             </div>
           </section>
@@ -1240,7 +1612,10 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
               </div>
 
               <dl className="mt-5 space-y-2 border-t border-stone-100 pt-4 font-body text-sm">
-                <Row label="Subtotal" value={formatRupees(totals.subtotalPaise)} />
+                <Row
+                  label="Subtotal"
+                  value={formatRupees(totals.subtotalPaise)}
+                />
                 {totals.discountPaise > 0 && (
                   <Row
                     label="Discount"
@@ -1290,6 +1665,61 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
               <p className="mt-3 font-body text-xs text-[#526168]">
                 {paiseToWords(totals.totalPaise)}
               </p>
+
+              {/* Paid.
+                  Stays enabled after issue, unlike every other field here —
+                  the invoice goes out once the money has cleared, so this is
+                  the one thing that is meant to change afterwards. Ticking it
+                  on an issued invoice rebuilds the stored PDF, because a flag
+                  nobody can see on the document is worth nothing. */}
+              {!isCancelled && (
+                <div className="mt-4 border-t border-stone-200 pt-4">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={paidInFull}
+                      onChange={(event) => {
+                        const next = event.target.checked;
+                        if (isDraft) {
+                          setPaidInFull(next);
+                          touch();
+                        } else {
+                          void markPaid(next);
+                        }
+                      }}
+                      disabled={isMarkingPaid}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-stone-300 text-[#997A15] focus:ring-[#D4AF37] disabled:opacity-50"
+                    />
+                    <span>
+                      <span className="block font-body text-sm font-semibold text-[#06131D]">
+                        Paid
+                      </span>
+                      <span className="mt-1 block font-body text-xs text-[#526168]">
+                        {isMarkingPaid
+                          ? "Rebuilding the invoice PDF…"
+                          : paidInFull
+                            ? "The invoice prints a PAID stamp and “No dues. Paid in full.”"
+                            : `The invoice prints “Payment pending — ${formatRupees(totals.totalPaise, { trimZeroPaise: true })}”.`}
+                      </span>
+                    </span>
+                  </label>
+
+                  {/* The inconsistency that started all this: a payment was
+                      recorded, the receipt said PAID, the invoice said
+                      nothing. The two answer different questions and are
+                      allowed to differ while money is in transit — but never
+                      silently. */}
+                  {isIssued && paidInFull !== isSettled && (
+                    <p className="mt-2 rounded-lg bg-[#FFFCF3] px-3 py-2 font-body text-xs text-[#997A15]">
+                      {paidInFull
+                        ? paidPaise === 0
+                          ? "No payments are recorded below, so the receipt will still show the full amount due."
+                          : `Payments below add up to ${formatRupees(paidPaise, { trimZeroPaise: true })} of ${formatRupees(invoice.total_paise, { trimZeroPaise: true })}, so the receipt will still show ${formatRupees(balancePaise, { trimZeroPaise: true })} outstanding.`
+                        : "The payments below cover this invoice in full. Tick Paid so the invoice PDF says so too."}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Payments only exist once there is an obligation: a draft has
@@ -1342,6 +1772,52 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
                 >
                   <FaWhatsapp /> Send on WhatsApp
                 </button>
+              )}
+
+              {/* The receipt is a second document, not a reissue: the invoice
+                  PDF above is frozen, this one moves with the payments. */}
+              {isIssued && (
+                <div className="mb-3 rounded-xl border border-stone-200 bg-[#FAF8F5] p-3">
+                  <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-[#526168]">
+                    {isSettled ? "Receipt" : "Payment statement"}
+                  </p>
+                  <p className="mt-1 font-body text-xs text-[#526168]">
+                    {isSettled
+                      ? "Paid in full. The receipt is stamped PAID and states there are no dues."
+                      : `Shows every payment taken and the ${formatRupees(balancePaise, { trimZeroPaise: true })} still due.`}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void previewReceipt()}
+                      disabled={isRendering}
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 font-body text-xs font-semibold text-[#06131D] transition hover:border-[#D4AF37] disabled:opacity-50"
+                    >
+                      <FiEye /> Preview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void downloadReceipt()}
+                      disabled={isRendering}
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 font-body text-xs font-semibold text-[#06131D] transition hover:border-[#D4AF37] disabled:opacity-50"
+                    >
+                      <FiDownload /> PDF
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void shareReceiptOnWhatsApp()}
+                    disabled={isRendering}
+                    className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 py-2.5 font-body text-xs font-bold text-white transition hover:bg-[#1FB855] disabled:opacity-50"
+                  >
+                    <FaWhatsapp />{" "}
+                    {isRendering
+                      ? "Preparing..."
+                      : isSettled
+                        ? "Send receipt"
+                        : "Send statement"}
+                  </button>
+                </div>
               )}
 
               <button

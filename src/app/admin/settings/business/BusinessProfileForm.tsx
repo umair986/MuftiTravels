@@ -45,7 +45,6 @@ type BusinessProfile = {
   logo_data_uri: string;
   signature_data_uri: string;
   invoice_prefix: string;
-  invoice_terms: string;
   default_tax_mode: TaxMode;
   default_tax_rate_bp: number;
 };
@@ -72,7 +71,6 @@ const EMPTY: BusinessProfile = {
   logo_data_uri: "",
   signature_data_uri: "",
   invoice_prefix: "MT",
-  invoice_terms: "",
   default_tax_mode: "none",
   default_tax_rate_bp: 0,
 };
@@ -112,6 +110,9 @@ export default function BusinessProfileForm() {
 
   const logoInput = useRef<HTMLInputElement>(null);
   const signatureInput = useRef<HTMLInputElement>(null);
+  // Read off the decoded image rather than the file, so it reflects what the
+  // PDF will actually be handed.
+  const [sizes, setSizes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!supabase) {
@@ -459,16 +460,6 @@ export default function BusinessProfileForm() {
           />
         </label>
 
-        <label className="block sm:col-span-2">
-          <span className={LABEL}>Terms printed on the invoice</span>
-          <textarea
-            value={profile.invoice_terms}
-            onChange={(event) => set("invoice_terms", event.target.value)}
-            rows={4}
-            maxLength={4000}
-            className={`${FIELD} resize-y`}
-          />
-        </label>
       </Section>
 
       <Section
@@ -477,28 +468,62 @@ export default function BusinessProfileForm() {
       >
         {(
           [
-            ["logo_data_uri", "Logo", logoInput],
-            ["signature_data_uri", "Signature", signatureInput],
+            ["logo_data_uri", "Logo", logoInput, 110, 40],
+            ["signature_data_uri", "Signature", signatureInput, 96, 34],
           ] as const
-        ).map(([key, label, ref]) => (
+        ).map(([key, label, ref, printWidth, printHeight]) => (
           <div key={key} className="block">
             <span className={LABEL}>{label}</span>
             {profile[key] ? (
-              <div className="flex items-center gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
-                {/* A data URI, so next/image would add nothing but constraints. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={profile[key]}
-                  alt={`${label} preview`}
-                  className="h-12 w-auto max-w-[8rem] object-contain"
-                />
+              <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                <div className="flex items-start gap-3">
+                  {/* The same box the PDF draws into, at twice the size: the
+                      preview a mis-cropped or doubled-up file gets caught in.
+                      Anything that looks wrong here prints wrong. */}
+                  <div
+                    className="flex flex-shrink-0 items-center justify-center rounded border border-dashed border-stone-300 bg-white"
+                    style={{ width: printWidth * 2, height: printHeight * 2 }}
+                  >
+                    {/* A data URI, so next/image would add nothing but constraints. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={profile[key]}
+                      alt={`${label} preview`}
+                      onLoad={(event) =>
+                        setSizes((current) => ({
+                          ...current,
+                          [key]: `${event.currentTarget.naturalWidth} × ${event.currentTarget.naturalHeight} px`,
+                        }))
+                      }
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-body text-xs text-[#526168]">
+                      Prints at {printWidth} × {printHeight} pt, scaled to fit
+                      the box on the left.
+                    </p>
+                    {sizes[key] && (
+                      <p className="mt-1 font-body text-xs text-stone-400">
+                        Image is {sizes[key]}.
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => set(key, "")}
+                    className="rounded-lg p-2 text-[#526168] transition hover:bg-white hover:text-red-600"
+                    aria-label={`Remove ${label.toLowerCase()}`}
+                  >
+                    <FiTrash2 />
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={() => set(key, "")}
-                  className="ml-auto rounded-lg p-2 text-[#526168] transition hover:bg-white hover:text-red-600"
-                  aria-label={`Remove ${label.toLowerCase()}`}
+                  onClick={() => ref.current?.click()}
+                  className="mt-2 font-body text-xs font-semibold text-[#997A15] hover:underline"
                 >
-                  <FiTrash2 />
+                  Replace this {label.toLowerCase()}
                 </button>
               </div>
             ) : (
