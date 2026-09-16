@@ -25,8 +25,12 @@ export type CategoryLanding = {
   faqs: { question: string; answer: string }[];
 };
 
-const VISA_ANSWER =
-  "An Indian passport valid for at least six months with a minimum of two blank pages, a PAN card linked to your Aadhaar number, and influenza and meningitis vaccination taken at least ten days before travel. We handle the Saudi visa application itself.";
+export const VISA_ANSWER =
+  "An Indian passport with at least six months' validity, your PAN card (linked to Aadhaar), and a meningitis (ACYW) vaccination taken at least ten days before you arrive in Saudi Arabia. Pilgrims over 65, pregnant women and people with certain chronic conditions also need proof of COVID-19 vaccination. We handle the Saudi visa application itself — our Umrah documents guide covers the full list.";
+
+/** Shared with the city landing pages, which sell the same fixed groups. */
+export const FIXED_GROUP_INCLUDED_ANSWER =
+  "Return economy flights, the Saudi Umrah visa and insurance, hotel stays in Makkah and Madinah, breakfast, lunch and dinner, airport pickup and drop, round-trip transfers, local Ziyarat in both cities on a sharing basis, the Rowda permit and 24/7 support.";
 
 export const CATEGORY_LANDING: Record<CategoryType, CategoryLanding> = {
   "Umrah Fixed Group": {
@@ -42,8 +46,7 @@ export const CATEGORY_LANDING: Record<CategoryType, CategoryLanding> = {
     faqs: [
       {
         question: "What is included in a fixed group Umrah package?",
-        answer:
-          "Return economy flights, the Saudi Umrah visa and insurance, hotel stays in Makkah and Madinah, breakfast, lunch and dinner, airport pickup and drop, round-trip transfers, local Ziyarat in both cities on a sharing basis, the Rowda permit and 24/7 support.",
+        answer: FIXED_GROUP_INCLUDED_ANSWER,
       },
       {
         question: "What documents do I need for Umrah from India?",

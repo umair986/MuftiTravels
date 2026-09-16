@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FaInstagram, FaFacebook, FaWhatsapp } from "react-icons/fa";
 import { FiPhone, FiMapPin, FiShield } from "react-icons/fi";
+import { FOUNDED_YEAR } from "@/lib/business";
 
 export default function Footer() {
   return (
@@ -38,7 +39,7 @@ export default function Footer() {
             </Link>
 
             <p className="text-stone-400 font-body text-xs sm:text-sm leading-relaxed max-w-sm">
-              Providing devout Muslim pilgrims with world-class, spiritual, and comfortable Hajj, Umrah, and Ziyarat experiences. A trusted, government authorized partner with 15+ years of service.
+              Providing devout Muslim pilgrims with world-class, spiritual, and comfortable Hajj, Umrah, and Ziyarat experiences. A trusted, government authorized partner serving pilgrims since {FOUNDED_YEAR}.
             </p>
 
             <div className="pt-2 flex items-center gap-3">
@@ -79,17 +80,32 @@ export default function Footer() {
             </p>
             <ul className="space-y-2 text-xs sm:text-sm text-stone-400">
               <li>
-                <Link href="/packages/umrah-fixed-group/mumbai" className="hover:text-[#D4AF37] transition-colors">
+                <Link href="/umrah-packages-from-mumbai" className="hover:text-[#D4AF37] transition-colors">
+                  Umrah Packages from Mumbai
+                </Link>
+              </li>
+              <li>
+                <Link href="/umrah-packages-from-delhi" className="hover:text-[#D4AF37] transition-colors">
+                  Umrah Packages from Delhi
+                </Link>
+              </li>
+              <li>
+                <Link href="/umrah-packages-from-lucknow" className="hover:text-[#D4AF37] transition-colors">
+                  Umrah Packages from Lucknow
+                </Link>
+              </li>
+              <li>
+                <Link href="/packages/umrah-fixed-group/15-days-regular-umrah-from-mumbai" className="hover:text-[#D4AF37] transition-colors">
                   15 Days Umrah from Mumbai
                 </Link>
               </li>
               <li>
-                <Link href="/packages/umrah-fixed-group/delhi" className="hover:text-[#D4AF37] transition-colors">
+                <Link href="/packages/umrah-fixed-group/15-days-regular-umrah-from-delhi" className="hover:text-[#D4AF37] transition-colors">
                   15 Days Umrah from Delhi
                 </Link>
               </li>
               <li>
-                <Link href="/packages/umrah-fixed-group/lucknow" className="hover:text-[#D4AF37] transition-colors">
+                <Link href="/packages/umrah-fixed-group/15-days-regular-umrah-from-lucknow" className="hover:text-[#D4AF37] transition-colors">
                   15 Days Umrah from Lucknow
                 </Link>
               </li>
@@ -147,6 +163,14 @@ export default function Footer() {
                   className="hover:text-[#D4AF37] transition-colors"
                 >
                   Sacred Gallery
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/guides"
+                  className="hover:text-[#D4AF37] transition-colors"
+                >
+                  Pilgrim Guides
                 </Link>
               </li>
               <li>

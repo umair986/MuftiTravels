@@ -9,6 +9,7 @@
  * `<JsonLd data={...} />` from components/JsonLd.
  */
 
+import { FOUNDED_YEAR } from "@/lib/business";
 import { categorySlug } from "@/lib/categories";
 import type { CmsPackageRecord } from "@/lib/packages";
 import type { GalleryCollectionWithPhotos } from "@/lib/gallery";
@@ -26,6 +27,11 @@ export const BUSINESS = {
   region: "Maharashtra",
   postalCode: "400051",
   country: "IN",
+  /** Office hours as the contact section states them. Sunday is by appointment only, so it is left out of the schema. */
+  hoursLabel: "Mon – Sat: 10:00 AM – 8:00 PM (IST) · Sunday by appointment",
+  openingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+  opens: "10:00",
+  closes: "20:00",
   description:
     "Hajj, Umrah and Ziyarat packages from India with Haram-adjacent hotels, guided support and direct flights from Mumbai, Delhi and Lucknow.",
   social: [
@@ -54,6 +60,7 @@ export function organizationSchema() {
     legalName: BUSINESS.legalName,
     url: SITE_URL,
     logo: `${SITE_URL}/Logo.png`,
+    foundingDate: String(FOUNDED_YEAR),
     image: `${SITE_URL}/og-image.jpg`,
     description: BUSINESS.description,
     telephone: BUSINESS.phone,
@@ -65,6 +72,12 @@ export function organizationSchema() {
       addressRegion: BUSINESS.region,
       postalCode: BUSINESS.postalCode,
       addressCountry: BUSINESS.country,
+    },
+    openingHoursSpecification: {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: [...BUSINESS.openingDays],
+      opens: BUSINESS.opens,
+      closes: BUSINESS.closes,
     },
     areaServed: [
       { "@type": "Country", name: "India" },
@@ -188,5 +201,35 @@ export function faqSchema(faqs: { question: string; answer: string }[]) {
       name: faq.question,
       acceptedAnswer: { "@type": "Answer", text: faq.answer },
     })),
+  };
+}
+
+/**
+ * A guide as an Article, so search results can show its date and publisher.
+ * `dateModified` is the date the sources were last checked, not a build time.
+ */
+export function articleSchema(article: {
+  slug: string;
+  title: string;
+  description: string;
+  image: string;
+  published: string;
+  reviewed: string;
+}) {
+  const url = `${SITE_URL}/guides/${article.slug}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: article.title,
+    description: article.description,
+    image: article.image.startsWith("http")
+      ? article.image
+      : `${SITE_URL}${article.image}`,
+    datePublished: article.published,
+    dateModified: article.reviewed,
+    mainEntityOfPage: url,
+    url,
+    author: { "@id": BUSINESS_ID },
+    publisher: { "@id": BUSINESS_ID },
   };
 }

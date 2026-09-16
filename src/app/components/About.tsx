@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { FiCheckCircle } from "react-icons/fi";
 import { FaKaaba } from "react-icons/fa";
+import { FOUNDED_YEAR, PILGRIMS_SERVED, yearsInService } from "@/lib/business";
 
 export default function About() {
   const pillars = [
@@ -42,7 +43,7 @@ export default function About() {
             <span className="gold-gradient-text italic">Spiritual Comfort</span>
           </h2>
           <p className="text-stone-600 font-body text-base sm:text-lg leading-relaxed">
-            For over 15 years, Mufti Travels has been dedicated to transforming the sacred pilgrimage into a tranquil, deeply memorable journey of a lifetime.
+            Since {FOUNDED_YEAR}, Mufti Travels has been dedicated to transforming the sacred pilgrimage into a tranquil, deeply memorable journey of a lifetime.
           </p>
         </div>
 
@@ -74,7 +75,7 @@ export default function About() {
             <div className="absolute -bottom-6 -right-2 sm:-right-6 bg-[#06131D] text-white p-5 rounded-2xl border border-[#D4AF37]/40 shadow-2xl max-w-[220px] hidden sm:block">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl gold-gradient-bg flex items-center justify-center text-[#06131D] font-bold text-xl flex-shrink-0">
-                  15+
+                  {yearsInService()}+
                 </div>
                 <div>
                   <p className="text-xs text-stone-400 font-medium">Years of</p>
@@ -110,7 +111,7 @@ export default function About() {
             {/* Trust Stat Strip */}
             <div className="mt-8 pt-6 border-t border-stone-200 grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="font-display text-2xl sm:text-3xl font-bold text-[#06131D]">10,000+</p>
+                <p className="font-display text-2xl sm:text-3xl font-bold text-[#06131D]">{PILGRIMS_SERVED}</p>
                 <p className="text-[11px] sm:text-xs text-stone-500 uppercase tracking-wider font-medium mt-0.5">Happy Pilgrims</p>
               </div>
               <div>

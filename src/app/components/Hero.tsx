@@ -14,6 +14,7 @@ import {
 import { FaWhatsapp, FaKaaba } from "react-icons/fa";
 import CustomDropdown, { DropdownOption } from "./ui/CustomDropdown";
 import { useRouter } from "next/navigation";
+import { PILGRIMS_SERVED, yearsInService } from "@/lib/business";
 
 const cityOptions: DropdownOption[] = [
   {
@@ -213,10 +214,10 @@ export default function Hero() {
             </div>
             <div>
               <p className="text-white font-bold text-xs sm:text-sm">
-                10,000+ Pilgrims
+                {PILGRIMS_SERVED} Pilgrims
               </p>
               <p className="text-stone-400 text-[11px] leading-tight">
-                15+ Years Trust
+                {yearsInService()}+ Years Trust
               </p>
             </div>
           </div>

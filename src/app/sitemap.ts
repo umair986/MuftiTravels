@@ -6,14 +6,14 @@ import {
   categorySlug,
   isRenderableCategory,
 } from "@/lib/categories";
+import { CITY_LANDING } from "@/lib/cityLanding";
+import { GUIDES } from "@/lib/guides";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://muftitravels.com";
 
 /**
- * The sitemap used to list only the hardcoded packages in components/
- * packageData.ts, so nothing created through the admin was ever discoverable.
- * It now reads the published catalog, with the static fixed-group city pages
- * added because those are separate routes.
+ * Every package URL comes from the published catalog — the admin is the only
+ * source of packages, so anything published there is discoverable here.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [{ packages }, galleryCollections] = await Promise.all([
@@ -42,12 +42,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
-  const fixedGroupUrls = ["delhi", "lucknow", "mumbai"].map((city) => ({
-    url: `${siteUrl}/packages/umrah-fixed-group/${city}`,
+  // Departure-city landing pages (/umrah-packages-from-mumbai …).
+  const cityUrls = Object.values(CITY_LANDING).map((city) => ({
+    url: `${siteUrl}${city.path}`,
     lastModified: new Date(),
     changeFrequency: "weekly" as const,
-    priority: 0.8,
+    priority: 0.9,
   }));
+
+  // Guides carry their own review date, which is the honest lastModified.
+  const guideUrls = GUIDES.map((guide) => ({
+    url: `${siteUrl}/guides/${guide.slug}`,
+    lastModified: new Date(guide.reviewed),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+  const guidesIndexModified = GUIDES.map((guide) => guide.reviewed).sort().at(-1);
 
   const galleryUrls = galleryCollections.map((collection) => ({
     url: `${siteUrl}/gallery/${collection.slug}`,
@@ -75,9 +85,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.7,
     },
+    ...cityUrls,
+    ...(GUIDES.length
+      ? [
+          {
+            url: `${siteUrl}/guides`,
+            lastModified: new Date(guidesIndexModified ?? Date.now()),
+            changeFrequency: "monthly" as const,
+            priority: 0.7,
+          },
+          ...guideUrls,
+        ]
+      : []),
     ...categoryUrls,
     ...packageUrls,
-    ...fixedGroupUrls,
     ...galleryUrls,
   ];
 }

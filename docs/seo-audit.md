@@ -5,6 +5,33 @@
 
 ---
 
+## Progress (updated 17 September 2026)
+
+| Step | State |
+|---|---|
+| 1. Google Business Profile + reviews | Not code — owner's action |
+| 2. Category pages | **Done** — `packages/[category]/page.tsx`, in sitemap |
+| 3. Default OG image | **Done** — `public/og-image.jpg`, 1200×630 |
+| 4. LocalBusiness + Product + Breadcrumb schema | **Done** — `src/lib/seo.ts`; opening hours added 17 Sep. `geo` left out until copied from the verified GBP |
+| 5. Mumbai city page | **Done** — `/umrah-packages-from-mumbai`, FAQ schema, office block, in sitemap and footer |
+| 6. Delhi + Lucknow city pages | **Done** — `/umrah-packages-from-delhi`, `/umrah-packages-from-lucknow`; same template, no office block (the office is in Mumbai) |
+| 7. `/about`, `/contact` | Open |
+| 8. Guides / blog | **Started** — `/guides` index + first article, *Umrah from India: Passport, Visa and Immigration Documents* (sources checked 17 Sep 2026). Articles are typed data in `src/content/guides/`, listed in `src/lib/guides.ts` |
+| Sitemap `lastModified` from `updated_at` (§2.6) | **Done** for packages and gallery |
+| Homepage title mentions Mumbai (§2.6) | Open |
+
+**17 Sep — hardcoded packages removed.** Every package on the public site now
+comes from the admin. The old static pages
+`/packages/umrah-fixed-group/{mumbai,delhi,lucknow}` are gone and 308-redirect
+(in `next.config.ts`) to their admin equivalents
+`/packages/umrah-fixed-group/15-days-regular-umrah-from-{city}`, so links
+already shared keep working and their ranking carries over. The sitemap no
+longer lists the old URLs.
+
+The sections below are the original audit, kept as written.
+
+---
+
 ## The short version
 
 The technical foundation is good — better than most travel-agency sites. What's

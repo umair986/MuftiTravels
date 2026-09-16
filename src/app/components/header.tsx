@@ -37,10 +37,9 @@ const Header = () => {
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Curated Packages", href: "/packages" },
-    { name: "Why Mufti Travels", href: "/#why-us" },
-    { name: "Spiritual Blueprint", href: "/#journey" },
     { name: "About Us", href: "/#about" },
     { name: "Gallery", href: "/gallery" },
+    { name: "Guides", href: "/guides" },
   ];
 
   const handleSmoothScroll = (
