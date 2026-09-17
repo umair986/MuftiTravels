@@ -535,6 +535,11 @@ for (const testCase of cases) {
  * stream is the only place that settles whether the page painted it twice or
  * the uploaded file simply contains two of them.
  *
+ * (The doubled logo that was actually reported was neither: a 4-bit palette
+ * PNG, which pdfkit decodes at the wrong row width into two squashed copies.
+ * That is still ONE image draw, so this case cannot see it — the fix is the
+ * canvas round trip in src/lib/pdf/pdfSafeImage.ts, which needs a browser.)
+ *
  * The name is counted too. Mufti Travels' logo is a WORDMARK, so a header that
  * also sets the name at 16pt beneath it says "Mufti Travels" twice and looks
  * broken. Under a logo the name drops to 11pt, which is checked here as the

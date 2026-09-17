@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { FiSave, FiTrash2, FiUpload } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 import { TAX_MODES, fyLabel, type TaxMode } from "@/lib/finance";
+import { toPdfSafeImage } from "@/lib/pdf/pdfSafeImage";
 import { useToast } from "../../../components/ui/toast/useToast";
 
 /**
@@ -16,6 +17,15 @@ import { useToast } from "../../../components/ui/toast/useToast";
  */
 
 const MAX_IMAGE_BYTES = 400 * 1024;
+// The file as picked, before it is scaled down to IMAGE_BOX.
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
+// Four times the box each prints into on the PDF (150 × 46 pt and 96 × 34 pt):
+// sharp at any zoom a customer will use, and far below the 400 KB cap.
+const IMAGE_BOX = {
+  logo_data_uri: { width: 600, height: 184 },
+  signature_data_uri: { width: 384, height: 136 },
+} as const;
 
 const FIELD =
   "w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-body text-sm text-[#06131D] outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20";
@@ -157,17 +167,39 @@ export default function BusinessProfileForm() {
       setError(`"${file.name}" is not an image.`);
       return;
     }
-    // Kept small deliberately: this string is read on every invoice render and
-    // travels in the row itself.
-    if (file.size > MAX_IMAGE_BYTES) {
-      setError(`"${file.name}" is larger than 400 KB. Use a smaller image.`);
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(`"${file.name}" is larger than 8 MB. Use a smaller image.`);
       return;
     }
     setError("");
-    const reader = new FileReader();
-    reader.onload = () => set(key, String(reader.result ?? ""));
-    reader.onerror = () => setError(`Could not read "${file.name}".`);
-    reader.readAsDataURL(file);
+
+    let dataUri: string;
+    try {
+      const raw = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? ""));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      // Stored already re-encoded and scaled, rather than as uploaded: a
+      // compressed 4-bit PNG prints as two overlapping logos (see
+      // pdfSafeImage), and the scale-down is what lets a large source file
+      // land under the cap below.
+      dataUri = await toPdfSafeImage(raw, IMAGE_BOX[key]);
+    } catch {
+      setError(`Could not read "${file.name}" as an image.`);
+      return;
+    }
+    // Kept small deliberately: this string is read on every invoice render and
+    // travels in the row itself. Measured after re-encoding, since that is what
+    // gets stored. Base64 carries 4 characters per 3 bytes.
+    if ((dataUri.length * 3) / 4 > MAX_IMAGE_BYTES) {
+      setError(
+        `"${file.name}" is still larger than 400 KB after resizing. Use a smaller image.`,
+      );
+      return;
+    }
+    set(key, dataUri);
   }
 
   async function save() {
@@ -464,7 +496,7 @@ export default function BusinessProfileForm() {
 
       <Section
         title="Logo and signature"
-        hint="Stored on the record itself so the PDF never waits on a download. Keep each under 400 KB."
+        hint="Stored on the record itself so the PDF never waits on a download. Large images are scaled down on upload."
       >
         {(
           [

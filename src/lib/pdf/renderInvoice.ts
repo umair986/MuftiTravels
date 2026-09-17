@@ -6,6 +6,7 @@ import type {
 } from "../invoices";
 import type { InvoicePolicyList } from "../siteContent";
 import type { InvoiceDocumentVariant } from "./InvoiceDocument";
+import { toPdfSafeImage } from "./pdfSafeImage";
 
 /**
  * Turn an invoice into a PDF blob, in the browser.
@@ -36,13 +37,29 @@ export async function renderInvoicePdf({
   policies?: InvoicePolicyList[];
   variant?: InvoiceDocumentVariant;
 }): Promise<Blob> {
-  const [{ pdf }, { default: InvoiceDocument }] = await Promise.all([
-    import("@react-pdf/renderer"),
-    import("./InvoiceDocument"),
-  ]);
+  const [{ pdf }, { default: InvoiceDocument }, logo, signature] =
+    await Promise.all([
+      import("@react-pdf/renderer"),
+      import("./InvoiceDocument"),
+      // Here as well as at upload, so a logo saved before the upload step
+      // normalised it still prints once rather than twice. See pdfSafeImage.
+      toPdfSafeImage(business.logo_data_uri).catch(() => ""),
+      toPdfSafeImage(business.signature_data_uri).catch(() => ""),
+    ]);
 
   return pdf(
-    InvoiceDocument({ invoice, items, business, payments, policies, variant }),
+    InvoiceDocument({
+      invoice,
+      items,
+      business: {
+        ...business,
+        logo_data_uri: logo,
+        signature_data_uri: signature,
+      },
+      payments,
+      policies,
+      variant,
+    }),
   ).toBlob();
 }
 
