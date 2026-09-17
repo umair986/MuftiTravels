@@ -4,15 +4,13 @@
  * render-invoice-check.mts proves the file is structurally right; this one is
  * for the half of "right" a script cannot judge — whether the header sits
  * well, whether the payments table keeps its head, whether the policies page
- * reads as an annexure rather than as spill. Four documents, because the
- * receipt is a different document from the bill, the part-paid statement is a
- * different document again, and the bill itself now says two different things
- * depending on the Paid tick:
+ * reads as an annexure rather than as spill. Four documents — the life of one
+ * booking paid in two instalments, in the order the customer receives them:
  *
- *   1-invoice-pending.pdf        the bill, Paid unticked — payment pending
- *   2-invoice-paid.pdf           the bill, Paid ticked — stamped PAID, no dues
- *   3-statement-part-paid.pdf    one instalment in, a balance still due
- *   4-receipt-paid-in-full.pdf   settled from the ledger, stamped PAID
+ *   1-invoice-pending.pdf        the bill as issued — payment pending
+ *   2-receipt-R1-part.pdf        first payment's receipt, a balance still due
+ *   3-receipt-R2-settles.pdf     second payment's receipt, no dues
+ *   4-invoice-paid-final.pdf     the same bill once settled — both receipts, PAID
  *
  *   npm run sample:pdf -- <outDir>
  *
@@ -45,6 +43,9 @@ Font.register({
 
 const { default: InvoiceDocument } = await import(
   "../src/lib/pdf/InvoiceDocument.tsx"
+);
+const { default: ReceiptDocument } = await import(
+  "../src/lib/pdf/ReceiptDocument.tsx"
 );
 
 const outDir = process.argv[2] ?? ".";
@@ -170,63 +171,65 @@ const invoice: InvoiceRecord = {
   updated_at: "2026-09-16T09:14:00Z",
 };
 
-const partPayment: InvoicePayment[] = [
-  {
-    id: "p1",
-    invoice_id: "inv-1",
-    paid_on: "2026-09-16",
-    amount_paise: 16000000,
-    method: "bank",
-    reference: "NEFT/HDFC/8891231",
-    notes: "",
-    created_at: "2026-09-16T10:00:00Z",
-  },
-];
+const firstPayment: InvoicePayment = {
+  id: "p1",
+  invoice_id: "inv-1",
+  paid_on: "2026-09-16",
+  amount_paise: 16000000,
+  method: "bank",
+  reference: "NEFT/HDFC/8891231",
+  notes: "",
+  created_at: "2026-09-16T10:00:00Z",
+  receipt_seq: 1,
+  receipt_number: "MT/26-27/0042-R1",
+  paid_before_paise: 0,
+};
 
-const fullPayment: InvoicePayment[] = [
-  ...partPayment,
-  {
-    id: "p2",
-    invoice_id: "inv-1",
-    paid_on: "2026-09-29",
-    amount_paise: invoice.total_paise - 16000000,
-    method: "upi",
-    reference: "abdulrahman@okhdfcbank",
-    notes: "",
-    created_at: "2026-09-29T11:30:00Z",
-  },
-];
+const secondPayment: InvoicePayment = {
+  id: "p2",
+  invoice_id: "inv-1",
+  paid_on: "2026-09-29",
+  amount_paise: invoice.total_paise - 16000000,
+  method: "upi",
+  reference: "abdulrahman@okhdfcbank",
+  notes: "",
+  created_at: "2026-09-29T11:30:00Z",
+  receipt_seq: 2,
+  receipt_number: "MT/26-27/0042-R2",
+  paid_before_paise: 16000000,
+};
 
-const samples = [
-  { file: "1-invoice-pending.pdf", payments: [], variant: "invoice" as const },
+const invoices = [
+  { file: "1-invoice-pending.pdf", paidInFull: false, payments: [] },
   {
-    file: "2-invoice-paid.pdf",
-    payments: [],
-    variant: "invoice" as const,
+    file: "4-invoice-paid-final.pdf",
     paidInFull: true,
-  },
-  {
-    file: "3-statement-part-paid.pdf",
-    payments: partPayment,
-    variant: "receipt" as const,
-  },
-  {
-    file: "4-receipt-paid-in-full.pdf",
-    payments: fullPayment,
-    variant: "receipt" as const,
+    payments: [firstPayment, secondPayment],
   },
 ];
 
-for (const sample of samples) {
+for (const sample of invoices) {
   const buffer = await renderToBuffer(
     InvoiceDocument({
-      invoice: { ...invoice, paid_in_full: sample.paidInFull ?? false },
+      invoice: { ...invoice, paid_in_full: sample.paidInFull },
       items,
       business,
       policies,
       payments: sample.payments,
-      variant: sample.variant,
     }) as never,
+  );
+  writeFileSync(resolve(outDir, sample.file), buffer);
+  console.log(`${sample.file}  ${(buffer.length / 1024).toFixed(1)} KB`);
+}
+
+const receipts = [
+  { file: "2-receipt-R1-part.pdf", payment: firstPayment },
+  { file: "3-receipt-R2-settles.pdf", payment: secondPayment },
+];
+
+for (const sample of receipts) {
+  const buffer = await renderToBuffer(
+    ReceiptDocument({ invoice, payment: sample.payment, business }) as never,
   );
   writeFileSync(resolve(outDir, sample.file), buffer);
   console.log(`${sample.file}  ${(buffer.length / 1024).toFixed(1)} KB`);

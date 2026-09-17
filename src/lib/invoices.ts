@@ -73,12 +73,10 @@ export type InvoiceRecord = {
   /**
    * What this invoice states about payment: settled, or pending.
    *
-   * Set by the admin, NOT derived from invoice_payments. The invoice goes out
-   * once the money has cleared and part payments are what receipts are for, so
-   * the bill needs one plain statement rather than a running balance — and it
-   * has to still be true a year later, when the ledger has moved on.
-   *
-   * The editor warns when this and the payments ledger disagree.
+   * Kept in step with invoice_payments by a trigger (migration 023): true
+   * exactly when something was received and the receipts cover the total. The
+   * app reads it and never writes it. It is still a stored column because it
+   * picks which stored PDF is the current one — see invoicePdfPath.
    */
   paid_in_full: boolean;
 
@@ -138,6 +136,14 @@ export type InvoicePayment = {
   reference: string;
   notes: string;
   created_at: string;
+  /**
+   * Allocated by the database on insert (migration 023) — <invoice no.>-R<n>.
+   * Null only on a row read before that migration was applied.
+   */
+  receipt_seq: number | null;
+  receipt_number: string | null;
+  /** What had been paid before this one, frozen at insert. */
+  paid_before_paise: number | null;
 };
 
 export type BusinessProfileRecord = {
@@ -219,42 +225,52 @@ export function newId(): string {
  * would read as folders. Flattened, and prefixed with the row id so two
  * invoices can never collide even if a number were somehow reused.
  *
- * The paid state is part of the path for the same reason the payment set is
- * part of a receipt's: the invoices bucket has no update policy, on purpose —
- * a PDF that has been sent to a customer may not be rewritten. Marking an
- * issued invoice paid therefore writes a SECOND file beside the first rather
- * than replacing it. The old one still opens from the link the customer was
- * given, which is correct: it is what they were sent.
+ * The invoices bucket has no update policy, on purpose — a PDF that has been
+ * sent to a customer may not be rewritten. So an invoice has one file per
+ * state rather than one file:
+ *
+ *   MT-26-27-0042.pdf                 as issued: "Payment pending"
+ *   MT-26-27-0042-paid-2-k3j9x.pdf    settled: every receipt, balance nil
+ *
+ * The settled file carries a fingerprint of the receipts it lists. If a
+ * payment is removed and a different one clears the bill, the final statement
+ * says something different and must be a different file — reusing a
+ * `-paid.pdf` would hand the customer the stale list.
+ *
+ * Every earlier file stays behind and still opens from the link the customer
+ * was given, which is correct: it is what they were sent.
  */
 export function invoicePdfPath(
   invoiceId: string,
   number: string,
   paidInFull = false,
+  payments: InvoicePayment[] = [],
 ): string {
   const base = `${invoiceId}/${number.replace(/\//g, "-")}`;
-  return paidInFull ? `${base}-paid.pdf` : `${base}.pdf`;
+  return paidInFull
+    ? `${base}-paid-${receiptSignature(payments)}.pdf`
+    : `${base}.pdf`;
 }
 
 /**
- * Storage object path for a receipt.
+ * Storage object path for one payment's receipt.
  *
- * The invoices bucket has no update policy on purpose — an issued PDF is the
- * document the customer received and may not be rewritten. A receipt is
- * regenerated every time a payment lands, so it cannot share that path and
- * cannot overwrite anything either. The answer is one file per payment state:
- * the signature below changes whenever a payment is added, edited or removed,
- * so re-sharing an unchanged receipt lands on the file that already exists (the
- * caller signs it instead of uploading), and a changed one writes a new file.
+ * Keyed by the receipt number, which the database allocates once and never
+ * reuses, on a payment row it refuses to edit (migration 023). The same
+ * receipt therefore always lands on the same file: the first send stores it,
+ * later sends find it there and sign it, and the customer's copy never
+ * changes under them — even if the logo or address has changed since.
  *
- * Older receipts stay behind, which is correct rather than untidy: each one was
- * sent to a customer and should still open from the link they were given.
+ * Receipts from before migration 023 were one running statement per invoice,
+ * stored under `receipts/<number>-<signature>.pdf`. Those files stay where
+ * they are; nothing here writes to that pattern any more.
  */
 export function receiptPdfPath(
   invoiceId: string,
-  number: string,
-  payments: InvoicePayment[],
+  payment: Pick<InvoicePayment, "id" | "receipt_number">,
 ): string {
-  return `${invoiceId}/receipts/${number.replace(/\//g, "-")}-${receiptSignature(payments)}.pdf`;
+  const name = (payment.receipt_number ?? payment.id).replace(/\//g, "-");
+  return `${invoiceId}/receipts/${name}.pdf`;
 }
 
 /**
@@ -276,6 +292,30 @@ export function receiptSignature(payments: InvoicePayment[]): string {
   return `${payments.length}-${hash.toString(36)}`;
 }
 
+/**
+ * Upload a PDF to the invoices bucket, never replacing what is there.
+ *
+ * "Already exists" is success, not failure: every path above names exactly
+ * one document, so an existing object IS this document, stored earlier. The
+ * bucket has no update policy, so there is nothing else it could be.
+ *
+ * Returns an error message, or null.
+ */
+export async function uploadPdfOnce(
+  supabase: SupabaseClient,
+  path: string,
+  blob: Blob,
+): Promise<string | null> {
+  const { error } = await supabase.storage
+    .from("invoices")
+    .upload(path, blob, { contentType: "application/pdf", upsert: false });
+  if (!error) return null;
+  const alreadyThere = /exists|duplicate|409/i.test(
+    `${error.message} ${(error as { statusCode?: string }).statusCode ?? ""}`,
+  );
+  return alreadyThere ? null : error.message;
+}
+
 /** How long an invoice link shared over WhatsApp stays valid. */
 export const INVOICE_LINK_TTL_SECONDS = 60 * 60 * 24 * 7;
 
@@ -293,21 +333,27 @@ export function whatsappInvoiceUrl({
   name,
   number,
   totalPaise,
+  settled = false,
   link,
 }: {
   phone: string;
   name: string;
   number: string;
   totalPaise: number;
+  /** The final statement: every receipt listed, nothing due. */
+  settled?: boolean;
   link: string;
 }): string | null {
   const digits = (phone ?? "").replace(/\D/g, "");
   if (digits.length < 10) return null;
   const withCountry = digits.length === 10 ? `91${digits}` : digits;
 
+  const total = formatRupees(totalPaise, { trimZeroPaise: true });
   const message = [
     `As-salamu alaykum ${name || ""}`.trim() + ",",
-    `Please find your invoice ${number} from Mufti Travels for ${formatRupees(totalPaise, { trimZeroPaise: true })}.`,
+    settled
+      ? `Thank you — invoice ${number} for ${total} is now paid in full. Your final invoice, listing every payment received:`
+      : `Please find your invoice ${number} from Mufti Travels for ${total}.`,
     link,
     "This link is valid for 7 days.",
   ].join("\n\n");
@@ -316,7 +362,7 @@ export function whatsappInvoiceUrl({
 }
 
 /**
- * The same deep link for a receipt.
+ * The same deep link for one payment's receipt.
  *
  * Separate from the invoice message because the two say opposite things: one
  * asks for money, the other confirms it arrived. Sending "please find your
@@ -326,15 +372,18 @@ export function whatsappInvoiceUrl({
 export function whatsappReceiptUrl({
   phone,
   name,
-  number,
-  paidPaise,
+  invoiceNumber,
+  receiptNumber,
+  amountPaise,
   balancePaise,
   link,
 }: {
   phone: string;
   name: string;
-  number: string;
-  paidPaise: number;
+  invoiceNumber: string;
+  receiptNumber: string;
+  amountPaise: number;
+  /** What is still due after this payment. */
   balancePaise: number;
   link: string;
 }): string | null {
@@ -342,12 +391,12 @@ export function whatsappReceiptUrl({
   if (digits.length < 10) return null;
   const withCountry = digits.length === 10 ? `91${digits}` : digits;
 
-  const settled = balancePaise <= 0;
+  const amount = formatRupees(amountPaise, { trimZeroPaise: true });
   const message = [
     `As-salamu alaykum ${name || ""}`.trim() + ",",
-    settled
-      ? `Thank you — we have received ${formatRupees(paidPaise, { trimZeroPaise: true })} in full against invoice ${number}. There are no dues pending. Your receipt:`
-      : `We have received ${formatRupees(paidPaise, { trimZeroPaise: true })} against invoice ${number}. The balance is ${formatRupees(balancePaise, { trimZeroPaise: true })}. Your statement:`,
+    balancePaise <= 0
+      ? `Thank you — we have received ${amount} against invoice ${invoiceNumber}, and there are no dues pending. Receipt ${receiptNumber}:`
+      : `Thank you — we have received ${amount} against invoice ${invoiceNumber}. The balance still due is ${formatRupees(balancePaise, { trimZeroPaise: true })}. Receipt ${receiptNumber}:`,
     link,
     "This link is valid for 7 days.",
   ].join("\n\n");

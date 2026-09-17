@@ -28,11 +28,10 @@
  *     holding a signature block and nothing else is a worse document to
  *     receive. It has spilled twice, both times from one line added near the
  *     bottom, so the page count is asserted from both ends.
- *   - PAID MEANS PAID. The invoice stamps PAID only when it was marked paid,
- *     and the receipt still settles from its own payment ledger — the two
- *     documents answer different questions and have to go on doing so. This is
- *     the disagreement that prompted invoices.paid_in_full: a payment landed,
- *     the receipt said PAID, the invoice said nothing.
+ *   - PAID MEANS PAID. The invoice stamps PAID and lists its receipts only
+ *     when it is settled; before that it ignores the payments it is handed.
+ *   - A RECEIPT IS ONE PAGE. ReceiptDocument acknowledges one payment — no
+ *     items, no tax, no annexure — and must never grow a second page.
  *
  * Two bits of plumbing, both about Node rather than about the code under test:
  * it is bundled with esbuild (pdfkit external, so its #standard-fonts subpath
@@ -65,6 +64,9 @@ Font.register({
 
 const { default: InvoiceDocument } = await import(
   "../src/lib/pdf/InvoiceDocument.tsx"
+);
+const { default: ReceiptDocument } = await import(
+  "../src/lib/pdf/ReceiptDocument.tsx"
 );
 
 const business: BusinessProfileRecord = {
@@ -368,6 +370,9 @@ function paymentsFor(
       reference: "NEFT/HDFC/8891231",
       notes: "",
       created_at: "2026-08-12T06:00:00Z",
+      receipt_seq: 1,
+      receipt_number: "MT/26-27/0042-R1",
+      paid_before_paise: 0,
     },
   ];
   if (how === "full") {
@@ -380,6 +385,9 @@ function paymentsFor(
       reference: "abdulrahman@okhdfcbank",
       notes: "",
       created_at: "2026-08-28T11:30:00Z",
+      receipt_seq: 2,
+      receipt_number: "MT/26-27/0042-R2",
+      paid_before_paise: first,
     });
   }
   return rows;
@@ -391,6 +399,17 @@ function paymentsFor(
  * from invented text so the check exercises the lengths that actually print.
  */
 const policies = invoicePolicyLists(undefined);
+
+/**
+ * With a logo. The logo box is a fixed 46pt tall whatever the image, so the
+ * small favicon costs the page exactly what the real wordmark does — and the
+ * settled invoice spilled its notes onto a second page ONLY with a logo, so
+ * the cases that sit closest to the edge carry one.
+ */
+const businessWithLogo: BusinessProfileRecord = {
+  ...business,
+  logo_data_uri: `data:image/png;base64,${readFileSync(resolve("public/favicon.png")).toString("base64")}`,
+};
 
 /**
  * `maxPages` is the one that keeps being earned back.
@@ -412,26 +431,23 @@ const cases = [
   { name: "IGST, 3 lines", count: 3, mode: "igst" as const, maxPages: 1 },
   { name: "CGST+SGST, 40 lines", count: 40, mode: "cgst_sgst" as const },
   {
-    name: "statement, part paid",
+    name: "settled, 2 receipts",
     count: 3,
     mode: "cgst_sgst" as const,
-    variant: "receipt" as const,
-    paid: "part" as const,
-  },
-  {
-    name: "receipt, no dues",
-    count: 3,
-    mode: "cgst_sgst" as const,
-    variant: "receipt" as const,
     paid: "full" as const,
+    paidFlag: true,
+    logo: true,
+    // The receipts list sits beside the totals, so the final statement is
+    // still one page — the whole reason it goes there.
+    maxPages: 1,
   },
   {
-    name: "invoice + instalments",
+    name: "pending + instalments",
     count: 3,
     mode: "none" as const,
     paid: "part" as const,
-    // Instalments belong on the receipt: handing them to a bill must not add
-    // a table to it, so this stays one page too.
+    logo: true,
+    // Unsettled: the payments are ignored, the bill says payment pending.
     maxPages: 1,
   },
   {
@@ -451,13 +467,15 @@ const cases = [
     minPages: 4,
   },
   {
-    name: "receipt with policies",
+    name: "settled + policies",
     count: 3,
     mode: "cgst_sgst" as const,
-    variant: "receipt" as const,
     paid: "full" as const,
+    paidFlag: true,
+    logo: true,
     policies,
-    minPages: 3,
+    minPages: 2,
+    maxPages: 2,
   },
   {
     name: "invoice marked paid",
@@ -482,10 +500,9 @@ for (const testCase of cases) {
       InvoiceDocument({
         invoice,
         items,
-        business,
+        business: testCase.logo ? businessWithLogo : business,
         payments,
         policies: testCase.policies,
-        variant: testCase.variant ?? "invoice",
       }) as never,
     );
 
@@ -612,27 +629,27 @@ for (const testCase of cases) {
 }
 
 /**
- * The invoice says PAID when, and only when, it was marked paid.
- *
- * This is the bug that prompted the flag. A payment was recorded, the receipt
- * stamped itself PAID from the ledger — and the invoice PDF, rendered and
- * frozen at issue, went on saying nothing about payment at all. Two documents
- * about the same money, disagreeing, and nothing anywhere noticed.
+ * The invoice says PAID, and lists its receipts, when and only when it is
+ * settled.
  *
  * The stamp is drawn at 62pt and nothing else on the page comes close, so its
- * presence is countable. The invoice is deliberately handed payments it should
- * ignore: instalments belong on the receipt, and a bill that quietly started
- * showing a running balance again would fail here.
+ * presence is countable. The receipts list is the only thing on an invoice
+ * without policies set at 8pt — three runs per receipt — so it is countable
+ * too. The pending invoice is deliberately handed payments it must ignore:
+ * progress lives on the receipts, and a bill that quietly started showing a
+ * running balance would fail here.
  */
 {
   const paidCase = build(3, "none", true);
   const pendingCase = build(3, "none", false);
+  const total = paidCase.totals.totalPaise;
 
   const paid = await renderToBuffer(
     InvoiceDocument({
       invoice: paidCase.invoice,
       items: paidCase.items,
       business,
+      payments: paymentsFor(total, "full"),
     }) as never,
   );
   const pending = await renderToBuffer(
@@ -640,17 +657,7 @@ for (const testCase of cases) {
       invoice: pendingCase.invoice,
       items: pendingCase.items,
       business,
-      payments: paymentsFor(pendingCase.totals.totalPaise, "part"),
-    }) as never,
-  );
-  // Same ledger, receipt variant: this one MUST follow the payments.
-  const statement = await renderToBuffer(
-    InvoiceDocument({
-      invoice: pendingCase.invoice,
-      items: pendingCase.items,
-      business,
-      payments: paymentsFor(pendingCase.totals.totalPaise, "full"),
-      variant: "receipt",
+      payments: paymentsFor(total, "part"),
     }) as never,
   );
 
@@ -658,19 +665,59 @@ for (const testCase of cases) {
   const ok =
     stamps(paid) > 0 &&
     stamps(pending) === 0 &&
-    // The receipt still settles from its own ledger, not from the flag — the
-    // two documents answer different questions and must go on doing so.
-    stamps(statement) > 0 &&
-    // An invoice handed payments must not grow a payments table.
-    pageCount(pending) === pageCount(paid);
+    linesAtSize(paid, 8) >= 6 &&
+    linesAtSize(pending, 8) === 0 &&
+    pageCount(paid) === 1 &&
+    pageCount(pending) === 1;
 
   if (!ok) failures += 1;
   console.log(
     `${ok ? "PASS" : "FAIL"}  ${"paid vs pending".padEnd(22)} ` +
-      `invoicePaid=${stamps(paid)} invoicePending=${stamps(pending)} ` +
-      `receiptFromLedger=${stamps(statement)} ` +
+      `stamp=${stamps(paid)}/${stamps(pending)} ` +
+      `receiptRuns=${linesAtSize(paid, 8)}/${linesAtSize(pending, 8)} ` +
       `pages=${pageCount(paid)}/${pageCount(pending)}`,
   );
+}
+
+/**
+ * The per-payment receipt: one page, embedded glyphs, a header that clears
+ * itself — with and without a logo, part-paying and settling.
+ */
+{
+  const { invoice } = build(3, "cgst_sgst");
+  const [first, second] = paymentsFor(invoice.total_paise, "full");
+  const withLogo = {
+    ...business,
+    logo_data_uri: `data:image/png;base64,${readFileSync(resolve("public/favicon.png")).toString("base64")}`,
+  };
+
+  for (const [name, payment, biz] of [
+    ["receipt R1, part", first, business],
+    ["receipt R2, settles", second, business],
+    ["receipt with logo", second, withLogo],
+  ] as const) {
+    const buffer = await renderToBuffer(
+      ReceiptDocument({ invoice, payment, business: biz }) as never,
+    );
+    const pages = pageCount(buffer);
+    const glyphs = usesEmbeddedGlyphs(buffer);
+    const header = headerSpacing(buffer);
+    const draws = imageDraws(buffer);
+    const ok =
+      buffer.subarray(0, 5).toString("latin1") === "%PDF-" &&
+      pages === 1 &&
+      glyphs &&
+      header.gap >= header.needed &&
+      draws === (biz.logo_data_uri ? 1 : 0);
+
+    if (!ok) failures += 1;
+    console.log(
+      `${ok ? "PASS" : "FAIL"}  ${name.padEnd(22)} ` +
+        `pages=${pages} bytes=${String(buffer.length).padStart(6)} ` +
+        `embeddedGlyphs=${glyphs} imageDraws=${draws} ` +
+        `header=${header.gap.toFixed(1)}/${header.needed.toFixed(1)}pt`,
+    );
+  }
 }
 
 console.log(failures ? `\n${failures} case(s) failed` : "\nall cases passed");

@@ -279,3 +279,32 @@ export function formatTaxRate(basisPoints: number): string {
   const percent = basisPoints / 100;
   return `${Number.isInteger(percent) ? percent : percent.toFixed(2).replace(/0$/, "")}%`;
 }
+
+export type ReceiptFigures = {
+  /** What the invoice still asked for before this payment. */
+  dueBeforePaise: number;
+  receivedPaise: number;
+  /** What is left after it. Negative when the customer paid over. */
+  dueAfterPaise: number;
+};
+
+/**
+ * The three lines a payment receipt prints.
+ *
+ * `paidBeforePaise` is the snapshot migration 023 takes when the payment is
+ * recorded, not a sum over the current ledger — a receipt already sent must
+ * not start printing different numbers because an earlier payment was later
+ * removed.
+ */
+export function computeReceiptFigures(
+  invoiceTotalPaise: number,
+  paidBeforePaise: number,
+  amountPaise: number,
+): ReceiptFigures {
+  const dueBeforePaise = invoiceTotalPaise - paidBeforePaise;
+  return {
+    dueBeforePaise,
+    receivedPaise: amountPaise,
+    dueAfterPaise: dueBeforePaise - amountPaise,
+  };
+}

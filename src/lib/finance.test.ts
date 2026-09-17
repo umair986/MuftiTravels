@@ -11,6 +11,7 @@ import { describe, it } from "node:test";
 
 import {
   computeInvoiceTotals,
+  computeReceiptFigures,
   computeLineTotal,
   formatTaxRate,
   fyLabel,
@@ -385,5 +386,27 @@ describe("formatTaxRate", () => {
     assert.equal(formatTaxRate(1800), "18%");
     assert.equal(formatTaxRate(250), "2.5%");
     assert.equal(formatTaxRate(0), "0%");
+  });
+});
+
+describe("computeReceiptFigures", () => {
+  it("first payment: due before is the whole invoice", () => {
+    assert.deepEqual(computeReceiptFigures(9000000, 0, 5000000), {
+      dueBeforePaise: 9000000,
+      receivedPaise: 5000000,
+      dueAfterPaise: 4000000,
+    });
+  });
+
+  it("second payment starts from what the first one left", () => {
+    assert.deepEqual(computeReceiptFigures(9000000, 5000000, 4000000), {
+      dueBeforePaise: 4000000,
+      receivedPaise: 4000000,
+      dueAfterPaise: 0,
+    });
+  });
+
+  it("an overpayment leaves a negative balance rather than hiding it", () => {
+    assert.equal(computeReceiptFigures(9000000, 5000000, 4000100).dueAfterPaise, -100);
   });
 });

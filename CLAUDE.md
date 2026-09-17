@@ -54,7 +54,7 @@ audits *the migration files in this repo*, not the live database.
 
 ### Supabase migrations are the source of truth
 
-`supabase/migrations/NNN_name.sql`, applied in order, currently up to `022`. House style, and
+`supabase/migrations/NNN_name.sql`, applied in order, currently up to `023`. House style, and
 follow it:
 
 - Heavily commented — the comment explains *why*, including options rejected.
@@ -77,7 +77,7 @@ that — it is how the site builds without credentials.
 
 ### The finance module
 
-`docs/finance-expenses-and-invoicing.md` is the design record: nine numbered decisions, each with
+`docs/finance-expenses-and-invoicing.md` is the design record: ten numbered decisions, each with
 the options rejected. Read it before changing anything under `/admin/invoices`, `/admin/expenses`
 or `src/lib/pdf/`. The rules that bite hardest:
 
@@ -95,14 +95,15 @@ into text or back. Never put a rupee float in the middle of a calculation.
 so `computeInvoiceTotals` stays testable in isolation.
 
 **Stored PDFs are never overwritten.** The `invoices` bucket has no update policy on purpose. A
-document that changes (a receipt as payments land, an invoice when marked paid) gets a *new path*
-and writes a second file beside the first — see `invoicePdfPath` and `receiptPdfPath`. The link a
-customer already holds must go on opening what they were actually sent.
+document that changes (an invoice once its receipts settle it) gets a *new path* and writes a second
+file beside the first; a receipt is stored once, under its own number — see `invoicePdfPath` and
+`receiptPdfPath`. The link a customer already holds must go on opening what they were actually sent.
 
 ### The invoice PDF
 
-`src/lib/pdf/InvoiceDocument.tsx` renders both the invoice and the receipt from one component, in
-the **browser** — both imports in `renderInvoice.ts` are dynamic so the ~1 MB renderer stays out of
+`src/lib/pdf/InvoiceDocument.tsx` renders the invoice and `ReceiptDocument.tsx` the one-page receipt
+for a single payment; the letterhead, signature and footer they share live in `shared.tsx`. Both render
+in the **browser** — every import in `renderInvoice.ts` is dynamic so the ~1 MB renderer stays out of
 every other admin screen, and doing it client-side is what keeps the server surface at zero.
 
 Two traps documented at length in that file and in `scripts/render-invoice-check.mts`:

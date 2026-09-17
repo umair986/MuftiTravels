@@ -305,7 +305,7 @@ The annexure sits behind a `break`, so the bill stays one page and the amount du
 
 ## Decision 9 — "Paid" on the invoice is a flag the admin sets, not a sum
 
-**Added after the first build. Migration `022_invoice_paid_flag.sql`.**
+**Added after the first build. Migration `022_invoice_paid_flag.sql`. Partly superseded by Decision 10:** the flag still exists and still picks the stored PDF, but a trigger now sets it from the ledger and the manual tick is gone. What follows is kept as the record of why.
 
 The bug that forced this: a payment was recorded, the **receipt** correctly stamped itself PAID — and the **invoice** PDF went on saying nothing at all about payment, because that file was rendered and frozen at issue, before any payment existed. Two documents about the same money, disagreeing, and nothing anywhere noticed.
 
@@ -325,6 +325,40 @@ Two consequences worth knowing:
 - **Ticking it writes a second PDF, never a replacement.** The invoices bucket has no update policy on purpose, so `invoicePdfPath()` takes the paid state and a settled invoice stores as `…-paid.pdf`. The file the customer was already sent still opens from the link they were given, which is correct — it is what they were sent.
 
 The bill must stay **one page**; it is sent over WhatsApp, and a second page holding a signature block and nothing else is a worse document to receive. Adding the payment band spilled it twice — once for the band, once for the no-dues line — and both times nothing complained, so `render-invoice-check.mts` now asserts the page count from *both* ends (`minPages` and `maxPages`). Recovering the space is what turned the amount-in-words and notes blocks into single rows.
+
+---
+
+## Decision 10 — One receipt per payment; the invoice settles itself
+
+**Added September 2026. Migration `023_payment_receipts.sql`.**
+
+Decision 9 left two overlapping documents. The invoice said paid or pending; the "receipt" reprinted the entire invoice plus every payment and a balance. On a settled bill the receipt was the *more* complete document — backwards, and confusing to a customer holding both.
+
+The workflow now, confirmed with the business owner (and to be confirmed with the CA for the GST points marked below):
+
+1. **The invoice is issued at booking**, numbered, carrying the full breakdown and GST, ending on **"Payment pending"**. It is the anchor every receipt points to.
+2. **Each payment gets its own short receipt**, numbered from its invoice: `MT/26-27/0003-R1`, `-R2`, … It prints who paid, against which invoice, the invoice total, what was received earlier, what was due before this payment, the payment itself, and what is still due. No items, no tax breakdown, no GSTIN, no policies — those are the invoice's job.
+3. **When the receipts cover the total, the invoice is re-rendered** — same number, a new file beside the first — listing every receipt, a nil balance and a PAID stamp. That is the customer's final statement. It is **not a second invoice**: one number, so revenue and GST are never counted twice.
+
+Options rejected:
+
+- **Hold the invoice until everything is paid.** Receipts would have no invoice number to point to (a draft has none), the customer would pay lakhs with no itemised document, and under GST an advance for a service is taxable **when received** whether or not an invoice exists — while the invoice itself must follow within 30 days of the service, so it cannot be held indefinitely for a customer who travels with money owing. *(CA to confirm.)*
+- **A new "final invoice" at the end.** Double invoicing: two numbers for one sale.
+- **Keep the running statement as the receipt.** It is the overlap this decision exists to remove.
+- **Derive "due before" at render time.** An earlier payment removed later would silently change what an already-sent receipt says. `paid_before_paise` is snapshotted on insert instead.
+
+What the database enforces (all in 023, all tested against Postgres):
+
+- A payment can only be recorded against an **issued** invoice.
+- The receipt number is allocated under a row lock on the invoice, from a per-invoice **counter** (`invoices.receipt_counter`), not `max + 1` — so removing the last payment never hands its number to the next one. The counter may not decrease; `(invoice_id, receipt_seq)` and `receipt_number` are unique.
+- A recorded payment is **immutable** apart from `notes`. A wrong entry is removed and recorded again, and gets a new number. The receipt a customer already holds stays in storage.
+- `invoices.paid_in_full` is set by trigger: true exactly when something was received and the receipts cover the total. The app never writes it. Invoices ticked by hand before 023 with nothing recorded keep their tick until a payment is next added or removed.
+
+**Receipt numbers and GST's 16-character cap.** `MT/26-27/0003-R1` is exactly 16 characters, so a two-letter prefix fits R1–R9. A tenth payment against one invoice, or a longer prefix, goes over. Accepted: nine instalments is beyond any real booking, and the business chose this format over the shorter but less readable `MT/2627/0003/R01`.
+
+**Storage.** A receipt lives at `<invoice id>/receipts/<receipt number>.pdf`, rendered and stored the first time it is viewed or sent, and served from storage ever after. The settled invoice lives at `…-paid-<fingerprint of its receipts>.pdf`: if a payment is removed and a different one settles the bill, the final statement lists different receipts and must be a different file. Running statements from before 023 (`receipts/<number>-<signature>.pdf`) stay where they are.
+
+**Page budget.** Listing the receipts on the invoice cost a line the page did not have — with a logo, the settled bill pushed its notes onto a second page. The receipts list and the amount in words now sit in the otherwise empty column beside the totals, which gave every invoice about 36pt back. `render-invoice-check.mts` runs the settled cases **with a logo**, because that is the only configuration that spilled.
 
 ---
 
@@ -695,7 +729,7 @@ src/app/admin/
       page.tsx
       InvoiceEditor.tsx     draft editing, line items, live totals — all free text
       InvoicePreview.tsx    in-browser PDF preview
-      PaymentsPanel.tsx     record receipts against the invoice
+      PaymentsPanel.tsx     record payments; view / download / send each receipt
   finance/
     page.tsx
     AdminFinancePage.tsx    month view, category breakdown, receivables, per-trip P&L

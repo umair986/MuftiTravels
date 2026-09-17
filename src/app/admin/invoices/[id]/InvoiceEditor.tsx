@@ -33,10 +33,9 @@ import {
   blankItem,
   invoicePdfPath,
   newId,
-  receiptPdfPath,
   stateNameForCode,
+  uploadPdfOnce,
   whatsappInvoiceUrl,
-  whatsappReceiptUrl,
   type BusinessProfileRecord,
   type EditableItem,
   type InvoiceItemRecord,
@@ -112,8 +111,7 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
   const [taxRatePercent, setTaxRatePercent] = useState("0");
   const [notes, setNotes] = useState("");
   const [showPolicies, setShowPolicies] = useState(true);
-  const [paidInFull, setPaidInFull] = useState(false);
-  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+  const [isRebuildingPdf, setIsRebuildingPdf] = useState(false);
   const [contentLists, setContentLists] = useState<SiteContentList[]>([]);
 
   const [isDirty, setIsDirty] = useState(false);
@@ -128,12 +126,6 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
 
   const isDraft = invoice?.status === "draft";
   const isIssued = invoice?.status === "issued";
-  const isCancelled = invoice?.status === "cancelled";
-
-  const balancePaise = (invoice?.total_paise ?? 0) - paidPaise;
-  // Nothing owed, and something actually paid — a zero-total invoice is not a
-  // receipt worth stamping.
-  const isSettled = paidPaise > 0 && balancePaise <= 0;
 
   /* -------------------------------------------------------------- loading */
 
@@ -226,7 +218,6 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     setNotes(record.notes);
     // Defaults on, including for rows that predate migration 021.
     setShowPolicies(record.show_policies !== false);
-    setPaidInFull(record.paid_in_full === true);
 
     const loaded = ((itemRows as InvoiceItemRecord[]) ?? []).map((item) => ({
       id: item.id,
@@ -362,9 +353,8 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       // Read by issue_invoice() to decide whether to take a snapshot at all.
       // The snapshot itself is never written from here.
       show_policies: showPolicies,
-      // What the PDF states about payment. Allowed to change after issue —
-      // see migration 022 — so `markPaid` below writes it on its own too.
-      paid_in_full: paidInFull,
+      // `paid_in_full` is deliberately absent: a trigger keeps it in step with
+      // the payments ledger (migration 023), and nothing here writes it.
       // A reporting tag, not a link: nothing it points at reaches the PDF.
       // Allowed to change after issue, because attributing a bill to the batch
       // it belongs to is bookkeeping, not an edit to the document.
@@ -384,7 +374,6 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       taxRateBp,
       notes,
       showPolicies,
-      paidInFull,
       tripId,
     ],
   );
@@ -476,42 +465,35 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
    * address and quietly disagree with the copy the customer holds.
    */
   const generateAndStorePdf = useCallback(
-    async (record: InvoiceRecord, rows: InvoiceItemRecord[]) => {
+    async (
+      record: InvoiceRecord,
+      rows: InvoiceItemRecord[],
+      payments: InvoicePayment[],
+    ) => {
       if (!supabase || !business || !record.number) return false;
+
+      // The path names the state — as issued, or settled by these receipts —
+      // so an unchanged document lands on the file already stored, and a
+      // changed one is written beside it rather than over it.
+      const path = invoicePdfPath(
+        record.id,
+        record.number,
+        record.paid_in_full,
+        payments,
+      );
 
       const blob = await renderInvoicePdf({
         invoice: record,
         items: rows,
         business,
+        payments,
         // From the record, not from the memo above: this runs immediately
         // after issue(), before `invoice` state has caught up with the row
         // that issue_invoice() just wrote the snapshot onto.
         policies: resolvePolicies(record),
       });
-      // The paid state is part of the path: the bucket has no update policy,
-      // so marking an issued invoice paid writes a second file beside the
-      // first rather than rewriting the one the customer already has.
-      const path = invoicePdfPath(
-        record.id,
-        record.number,
-        record.paid_in_full,
-      );
 
-      const { error: uploadError } = await supabase.storage
-        .from("invoices")
-        .upload(path, blob, { contentType: "application/pdf", upsert: false });
-
-      // Already there means this exact document — same invoice, same paid
-      // state — was stored before, which is the normal case when the Paid tick
-      // is toggled back and forth. The existing file IS the answer, so point
-      // at it rather than reporting a failure. Anything else is real.
-      const alreadyThere =
-        uploadError &&
-        /exists|duplicate|409/i.test(
-          `${uploadError.message} ${(uploadError as { statusCode?: string }).statusCode ?? ""}`,
-        );
-
-      if (uploadError && !alreadyThere) return false;
+      if (await uploadPdfOnce(supabase, path, blob)) return false;
 
       const { error: pathError } = await supabase
         .from("invoices")
@@ -524,52 +506,68 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
   );
 
   /**
-   * Tick or untick Paid on an issued invoice.
+   * After a payment is added or removed: if that settled the invoice (or
+   * unsettled it), point it at the matching PDF, rendering it if needed.
    *
-   * Separate from save(), which sends the whole patch — most of which the
-   * guard trigger would refuse on an issued row. This writes the one column
-   * that is allowed to move after issue, then rebuilds the PDF, because the
-   * stored file is the document and a flag nobody can see on it is worth
-   * nothing.
+   * The database has already flipped `paid_in_full` (migration 023); only the
+   * browser can render the document that says so. Comparing the stored path
+   * with the one the current state calls for also repairs an invoice whose
+   * rebuild failed last time.
    */
-  async function markPaid(next: boolean) {
-    if (!supabase || !invoice) return;
-    setIsMarkingPaid(true);
-    setPaidInFull(next);
-
-    const { error: updateError } = await supabase
+  async function syncInvoicePdf(manual = false) {
+    if (!supabase) return;
+    const { data } = await supabase
       .from("invoices")
-      .update({ paid_in_full: next })
-      .eq("id", invoice.id);
+      .select("*")
+      .eq("id", invoiceId)
+      .maybeSingle();
+    const record = data as InvoiceRecord | null;
 
-    if (updateError) {
-      setPaidInFull(!next);
-      setIsMarkingPaid(false);
-      toast.error("Could not update the payment status.", {
-        description: updateError.message,
-      });
-      return;
-    }
-
-    const stored = await generateAndStorePdf(
-      { ...invoice, paid_in_full: next },
-      await fetchItems(invoice.id),
-    );
-
-    setIsMarkingPaid(false);
-    await load();
-
-    if (stored) {
-      toast.success(
-        next
-          ? "Marked paid. The invoice PDF now says no dues."
-          : "Marked pending. The invoice PDF now shows the amount due.",
+    if (record?.number && record.status === "issued") {
+      const payments = await fetchPayments(record.id);
+      const expected = invoicePdfPath(
+        record.id,
+        record.number,
+        record.paid_in_full,
+        payments,
       );
-    } else {
-      toast.error("Status saved, but the PDF could not be rebuilt.", {
-        description: "Use “Store PDF” to try again.",
-      });
+      if (record.pdf_path !== expected) {
+        setIsRebuildingPdf(true);
+        const stored = await generateAndStorePdf(
+          record,
+          await fetchItems(record.id),
+          payments,
+        ).catch(() => false);
+        setIsRebuildingPdf(false);
+
+        if (!stored) {
+          toast.error("The invoice PDF could not be updated.", {
+            description: "Use “Update invoice PDF” to try again.",
+          });
+        } else if (record.paid_in_full) {
+          toast.success(
+            "Dues cleared — the invoice PDF now lists every receipt and says paid in full.",
+          );
+        } else {
+          toast.success("The invoice PDF is back to showing payment pending.");
+        }
+      } else if (manual) {
+        toast.success("The invoice PDF is already up to date.");
+      }
     }
+    await load();
+  }
+
+  async function fetchPayments(id: string): Promise<InvoicePayment[]> {
+    if (!supabase) return [];
+    const { data } = await supabase
+      .from("invoice_payments")
+      .select("*")
+      .eq("invoice_id", id)
+      .order("receipt_seq", { ascending: true, nullsFirst: true })
+      .order("paid_on", { ascending: true })
+      .order("created_at", { ascending: true });
+    return (data as InvoicePayment[]) ?? [];
   }
 
   async function fetchItems(id: string): Promise<InvoiceItemRecord[]> {
@@ -628,9 +626,11 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     const record = (issuedRow as InvoiceRecord) ?? null;
     let pdfStored = false;
     if (record) {
+      // No payments can exist yet: the database refuses them on a draft.
       pdfStored = await generateAndStorePdf(
         record,
         await fetchItems(record.id),
+        [],
       );
     }
 
@@ -649,11 +649,15 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     }
   }
 
-  /** Retry for an issued invoice whose PDF upload failed. */
+  /** Retry for an issued invoice whose PDF upload or rebuild failed. */
   async function storePdf() {
     if (!invoice) return;
     setIsRendering(true);
-    const ok = await generateAndStorePdf(invoice, await fetchItems(invoice.id));
+    const ok = await generateAndStorePdf(
+      invoice,
+      await fetchItems(invoice.id),
+      await fetchPayments(invoice.id),
+    ).catch(() => false);
     setIsRendering(false);
     if (ok) {
       toast.success("PDF stored.");
@@ -684,6 +688,7 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       invoice,
       items: await fetchItems(invoice.id),
       business,
+      payments: await fetchPayments(invoice.id),
       policies: resolvePolicies(invoice),
     });
     const url = URL.createObjectURL(blob);
@@ -723,6 +728,7 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
         invoice: draftRecord,
         items: draftItems,
         business,
+        payments: isDraft ? [] : await fetchPayments(invoice.id),
         policies: policyLists,
       });
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -734,171 +740,6 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       });
     }
     setIsRendering(false);
-  }
-
-  /* ------------------------------------------------------------- receipt */
-
-  /**
-   * The receipt is the running account: the invoice plus every payment taken
-   * so far, the balance, and a PAID stamp once that balance is zero.
-   *
-   * It is rendered fresh each time rather than stored on issue, because the
-   * facts it states change with every payment. Payments are read from the
-   * database here rather than taken from PaymentsPanel's state — a document a
-   * customer keeps should never be built from what a screen happened to be
-   * showing.
-   */
-  async function buildReceipt() {
-    if (!supabase || !invoice || !business) return null;
-
-    const { data, error: paymentsError } = await supabase
-      .from("invoice_payments")
-      .select("*")
-      .eq("invoice_id", invoice.id)
-      .order("paid_on", { ascending: true })
-      .order("created_at", { ascending: true });
-
-    if (paymentsError) {
-      toast.error("Could not read the payments.", {
-        description: paymentsError.message,
-      });
-      return null;
-    }
-
-    const payments = (data as InvoicePayment[]) ?? [];
-    const paidPaise = payments.reduce((sum, row) => sum + row.amount_paise, 0);
-
-    const blob = await renderInvoicePdf({
-      invoice,
-      items: await fetchItems(invoice.id),
-      business,
-      payments,
-      policies: resolvePolicies(invoice),
-      variant: "receipt",
-    });
-
-    return {
-      blob,
-      payments,
-      paidPaise,
-      balancePaise: invoice.total_paise - paidPaise,
-    };
-  }
-
-  async function previewReceipt() {
-    setIsRendering(true);
-    try {
-      const built = await buildReceipt();
-      if (built) {
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(URL.createObjectURL(built.blob));
-      }
-    } catch (renderError) {
-      toast.error("Could not render the receipt.", {
-        description:
-          renderError instanceof Error ? renderError.message : undefined,
-      });
-    }
-    setIsRendering(false);
-  }
-
-  async function downloadReceipt() {
-    if (!invoice) return;
-    setIsRendering(true);
-    try {
-      const built = await buildReceipt();
-      if (built) {
-        const url = URL.createObjectURL(built.blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = invoiceFileName(invoice, "receipt");
-        link.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch (renderError) {
-      toast.error("Could not render the receipt.", {
-        description:
-          renderError instanceof Error ? renderError.message : undefined,
-      });
-    }
-    setIsRendering(false);
-  }
-
-  /**
-   * Upload the receipt and hand it over on WhatsApp.
-   *
-   * The path is derived from the payment set, so re-sending an unchanged
-   * receipt finds the file already there — that 409 is the expected case, not a
-   * failure, and the existing object is signed instead of being rewritten.
-   */
-  async function shareReceiptOnWhatsApp() {
-    if (!supabase || !invoice?.number) return;
-    setIsRendering(true);
-
-    const built = await buildReceipt().catch((renderError: unknown) => {
-      toast.error("Could not render the receipt.", {
-        description:
-          renderError instanceof Error ? renderError.message : undefined,
-      });
-      return null;
-    });
-
-    if (!built) {
-      setIsRendering(false);
-      return;
-    }
-
-    const path = receiptPdfPath(invoice.id, invoice.number, built.payments);
-    const { error: uploadError } = await supabase.storage
-      .from("invoices")
-      .upload(path, built.blob, {
-        contentType: "application/pdf",
-        upsert: false,
-      });
-
-    // "already exists" means this exact receipt was shared before; anything
-    // else is a real failure and must not be papered over with a stale link.
-    const alreadyThere =
-      uploadError &&
-      /exists|duplicate|409/i.test(
-        `${uploadError.message} ${(uploadError as { statusCode?: string }).statusCode ?? ""}`,
-      );
-
-    if (uploadError && !alreadyThere) {
-      setIsRendering(false);
-      toast.error("Could not store the receipt.", {
-        description: uploadError.message,
-      });
-      return;
-    }
-
-    const { data, error: signError } = await supabase.storage
-      .from("invoices")
-      .createSignedUrl(path, INVOICE_LINK_TTL_SECONDS);
-
-    setIsRendering(false);
-
-    if (signError || !data?.signedUrl) {
-      toast.error("Could not create a share link.", {
-        description: signError?.message,
-      });
-      return;
-    }
-
-    const url = whatsappReceiptUrl({
-      phone: invoice.customer_phone,
-      name: invoice.customer_name,
-      number: invoice.number,
-      paidPaise: built.paidPaise,
-      balancePaise: built.balancePaise,
-      link: data.signedUrl,
-    });
-
-    if (!url) {
-      toast.error("That customer has no usable phone number.");
-      return;
-    }
-    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   async function shareOnWhatsApp() {
@@ -919,6 +760,7 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       name: invoice.customer_name,
       number: invoice.number,
       totalPaise: invoice.total_paise,
+      settled: invoice.paid_in_full,
       link: data.signedUrl,
     });
 
@@ -1157,6 +999,24 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
 
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-5">
+          {/* ------------------------------------------------- payments --- */}
+          {/* First in the main column once issued: the document above it is
+              read-only, and recording money and sending receipts is the only
+              work left on it. A draft has no obligation yet; a cancelled
+              invoice keeps its history but takes no new payments. */}
+          {!isDraft && (
+            <PaymentsPanel
+              invoice={invoice}
+              business={business}
+              canRecord={isIssued}
+              onChanged={() => syncInvoicePdf()}
+              onPreview={(url) => {
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                setPreviewUrl(url);
+              }}
+            />
+          )}
+
           {/* ------------------------------------------------- customer --- */}
           <section className="rounded-2xl border border-stone-200 bg-white p-6">
             <h2 className="font-display text-2xl font-semibold text-[#06131D]">
@@ -1666,72 +1526,28 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
                 {paiseToWords(totals.totalPaise)}
               </p>
 
-              {/* Paid.
-                  Stays enabled after issue, unlike every other field here —
-                  the invoice goes out once the money has cleared, so this is
-                  the one thing that is meant to change afterwards. Ticking it
-                  on an issued invoice rebuilds the stored PDF, because a flag
-                  nobody can see on the document is worth nothing. */}
-              {!isCancelled && (
+              {/* What the stored invoice PDF says about payment. Not a tick
+                  any more: it follows the receipts (migration 023), and the
+                  PDF is rebuilt the moment they clear the balance. */}
+              {!isDraft && (
                 <div className="mt-4 border-t border-stone-200 pt-4">
-                  <label className="flex cursor-pointer items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={paidInFull}
-                      onChange={(event) => {
-                        const next = event.target.checked;
-                        if (isDraft) {
-                          setPaidInFull(next);
-                          touch();
-                        } else {
-                          void markPaid(next);
-                        }
-                      }}
-                      disabled={isMarkingPaid}
-                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-stone-300 text-[#997A15] focus:ring-[#D4AF37] disabled:opacity-50"
-                    />
-                    <span>
-                      <span className="block font-body text-sm font-semibold text-[#06131D]">
-                        Paid
-                      </span>
-                      <span className="mt-1 block font-body text-xs text-[#526168]">
-                        {isMarkingPaid
-                          ? "Rebuilding the invoice PDF…"
-                          : paidInFull
-                            ? "The invoice prints a PAID stamp and “No dues. Paid in full.”"
-                            : `The invoice prints “Payment pending — ${formatRupees(totals.totalPaise, { trimZeroPaise: true })}”.`}
-                      </span>
-                    </span>
-                  </label>
-
-                  {/* The inconsistency that started all this: a payment was
-                      recorded, the receipt said PAID, the invoice said
-                      nothing. The two answer different questions and are
-                      allowed to differ while money is in transit — but never
-                      silently. */}
-                  {isIssued && paidInFull !== isSettled && (
-                    <p className="mt-2 rounded-lg bg-[#FFFCF3] px-3 py-2 font-body text-xs text-[#997A15]">
-                      {paidInFull
-                        ? paidPaise === 0
-                          ? "No payments are recorded below, so the receipt will still show the full amount due."
-                          : `Payments below add up to ${formatRupees(paidPaise, { trimZeroPaise: true })} of ${formatRupees(invoice.total_paise, { trimZeroPaise: true })}, so the receipt will still show ${formatRupees(balancePaise, { trimZeroPaise: true })} outstanding.`
-                        : "The payments below cover this invoice in full. Tick Paid so the invoice PDF says so too."}
-                    </p>
-                  )}
+                  <p className="font-body text-sm font-semibold text-[#06131D]">
+                    {invoice.paid_in_full
+                      ? "Invoice PDF: paid in full"
+                      : "Invoice PDF: payment pending"}
+                  </p>
+                  <p className="mt-1 font-body text-xs text-[#526168]">
+                    {isRebuildingPdf
+                      ? "Updating the invoice PDF…"
+                      : invoice.paid_in_full
+                        ? paidPaise > 0
+                          ? "Lists every receipt, stamped PAID, balance nil."
+                          : "Marked paid before receipts were numbered; no receipts are listed on it."
+                        : `Shows ${formatRupees(invoice.total_paise, { trimZeroPaise: true })} pending. Once receipts cover it, the PDF updates itself to list them and say paid in full.`}
+                  </p>
                 </div>
               )}
             </div>
-
-            {/* Payments only exist once there is an obligation: a draft has
-                not created one yet, a cancelled invoice no longer has one. */}
-            {isIssued && (
-              <PaymentsPanel
-                invoiceId={invoice.id}
-                totalPaise={invoice.total_paise}
-                dueDate={invoice.due_date}
-                onChanged={() => void load()}
-              />
-            )}
 
             {/* ------------------------------------------------- actions --- */}
             <div className="rounded-2xl border border-stone-200 bg-white p-5">
@@ -1770,54 +1586,22 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
                   onClick={() => void shareOnWhatsApp()}
                   className="mb-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 py-2.5 font-body text-sm font-bold text-white transition hover:bg-[#1FB855]"
                 >
-                  <FaWhatsapp /> Send on WhatsApp
+                  <FaWhatsapp />{" "}
+                  {invoice.paid_in_full
+                    ? "Send final invoice"
+                    : "Send invoice on WhatsApp"}
                 </button>
               )}
 
-              {/* The receipt is a second document, not a reissue: the invoice
-                  PDF above is frozen, this one moves with the payments. */}
-              {isIssued && (
-                <div className="mb-3 rounded-xl border border-stone-200 bg-[#FAF8F5] p-3">
-                  <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-[#526168]">
-                    {isSettled ? "Receipt" : "Payment statement"}
-                  </p>
-                  <p className="mt-1 font-body text-xs text-[#526168]">
-                    {isSettled
-                      ? "Paid in full. The receipt is stamped PAID and states there are no dues."
-                      : `Shows every payment taken and the ${formatRupees(balancePaise, { trimZeroPaise: true })} still due.`}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void previewReceipt()}
-                      disabled={isRendering}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 font-body text-xs font-semibold text-[#06131D] transition hover:border-[#D4AF37] disabled:opacity-50"
-                    >
-                      <FiEye /> Preview
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void downloadReceipt()}
-                      disabled={isRendering}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 font-body text-xs font-semibold text-[#06131D] transition hover:border-[#D4AF37] disabled:opacity-50"
-                    >
-                      <FiDownload /> PDF
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void shareReceiptOnWhatsApp()}
-                    disabled={isRendering}
-                    className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 py-2.5 font-body text-xs font-bold text-white transition hover:bg-[#1FB855] disabled:opacity-50"
-                  >
-                    <FaWhatsapp />{" "}
-                    {isRendering
-                      ? "Preparing..."
-                      : isSettled
-                        ? "Send receipt"
-                        : "Send statement"}
-                  </button>
-                </div>
+              {/* Retry for a rebuild that failed after the last payment. */}
+              {isIssued && invoice.pdf_path && !isRebuildingPdf && (
+                <button
+                  type="button"
+                  onClick={() => void syncInvoicePdf(true)}
+                  className="mb-3 w-full font-body text-xs font-semibold text-[#997A15] hover:underline"
+                >
+                  Update invoice PDF
+                </button>
               )}
 
               <button
