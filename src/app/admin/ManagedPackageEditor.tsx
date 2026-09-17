@@ -1,6 +1,7 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CmsPackageRecord } from "@/lib/packages";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -105,8 +106,11 @@ function rowsToPrices(rows: PriceRow[]) {
 
 export default function ManagedPackageEditor({
   slug = packageSlug,
+  onLoaded,
 }: {
   slug?: string;
+  /** Hands the package name up, for the page title. */
+  onLoaded?: (name: string) => void;
 }) {
   const [record, setRecord] = useState<CmsPackageRecord | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -120,6 +124,12 @@ export default function ManagedPackageEditor({
   // toast instead, see docs/notifications-plan.md.
   const [error, setError] = useState("");
   const toast = useToast();
+  const router = useRouter();
+  /** An in-app link the admin clicked while holding unsaved changes. */
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  // Read through a ref so a caller passing an inline callback does not refetch.
+  const onLoadedRef = useRef(onLoaded);
+  onLoadedRef.current = onLoaded;
 
   useEffect(() => {
     const supabase = createClient();
@@ -149,6 +159,7 @@ export default function ManagedPackageEditor({
         } else if (data) {
           const packageRecord = data as CmsPackageRecord;
           setRecord(packageRecord);
+          onLoadedRef.current?.(packageRecord.name);
           const loaded: FormState = {
             name: packageRecord.name,
             description: packageRecord.description,
@@ -169,7 +180,9 @@ export default function ManagedPackageEditor({
           setForm(loaded);
           setSavedForm(loaded);
         } else {
-          setError("The pilot package has not been seeded in Supabase yet.");
+          setError(
+            "No package exists at this address. It may have been deleted or renamed.",
+          );
         }
         setIsLoading(false);
       });
@@ -185,6 +198,58 @@ export default function ManagedPackageEditor({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [isDirty]);
+
+  /**
+   * beforeunload only covers closing or reloading the tab. Moving inside the
+   * admin (sidebar, Back button, logo) is a client-side navigation that the
+   * App Router offers no hook to cancel, so link clicks are intercepted here
+   * instead — in the capture phase on document, which runs before next/link's
+   * own handler, so stopping it there stops the navigation.
+   *
+   * Not covered: the browser's own Back button. Blocking popstate means
+   * fighting the router's history entries, and that has broken more than it
+   * has saved.
+   */
+  useEffect(() => {
+    if (!isDirty) return;
+    function interceptLink(event: MouseEvent) {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
+      const anchor = (event.target as Element | null)?.closest?.("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      // New tabs and downloads leave this page, and its edits, intact.
+      if (anchor.target === "_blank" || anchor.hasAttribute("download"))
+        return;
+      const url = new URL(anchor.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (
+        url.pathname === window.location.pathname &&
+        url.search === window.location.search
+      )
+        return;
+      event.preventDefault();
+      event.stopPropagation();
+      setPendingHref(url.pathname + url.search + url.hash);
+    }
+    document.addEventListener("click", interceptLink, true);
+    return () => document.removeEventListener("click", interceptLink, true);
+  }, [isDirty]);
+
+  function discardAndLeave() {
+    if (!pendingHref) return;
+    const href = pendingHref;
+    setPendingHref(null);
+    // Mark clean first so neither guard fires on the way out.
+    setSavedForm(form);
+    router.push(href);
+  }
 
   function updateField<Key extends keyof FormState>(
     key: Key,
@@ -335,6 +400,7 @@ export default function ManagedPackageEditor({
     }
 
     setRecord(data as CmsPackageRecord);
+    onLoaded?.((data as CmsPackageRecord).name);
     setSavedForm(form);
     // Drop the cached public catalog so the change is live immediately.
     await revalidatePackages();
@@ -353,17 +419,14 @@ export default function ManagedPackageEditor({
   const categorySchema = schemaForCategory(form.category || record?.category);
 
   return (
-    <div className="mt-8 border-t border-[#06131D]/10 pt-8">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="font-body text-xs font-semibold uppercase tracking-[0.2em] text-[#997A15]">
-            {record?.category || "Package"}
-          </p>
-          <h3 className="mt-1 font-display text-3xl font-semibold text-[#06131D]">
-            Edit {record?.name || "Package"}
-          </h3>
-        </div>
-        <span className="font-body text-xs text-[#526168]">Slug: {slug}</span>
+    <div>
+      <div className="flex flex-col gap-1 border-b border-[#06131D]/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-body text-xs font-semibold uppercase tracking-[0.2em] text-[#997A15]">
+          {record?.category || "Package"}
+        </p>
+        <span className="break-all font-body text-xs text-[#526168]">
+          Slug: {slug}
+        </span>
       </div>
 
       {error && (
@@ -563,14 +626,62 @@ export default function ManagedPackageEditor({
           />
           Published on the website
         </label>
-        <button
-          type="submit"
-          disabled={isSaving || !record || !isDirty}
-          className="rounded-lg bg-[#06131D] px-5 py-3 font-body text-sm font-bold text-[#F3E5AB] transition hover:bg-[#0D2A3A] disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
-        >
-          {isSaving ? "Saving package..." : isDirty ? "Save package" : "Saved"}
-        </button>
+        {/* Pinned to the bottom of the viewport: the form is long. */}
+        <div className="sticky bottom-4 z-10 flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white/95 p-3 shadow-lg backdrop-blur sm:col-span-2">
+          <p className="font-body text-xs text-[#526168]">
+            {isDirty ? "You have unsaved changes." : "All changes saved."}
+          </p>
+          <button
+            type="submit"
+            disabled={isSaving || !record || !isDirty}
+            className="rounded-lg bg-[#06131D] px-5 py-3 font-body text-sm font-bold text-[#F3E5AB] transition hover:bg-[#0D2A3A] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSaving ? "Saving..." : isDirty ? "Save package" : "Saved"}
+          </button>
+        </div>
       </form>
+
+      {pendingHref && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="discard-changes-title"
+          className="fixed inset-0 z-[60] grid place-items-center bg-[#06131D]/60 px-5"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3
+              id="discard-changes-title"
+              className="font-display text-2xl font-semibold text-[#06131D]"
+            >
+              Discard unsaved changes?
+            </h3>
+            <p className="mt-3 font-body text-sm text-[#526168]">
+              You have edited{" "}
+              <strong className="text-[#06131D]">
+                {record?.name || "this package"}
+              </strong>{" "}
+              without saving. If you leave now, those edits will be lost.
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setPendingHref(null)}
+                className="rounded-lg bg-[#06131D] px-4 py-2.5 font-body text-sm font-bold text-[#F3E5AB] hover:bg-[#0D2A3A]"
+              >
+                Keep editing
+              </button>
+              <button
+                type="button"
+                onClick={discardAndLeave}
+                className="rounded-lg border border-red-200 px-4 py-2.5 font-body text-sm font-semibold text-red-600 hover:bg-red-50"
+              >
+                Discard and leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

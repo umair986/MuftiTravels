@@ -12,6 +12,7 @@ export default function AdminPackagesRoute() {
     <AdminPackageCollectionPage
       title="Umrah Packages"
       description="Create, edit and publish Umrah packages shown on your website."
+      basePath="/admin/packages"
       categories={["Umrah Fixed Group", "Umrah Land Package", "Ziyarat"]}
     />
   );
