@@ -16,6 +16,7 @@
  * re-check before bumping it.
  */
 
+import { howToPerformUmrah } from "@/content/guides/how-to-perform-umrah";
 import { umrahDocumentsFromIndia } from "@/content/guides/umrah-documents-from-india";
 
 /**
@@ -59,7 +60,7 @@ export type Guide = {
 };
 
 /** Newest first. */
-export const GUIDES: Guide[] = [umrahDocumentsFromIndia];
+export const GUIDES: Guide[] = [howToPerformUmrah, umrahDocumentsFromIndia];
 
 export function getGuide(slug: string): Guide | undefined {
   return GUIDES.find((guide) => guide.slug === slug);
