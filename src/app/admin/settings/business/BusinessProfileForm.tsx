@@ -489,12 +489,16 @@ export default function BusinessProfileForm() {
                     <img
                       src={profile[key]}
                       alt={`${label} preview`}
-                      onLoad={(event) =>
+                      onLoad={(event) => {
+                        // Read now: currentTarget is null by the time React
+                        // runs the updater below.
+                        const { naturalWidth, naturalHeight } =
+                          event.currentTarget;
                         setSizes((current) => ({
                           ...current,
-                          [key]: `${event.currentTarget.naturalWidth} × ${event.currentTarget.naturalHeight} px`,
-                        }))
-                      }
+                          [key]: `${naturalWidth} × ${naturalHeight} px`,
+                        }));
+                      }}
                       className="h-full w-full object-contain"
                     />
                   </div>
