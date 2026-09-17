@@ -44,3 +44,6 @@ yarn-error.log*
 
 # Security audit — kept out of the public repo; it details unfixed weaknesses.
 docs/security-audit.md
+
+# graphify knowledge graph (generated locally)
+graphify-out/
