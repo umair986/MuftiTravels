@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FiFileText, FiPlus } from "react-icons/fi";
+import { FiEdit2, FiEye, FiFileText, FiPlus, FiTrash2 } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 import {
   INVOICE_STATUS_STYLES,
@@ -81,6 +81,10 @@ export default function AdminInvoicesPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<InvoiceRecord | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -258,6 +262,37 @@ export default function AdminInvoicesPage() {
     router.push(`/admin/invoices/${data.id}`);
   }
 
+  /**
+   * Drafts only. An issued invoice has a number in a series that must stay
+   * unbroken, so it is cancelled from its own page instead — migration 018
+   * refuses the delete in the database regardless. Filtering on status as well
+   * as id, and asking for the deleted row back, turns "a stale list tried to
+   * delete something since issued" into an error instead of a silent no-op.
+   */
+  async function deleteDraft(invoice: InvoiceRecord) {
+    if (!supabase) return;
+    setIsDeleting(true);
+    const { data, error: deleteError } = await supabase
+      .from("invoices")
+      .delete()
+      .eq("id", invoice.id)
+      .eq("status", "draft")
+      .select("id");
+    setIsDeleting(false);
+    setPendingDelete(null);
+    if (deleteError || !data?.length) {
+      toast.error("Could not delete this draft.", {
+        description:
+          deleteError?.message ??
+          "It may have been issued in the meantime. Refresh the list.",
+      });
+      void load();
+      return;
+    }
+    toast.success("Draft deleted.");
+    void load();
+  }
+
   if (isLoading) {
     return (
       <main className="grid min-h-screen place-items-center bg-[#F3EFEA] font-body text-sm text-[#526168]">
@@ -400,17 +435,19 @@ export default function AdminInvoicesPage() {
               ? balance.payment_status
               : invoice.status;
           return (
-            <Link
+            <div
               key={invoice.id}
-              href={`/admin/invoices/${invoice.id}`}
-              className={`flex flex-wrap items-center gap-x-4 gap-y-2 border-l-4 px-5 py-4 transition hover:bg-[#FFFCF3] ${
+              className={`flex flex-wrap items-center gap-x-4 gap-y-2 border-l-4 px-4 py-4 transition hover:bg-[#FFFCF3] sm:px-5 ${
                 balance?.is_overdue ? "border-l-red-400" : "border-l-transparent"
               } ${index ? "border-t border-stone-100" : ""}`}
             >
               <div className="w-32 flex-shrink-0">
-                <p className="font-body text-sm font-semibold text-[#06131D]">
+                <Link
+                  href={`/admin/invoices/${invoice.id}`}
+                  className="font-body text-sm font-semibold text-[#06131D] hover:text-[#997A15]"
+                >
                   {invoice.number ?? "Draft"}
-                </p>
+                </Link>
                 <p className="font-body text-xs text-[#526168]">
                   {formatDate(invoice.issue_date)}
                 </p>
@@ -463,7 +500,45 @@ export default function AdminInvoicesPage() {
                   </p>
                 )}
               </div>
-            </Link>
+
+              <div className="ml-auto flex items-center gap-1.5">
+                {invoice.status === "draft" ? (
+                  <>
+                    <Link
+                      href={`/admin/invoices/${invoice.id}`}
+                      aria-label="Edit draft invoice"
+                      title="Edit"
+                      className="grid h-9 w-9 place-items-center rounded-lg border border-[#06131D]/15 text-[#06131D] transition hover:border-[#D4AF37] hover:bg-white hover:text-[#997A15]"
+                    >
+                      <FiEdit2 />
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setPendingDelete(invoice)}
+                      aria-label="Delete draft invoice"
+                      title="Delete draft"
+                      className="grid h-9 w-9 place-items-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50"
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </>
+                ) : (
+                  // Issued and cancelled invoices are read-only: no edit, no
+                  // delete. The spacer keeps the amount column aligned.
+                  <>
+                    <Link
+                      href={`/admin/invoices/${invoice.id}`}
+                      aria-label={`View invoice ${invoice.number ?? ""}`}
+                      title="View"
+                      className="grid h-9 w-9 place-items-center rounded-lg border border-[#06131D]/15 text-[#06131D] transition hover:border-[#D4AF37] hover:bg-white hover:text-[#997A15]"
+                    >
+                      <FiEye />
+                    </Link>
+                    <span aria-hidden="true" className="hidden h-9 w-9 sm:block" />
+                  </>
+                )}
+              </div>
+            </div>
           );
         })}
 
@@ -480,6 +555,55 @@ export default function AdminInvoicesPage() {
           </div>
         )}
       </section>
+
+      {pendingDelete && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-draft-title"
+          className="fixed inset-0 z-50 grid place-items-center bg-[#06131D]/60 px-5"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3
+              id="delete-draft-title"
+              className="font-display text-2xl font-semibold text-[#06131D]"
+            >
+              Delete this draft?
+            </h3>
+            <p className="mt-3 font-body text-sm text-[#526168]">
+              The draft invoice
+              {pendingDelete.customer_name ? (
+                <>
+                  {" "}for{" "}
+                  <strong className="text-[#06131D]">
+                    {pendingDelete.customer_name}
+                  </strong>
+                </>
+              ) : null}{" "}
+              and its lines will be removed for good. It was never issued, so
+              no invoice number is lost. This cannot be undone.
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                disabled={isDeleting}
+                className="rounded-lg border border-stone-200 px-4 py-2.5 font-body text-sm font-semibold text-[#06131D]"
+              >
+                Keep it
+              </button>
+              <button
+                type="button"
+                onClick={() => void deleteDraft(pendingDelete)}
+                disabled={isDeleting}
+                className="rounded-lg bg-red-600 px-4 py-2.5 font-body text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {isDeleting ? "Deleting..." : "Delete draft"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {totalMatching > INVOICE_PAGE_SIZE && (
         <div className="mt-4 flex items-center justify-between gap-3">
