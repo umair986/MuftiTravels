@@ -110,7 +110,7 @@ function ManagedPackageCard({
           <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
             {record.category}
           </p>
-          <h3 className="mt-2 line-clamp-2 font-display text-2xl font-bold text-[#06131D] transition-colors group-hover:text-[#946E19]">
+          <h3 className="mt-2 line-clamp-2 font-card-title text-xl font-semibold leading-snug text-[#06131D] sm:text-[1.4rem] transition-colors group-hover:text-[#946E19]">
             {record.name}
           </h3>
           <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-stone-600">
@@ -126,7 +126,7 @@ function ManagedPackageCard({
                   ? `${preferredTier.name}${preferredSharingLabel ? ` · ${preferredSharingLabel}` : ""}`
                   : "Starting from"}
             </p>
-            <p className="font-display text-2xl font-bold text-[#06131D]">
+            <p className="font-body text-2xl font-bold tabular-nums tracking-tight text-[#06131D]">
               {hasPrice ? (
                 <>
                   {record.currency === "INR" ? "₹" : record.currency}

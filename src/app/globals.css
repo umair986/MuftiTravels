@@ -23,6 +23,7 @@
   --font-serif-display: var(--font-cormorant), Georgia, serif;
   --font-sans-body: var(--font-jakarta), -apple-system, BlinkMacSystemFont, sans-serif;
   --font-arabic-calligraphy: var(--font-amiri), serif;
+  --font-serif-card: var(--font-playfair), Georgia, serif;
 }
 
 html {
@@ -40,6 +41,11 @@ body {
 /* Typography Helpers */
 .font-display {
   font-family: var(--font-serif-display);
+}
+
+/* Package card titles — see the Playfair comment in layout.tsx. */
+.font-card-title {
+  font-family: var(--font-serif-card);
 }
 
 .font-arabic {

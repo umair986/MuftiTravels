@@ -1,6 +1,11 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Plus_Jakarta_Sans, Amiri } from "next/font/google";
+import {
+  Amiri,
+  Cormorant_Garamond,
+  Playfair_Display,
+  Plus_Jakarta_Sans,
+} from "next/font/google";
 import Header from "./components/header";
 import SetVh from "./components/SetVh";
 import { ToastProvider } from "./components/ui/toast/ToastProvider";
@@ -16,6 +21,15 @@ const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-jakarta",
+  display: "swap",
+});
+
+// Package card titles only. Cormorant's hairlines thin out at card size (24px);
+// Playfair keeps the same high-contrast serif character with sturdier strokes.
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-playfair",
   display: "swap",
 });
 
@@ -85,7 +99,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${cormorant.variable} ${jakarta.variable} ${amiri.variable} scroll-smooth`}
+      className={`${cormorant.variable} ${playfair.variable} ${jakarta.variable} ${amiri.variable} scroll-smooth`}
     >
       <body className="font-sans antialiased bg-[#FAF8F5] text-[#1A1A1A] selection:bg-[#D4AF37]/30 selection:text-[#06131D]">
         <SetVh />
