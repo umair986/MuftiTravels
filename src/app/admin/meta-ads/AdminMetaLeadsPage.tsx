@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FiAlertTriangle,
   FiFileText,
+  FiSend,
   FiSave,
   FiTrash2,
   FiUploadCloud,
@@ -14,6 +15,7 @@ import { FaWhatsapp } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { createDraftFromLead } from "@/lib/invoices";
+import { createQuotationFromLead } from "@/lib/quotations";
 import {
   META_LEAD_STATUSES,
   STATUS_STYLES,
@@ -84,6 +86,29 @@ export default function AdminMetaLeadsPage() {
       return;
     }
     router.push(`/admin/invoices/${id}`);
+  }
+
+  /**
+   * The step before a bill. A Meta lead has no head count and no travel date —
+   * the form does not ask — so only the name, phone, email and city carry over,
+   * and `city` is the nearest thing to a departure city it has.
+   */
+  async function createQuotation(lead: MetaLeadRecord) {
+    if (!supabase) return;
+    const { id, error: createError } = await createQuotationFromLead(supabase, {
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      departureCity: lead.city,
+      metaLeadId: lead.id,
+    });
+    if (!id) {
+      toast.error("Could not start a quotation.", {
+        description: createError ?? undefined,
+      });
+      return;
+    }
+    router.push(`/admin/quotations/${id}`);
   }
 
   const load = useCallback(async () => {
@@ -471,6 +496,7 @@ export default function AdminMetaLeadsPage() {
             lead={lead}
             onStatusChange={updateStatus}
             onSaveNotes={saveNotes}
+            onCreateQuotation={createQuotation}
             onCreateInvoice={createInvoice}
             onDelete={deleteLead}
           />
@@ -650,12 +676,14 @@ function LeadCard({
   lead,
   onStatusChange,
   onSaveNotes,
+  onCreateQuotation,
   onCreateInvoice,
   onDelete,
 }: {
   lead: MetaLeadRecord;
   onStatusChange: (id: string, status: MetaLeadStatus) => void;
   onSaveNotes: (id: string, notes: string) => Promise<{ ok: boolean }>;
+  onCreateQuotation: (lead: MetaLeadRecord) => void;
   onCreateInvoice: (lead: MetaLeadRecord) => void;
   onDelete: (lead: MetaLeadRecord) => void;
 }) {
@@ -704,6 +732,14 @@ function LeadCard({
               <FaWhatsapp className="h-4 w-4" /> WhatsApp
             </a>
           )}
+          {/* Before Invoice: a lead wants a price before it wants a bill. */}
+          <button
+            type="button"
+            onClick={() => onCreateQuotation(lead)}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#D4AF37] bg-[#FFFCF3] px-3.5 py-2.5 font-body text-sm font-bold text-[#997A15] transition hover:bg-[#F3E5AB]"
+          >
+            <FiSend className="h-4 w-4" /> Quote
+          </button>
           <button
             type="button"
             onClick={() => onCreateInvoice(lead)}

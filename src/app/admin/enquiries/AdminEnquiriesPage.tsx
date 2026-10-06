@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FiDownload,
   FiFileText,
+  FiSend,
   FiMail,
   FiPhone,
   FiSave,
@@ -13,6 +14,7 @@ import { FaWhatsapp } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { createDraftFromLead } from "@/lib/invoices";
+import { createQuotationFromLead } from "@/lib/quotations";
 import { useToast } from "../../components/ui/toast/useToast";
 import AdminLoginForm from "../AdminLoginForm";
 import AdminShell from "../AdminShell";
@@ -284,6 +286,35 @@ export default function AdminEnquiriesPage() {
     router.push(`/admin/invoices/${id}`);
   }
 
+  /**
+   * The step before a bill, and the one this screen was missing.
+   *
+   * An enquiry carries more than an invoice can use, and all of it is the start
+   * of a quotation: departure_city is the first thing the customer said, and
+   * adults + children is the head count the whole price turns on. Copied into
+   * editable fields once, never linked — see createQuotationFromLead.
+   */
+  async function createQuotation(enquiry: Enquiry) {
+    if (!supabase) return;
+    const pax = (enquiry.adults ?? 0) + (enquiry.children ?? 0);
+    const { id, error: createError } = await createQuotationFromLead(supabase, {
+      name: enquiry.name,
+      phone: enquiry.phone,
+      email: enquiry.email,
+      departureCity: enquiry.departure_city,
+      travelDate: enquiry.preferred_date,
+      pax: pax > 0 ? pax : null,
+      enquiryId: enquiry.id,
+    });
+    if (!id) {
+      toast.error("Could not start a quotation.", {
+        description: createError ?? undefined,
+      });
+      return;
+    }
+    router.push(`/admin/quotations/${id}`);
+  }
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return enquiries;
@@ -450,6 +481,7 @@ export default function AdminEnquiriesPage() {
             enquiry={enquiry}
             onStatusChange={updateStatus}
             onSaveNotes={saveNotes}
+            onCreateQuotation={createQuotation}
             onCreateInvoice={createInvoice}
             onDelete={deleteEnquiry}
           />
@@ -497,12 +529,14 @@ function EnquiryCard({
   enquiry,
   onStatusChange,
   onSaveNotes,
+  onCreateQuotation,
   onCreateInvoice,
   onDelete,
 }: {
   enquiry: Enquiry;
   onStatusChange: (id: string, status: Status) => void;
   onSaveNotes: (id: string, notes: string) => Promise<{ ok: boolean }>;
+  onCreateQuotation: (enquiry: Enquiry) => void;
   onCreateInvoice: (enquiry: Enquiry) => void;
   onDelete: (enquiry: Enquiry) => void;
 }) {
@@ -550,6 +584,15 @@ function EnquiryCard({
               <FaWhatsapp className="h-4 w-4" /> WhatsApp
             </a>
           )}
+          {/* Before Invoice, because this is the step that comes first: most
+              enquiries want a price before they want a bill. */}
+          <button
+            type="button"
+            onClick={() => onCreateQuotation(enquiry)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#D4AF37] bg-[#FFFCF3] px-3 py-2 font-body text-xs font-bold text-[#997A15] transition hover:bg-[#F3E5AB]"
+          >
+            <FiSend className="h-4 w-4" /> Quote
+          </button>
           <button
             type="button"
             onClick={() => onCreateInvoice(enquiry)}

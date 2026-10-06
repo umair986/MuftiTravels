@@ -48,6 +48,16 @@ export type InvoiceRecord = {
 
   source_enquiry_id: string | null;
   source_meta_lead_id: string | null;
+  /**
+   * The quotation this invoice was created from, if any (migration 024).
+   *
+   * Provenance only, like the two ids above: set once when the draft is
+   * inserted, never read back to render anything. It is deliberately outside
+   * guard_issued_invoice()'s frozen sets for the same reason pdf_path and
+   * trip_id are — it is a later fact about the world, not part of the
+   * document's content.
+   */
+  source_quotation_id: string | null;
   trip_id: string | null;
 
   subtotal_paise: number;
@@ -168,6 +178,10 @@ export type BusinessProfileRecord = {
   logo_data_uri: string;
   signature_data_uri: string;
   invoice_prefix: string;
+  /** Prefix for the quotation series, e.g. "MTQ" (migration 024). */
+  quote_prefix: string;
+  /** How many days a new quotation stands for by default (migration 024). */
+  quote_validity_days: number;
   default_tax_mode: TaxMode;
   default_tax_rate_bp: number;
 };
@@ -293,11 +307,16 @@ export function receiptSignature(payments: InvoicePayment[]): string {
 }
 
 /**
- * Upload a PDF to the invoices bucket, never replacing what is there.
+ * Upload a PDF to a document bucket, never replacing what is there.
  *
  * "Already exists" is success, not failure: every path above names exactly
  * one document, so an existing object IS this document, stored earlier. The
  * bucket has no update policy, so there is nothing else it could be.
+ *
+ * `bucket` exists so quotations can share this function rather than copy it —
+ * the "already exists means this is that document" argument is the part worth
+ * having in one place, and it holds for the `quotations` bucket (migration 024)
+ * for the same reason: no update policy there either.
  *
  * Returns an error message, or null.
  */
@@ -305,9 +324,10 @@ export async function uploadPdfOnce(
   supabase: SupabaseClient,
   path: string,
   blob: Blob,
+  bucket = "invoices",
 ): Promise<string | null> {
   const { error } = await supabase.storage
-    .from("invoices")
+    .from(bucket)
     .upload(path, blob, { contentType: "application/pdf", upsert: false });
   if (!error) return null;
   const alreadyThere = /exists|duplicate|409/i.test(

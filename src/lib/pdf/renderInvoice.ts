@@ -5,7 +5,7 @@ import type {
   InvoiceRecord,
 } from "../invoices";
 import type { InvoicePolicyList } from "../siteContent";
-import { toPdfSafeImage } from "./pdfSafeImage";
+import { pdfSafeBusiness } from "./pdfSafeImage";
 
 /**
  * Turn an invoice or a receipt into a PDF blob, in the browser.
@@ -20,19 +20,6 @@ import { toPdfSafeImage } from "./pdfSafeImage";
  * authenticated endpoint has to exist, and none can leak a customer's bill.
  */
 
-/**
- * Here as well as at upload, so a logo saved before the upload step
- * normalised it still prints once rather than twice. See pdfSafeImage.
- */
-async function pdfSafeBusiness(
-  business: BusinessProfileRecord,
-): Promise<BusinessProfileRecord> {
-  const [logo, signature] = await Promise.all([
-    toPdfSafeImage(business.logo_data_uri).catch(() => ""),
-    toPdfSafeImage(business.signature_data_uri).catch(() => ""),
-  ]);
-  return { ...business, logo_data_uri: logo, signature_data_uri: signature };
-}
 
 export async function renderInvoicePdf({
   invoice,

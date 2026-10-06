@@ -129,6 +129,33 @@ export function paiseToInputValue(paise: number): string {
   return `${Math.floor(absolute / 100)}.${String(absolute % 100).padStart(2, "0")}`;
 }
 
+/**
+ * A rupee number from outside this module, converted to paise exactly once.
+ *
+ * The package catalogue stores prices as plain rupee numbers — `packages.prices`
+ * is jsonb shaped { "silver": { "Quad": 110000 } } and starting_price is
+ * numeric(12,2) — because it serves the public website, whose units are its own
+ * business. The quotation generator is the one place those two worlds meet, and
+ * this is the only crossing (Decision 3 in docs/quotations.md).
+ *
+ * The float has already happened by the time we are called: it arrived that way
+ * over the wire. So the job is not to avoid one, it is to land on an exact paise
+ * integer immediately and never see a float again. Routed through parsePaise
+ * rather than `rupees * 100` so the rounding lives in the one function that is
+ * already audited for it — toFixed(2) is correctly rounded, and from there the
+ * rupee and paise halves are read as separate integers.
+ *
+ * Returns 0 for anything unusable, matching how the catalogue behaves in
+ * practice: a tier with no rate for a sharing type is a gap, not an error, and
+ * the admin types over it.
+ */
+export function rupeesToPaise(rupees: number): number {
+  if (typeof rupees !== "number" || !Number.isFinite(rupees) || rupees < 0) {
+    return 0;
+  }
+  return parsePaise(rupees.toFixed(2)) ?? 0;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Rounding                                                                   */
 /* -------------------------------------------------------------------------- */

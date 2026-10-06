@@ -21,6 +21,7 @@ import {
   FiMenu,
   FiMoon,
   FiPackage,
+  FiSend,
   FiSettings,
   FiTag,
   FiTrendingUp,
@@ -80,6 +81,9 @@ const SECTION_GROUPS: NavGroup[] = [
   {
     label: "Finance",
     links: [
+      // Above Invoices, because the funnel runs that way: a quotation goes out
+      // before a bill does.
+      { href: "/admin/quotations", label: "Quotations", icon: FiSend },
       { href: "/admin/invoices", label: "Invoices", icon: FiFileText },
       { href: "/admin/expenses", label: "Expenses", icon: FiCreditCard },
       { href: "/admin/trips", label: "Departures", icon: FiMapPin },

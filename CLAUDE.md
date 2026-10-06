@@ -118,6 +118,43 @@ Two traps documented at length in that file and in `scripts/render-invoice-check
   from *both* ends. Run it after any change to the document, and use `npm run sample:pdf` to look at
   the result with your own eyes.
 
+### Quotations
+
+`docs/quotations.md` is the design record — ten numbered decisions, same style as the finance doc.
+Migration `024_quotations.sql`. A quotation is the priced offer that goes out *before* an invoice
+exists, and it deliberately inverts four of the invoice rules:
+
+**A quotation may read the package catalogue; an invoice may not.** This is the one request
+Decision 5 of the finance doc names in advance and declines. The resolution is that the coupling is
+confined to `src/app/admin/quotations/` — `QuotationEditor.tsx` loads the catalogue once through
+`src/lib/packages.client.ts` and hands the list to `PackagePicker.tsx`, which is the only screen that
+reads it — and a pick is a one-time copy into editable text, so
+`quotation_items` still stores text and amounts only. The Decision 5 grep gains one clause and
+otherwise stands:
+
+```powershell
+Select-String -Path src/lib/invoices.ts,src/lib/quotations.ts,src/lib/pdf/*,src/app/admin/invoices/* `
+  -Pattern "lib/packages|lib/categories|lib/categoryFields"
+```
+
+**A sent quotation stays editable, and `revision` counts sends rather than edits.**
+`send_quotation()` allocates the number once and bumps the revision on every later call. Each
+revision writes its own PDF (`quotationPdfPath`) into a `quotations` bucket that has no update
+policy, so the link a customer already holds keeps opening what they were sent. There is no
+`guard_issued_invoice()` equivalent and there should not be one.
+
+**The catalogue is in rupees; everything downstream is paise.** `rupeesToPaise` in
+`src/lib/money.ts` is the only crossing, and it is called once, in the picker.
+
+**Expiry is derived in SQL**, in `public.quotation_overview`, because the browser's today is the
+viewer's device clock. `isExpired()` in `src/lib/quotations.ts` mirrors it for a row already in
+hand; the two are a pair.
+
+The totals arithmetic is `computeInvoiceTotals`, reused unchanged — `resolveQuoteDiscount` only
+resolves the whole-quote discount in front of it. `npm run test:quotation:pdf` measures the
+rendered document; its grand total is 11.5pt and its per-person band 10.5pt specifically so the
+checker can locate them, so don't "tidy" those to 11pt.
+
 ### Guides
 
 `/guides` articles are typed data in `src/content/guides/*.ts`, registered in `GUIDES` in

@@ -21,6 +21,8 @@
  * else the browser can decode (WebP, GIF, BMP) comes out as PNG, which the
  * renderer would otherwise refuse outright.
  */
+import type { BusinessProfileRecord } from "../invoices";
+
 export async function toPdfSafeImage(
   dataUri: string,
   /** Scale down (never up) to fit this box, in pixels. */
@@ -48,4 +50,25 @@ export async function toPdfSafeImage(
   context.imageSmoothingQuality = "high";
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL("image/png");
+}
+
+/**
+ * A business profile whose logo and signature are both safe to draw.
+ *
+ * Here as well as at upload, so a logo saved before the upload step normalised
+ * it still prints once rather than twice.
+ *
+ * Lives beside toPdfSafeImage rather than in renderInvoice.ts because the
+ * quotation renderer needs it too, and a second copy is how the two documents
+ * would start handling a bad logo differently — the exact divergence shared.tsx
+ * exists to prevent.
+ */
+export async function pdfSafeBusiness(
+  business: BusinessProfileRecord,
+): Promise<BusinessProfileRecord> {
+  const [logo, signature] = await Promise.all([
+    toPdfSafeImage(business.logo_data_uri).catch(() => ""),
+    toPdfSafeImage(business.signature_data_uri).catch(() => ""),
+  ]);
+  return { ...business, logo_data_uri: logo, signature_data_uri: signature };
 }

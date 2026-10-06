@@ -55,6 +55,8 @@ type BusinessProfile = {
   logo_data_uri: string;
   signature_data_uri: string;
   invoice_prefix: string;
+  quote_prefix: string;
+  quote_validity_days: number;
   default_tax_mode: TaxMode;
   default_tax_rate_bp: number;
 };
@@ -81,6 +83,8 @@ const EMPTY: BusinessProfile = {
   logo_data_uri: "",
   signature_data_uri: "",
   invoice_prefix: "MT",
+  quote_prefix: "MTQ",
+  quote_validity_days: 7,
   default_tax_mode: "none",
   default_tax_rate_bp: 0,
 };
@@ -220,6 +224,19 @@ export default function BusinessProfileForm() {
       return;
     }
 
+    // Five, not four: no GST rule applies to a quotation number, so the only
+    // constraint is the one the migration sets.
+    if (!/^[A-Za-z0-9]{1,5}$/.test(profile.quote_prefix)) {
+      setError("The quotation prefix must be 1 to 5 letters or digits.");
+      return;
+    }
+
+    const validity = Number(profile.quote_validity_days);
+    if (!Number.isInteger(validity) || validity < 1 || validity > 365) {
+      setError("Quotation validity must be a whole number of days, 1 to 365.");
+      return;
+    }
+
     setIsSaving(true);
     setError("");
     const { error: saveError } = await supabase
@@ -227,6 +244,8 @@ export default function BusinessProfileForm() {
       .update({
         ...profile,
         invoice_prefix: profile.invoice_prefix.toUpperCase(),
+        quote_prefix: profile.quote_prefix.toUpperCase(),
+        quote_validity_days: validity,
         default_tax_rate_bp: rateBp,
       })
       .eq("id", 1);
@@ -242,6 +261,8 @@ export default function BusinessProfileForm() {
       ...current,
       default_tax_rate_bp: rateBp,
       invoice_prefix: current.invoice_prefix.toUpperCase(),
+      quote_prefix: current.quote_prefix.toUpperCase(),
+      quote_validity_days: validity,
     }));
     setIsDirty(false);
     toast.success("Business details saved.");
@@ -254,6 +275,7 @@ export default function BusinessProfileForm() {
   }
 
   const nextNumberPreview = `${(profile.invoice_prefix || "MT").toUpperCase()}/${fyLabel(new Date())}/0001`;
+  const nextQuotePreview = `${(profile.quote_prefix || "MTQ").toUpperCase()}/${fyLabel(new Date())}/0001`;
 
   return (
     <div className="space-y-5">
@@ -436,6 +458,42 @@ export default function BusinessProfileForm() {
             onChange={(event) => set("upi_id", event.target.value)}
             className={FIELD}
           />
+        </label>
+      </Section>
+
+      <Section
+        title="Quotation defaults"
+        hint="Copied onto each new quotation. Changing them never alters one already sent."
+      >
+        <label className="block">
+          <span className={LABEL}>Number prefix</span>
+          <input
+            value={profile.quote_prefix}
+            onChange={(event) =>
+              set("quote_prefix", event.target.value.toUpperCase())
+            }
+            maxLength={5}
+            className={FIELD}
+          />
+          <span className="mt-1 block font-body text-xs text-[#526168]">
+            Quotations will read {nextQuotePreview}.
+          </span>
+        </label>
+
+        <label className="block">
+          <span className={LABEL}>Valid for (days)</span>
+          <input
+            inputMode="numeric"
+            value={String(profile.quote_validity_days)}
+            onChange={(event) =>
+              set("quote_validity_days", Number(event.target.value) || 0)
+            }
+            className={FIELD}
+          />
+          <span className="mt-1 block font-body text-xs text-[#526168]">
+            How long a new quotation stands for. The editor can override it on
+            any one quotation.
+          </span>
         </label>
       </Section>
 
