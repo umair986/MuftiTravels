@@ -16,8 +16,10 @@ import { describe, it } from "node:test";
 import { computeInvoiceTotals } from "./finance";
 import { MAX_PAISE, parsePaise, paiseToInputValue, rupeesToPaise } from "./money";
 import {
+  blankQuoteItem,
   defaultPax,
   durationLabel,
+  followTravellerCount,
   inferDurationDays,
   isExpired,
   parseDescriptionLines,
@@ -525,5 +527,37 @@ describe("the scenario this feature was built for", () => {
 
     // And the head count the editor would have prefilled is the one we quoted.
     assert.equal(defaultPax(items.map((item) => ({ quantity: item.quantity }))), 10);
+  });
+});
+
+describe("followTravellerCount", () => {
+  const line = (quantity: string) => ({ quantity, description: "x" });
+
+  it("moves a fresh line to the first head count typed", () => {
+    // Five adults on the travellers, the line still at 1: the quotation that
+    // went out at ₹82,000 for five people.
+    assert.deepEqual(followTravellerCount([line("1")], 1, 5), [line("5")]);
+  });
+
+  it("moves lines on the old count and leaves deliberate ones alone", () => {
+    const result = followTravellerCount([line("5"), line("2"), line("5")], 5, 7);
+    assert.deepEqual(
+      result.map((item) => item.quantity),
+      ["7", "2", "7"],
+    );
+  });
+
+  it("returns the lines untouched for no change or a zero count", () => {
+    const items = [line("4")];
+    assert.equal(followTravellerCount(items, 4, 4), items);
+    assert.equal(followTravellerCount(items, 4, 0), items);
+  });
+});
+
+describe("blankQuoteItem", () => {
+  it("starts at the traveller count, or 1 without one", () => {
+    assert.equal(blankQuoteItem(6).quantity, "6");
+    assert.equal(blankQuoteItem(null).quantity, "1");
+    assert.equal(blankQuoteItem().quantity, "1");
   });
 });

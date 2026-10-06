@@ -19,9 +19,11 @@ npm run sample:quotation -- <outDir>  # Writes 3 sample quotation PDFs to look a
 `npm test` globs `src/lib/*.test.ts`, so a single file is `npx tsx --test src/lib/finance.test.ts`
 and a single case is `npx tsx --test --test-name-pattern "computeInvoiceTotals" src/lib/finance.test.ts`.
 
-There are two test files: `finance.test.ts`, because money arithmetic is where a bug is both
-customer-facing and legally relevant, and `guides.test.ts`, which checks the guide copy parser and
-that every guide cites sources. Don't read the absence of tests elsewhere as an invitation to skip
+There are three test files: `finance.test.ts`, because money arithmetic is where a bug is both
+customer-facing and legally relevant, `guides.test.ts`, which checks the guide copy parser and
+that every guide cites sources, and `quotations.test.ts`, which covers the quotation helpers —
+discount, per-person, expiry, the description parser, and how costing lines follow the traveller
+count. Don't read the absence of tests elsewhere as an invitation to skip
 them where they'd earn their keep.
 
 Windows/PowerShell is the primary shell here; a Bash tool is also available and takes POSIX syntax.

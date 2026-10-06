@@ -461,6 +461,31 @@ export function paxFromBreakdown(quotation: {
 }
 
 /**
+ * Carry the line quantities along when the traveller count changes.
+ *
+ * The breakdown is where the admin says how many people are going; the line
+ * quantity is what the price is multiplied by. Asking for the same number in
+ * both places is how a quotation for five adults went out priced for one. So a
+ * line whose quantity still equals the old head count is taken to mean "every
+ * traveller" and follows it to the new one. A line set to something else —
+ * two children on a child rate, one group visa fee — was set on purpose and is
+ * left alone.
+ *
+ * `from` is the previous head count, or 1 when there was none: a fresh line
+ * starts at 1, and that is the line that should pick up the first count typed.
+ */
+export function followTravellerCount<T extends { quantity: string }>(
+  items: T[],
+  from: number,
+  to: number,
+): T[] {
+  if (from === to || to < 1) return items;
+  return items.map((item) =>
+    Number(item.quantity) === from ? { ...item, quantity: String(to) } : item,
+  );
+}
+
+/**
  * One item's description, unpacked into the indented lines the PDF draws.
  *
  * The reference document this table was modelled on puts a whole itinerary
@@ -547,12 +572,15 @@ export function quotationDisplayStatus(
 /* Editor helpers                                                             */
 /* -------------------------------------------------------------------------- */
 
-/** Blank line, ready to type into. */
-export function blankQuoteItem(): EditableQuoteItem {
+/**
+ * Blank line, ready to type into. Its quantity starts at the traveller count,
+ * because a line on a quotation is priced per person far more often than not.
+ */
+export function blankQuoteItem(pax: number | null = null): EditableQuoteItem {
   return {
     id: newQuoteId(),
     description: "",
-    quantity: "1",
+    quantity: String(pax && pax > 0 ? Math.trunc(pax) : 1),
     unitPrice: "",
     sourcePackageSlug: "",
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -44,6 +44,7 @@ import {
   defaultPax,
   DISCOUNT_MODES,
   durationLabel,
+  followTravellerCount,
   inferDurationDays,
   isExpired,
   newQuoteId,
@@ -200,7 +201,8 @@ export default function QuotationEditor({
   const [returnDate, setReturnDate] = useState("");
   const [durationDays, setDurationDays] = useState("");
 
-  /* Who is travelling. The breakdown behind `pax`, not a replacement for it. */
+  /* Who is travelling. Adults plus children IS the pax count — there is no
+     second field for it. See followTravellerCount. */
   const [adults, setAdults] = useState("");
   const [childrenWithBed, setChildrenWithBed] = useState("");
   const [childrenWithoutBed, setChildrenWithoutBed] = useState("");
@@ -211,7 +213,9 @@ export default function QuotationEditor({
 
   /* The costing. */
   const [items, setItems] = useState<EditableQuoteItem[]>([blankQuoteItem()]);
-  const [pax, setPax] = useState("");
+  /* The last non-empty head count, so clearing a field to retype it does not
+     lose which lines were following it. */
+  const lastPaxRef = useRef<number | null>(null);
   const [discountMode, setDiscountMode] = useState<DiscountMode>("none");
   const [discountPercent, setDiscountPercent] = useState("");
   const [discountAmount, setDiscountAmount] = useState("");
@@ -339,7 +343,7 @@ export default function QuotationEditor({
           }))
         : [blankQuoteItem()],
     );
-    setPax(record.pax ? String(record.pax) : "");
+    lastPaxRef.current = paxFromBreakdown(record);
     setDiscountMode(record.discount_mode);
     setDiscountPercent(
       record.discount_percent_bp ? String(record.discount_percent_bp / 100) : "",
@@ -419,9 +423,58 @@ export default function QuotationEditor({
     [parsedItems, discountPaise, taxMode, taxRateBp],
   );
 
-  const paxCount = Number(pax) > 0 ? Math.round(Number(pax)) : null;
+  const travellerCounts = {
+    adults: Number(adults) || 0,
+    children_with_bed: Number(childrenWithBed) || 0,
+    children_without_bed: Number(childrenWithoutBed) || 0,
+  };
+  // The breakdown when there is one. The lines are the fallback for a quotation
+  // made before migration 025, or one nobody has filled the travellers in on.
+  const paxCount = paxFromBreakdown(travellerCounts) ?? defaultPax(parsedItems);
   const perPerson = perPersonPaise(totals.totalPaise, paxCount);
-  const suggestedPax = defaultPax(parsedItems);
+
+  function changeTraveller(
+    field: keyof typeof travellerCounts | "infants",
+    value: string,
+  ) {
+    ({
+      adults: setAdults,
+      children_with_bed: setChildrenWithBed,
+      children_without_bed: setChildrenWithoutBed,
+      infants: setInfants,
+    })[field](value);
+    touch();
+    if (field === "infants") return;
+
+    const next = paxFromBreakdown({
+      ...travellerCounts,
+      [field]: Number(value) || 0,
+    });
+    if (next === null) return;
+    const previous = lastPaxRef.current ?? 1;
+    lastPaxRef.current = next;
+    setItems((current) => followTravellerCount(current, previous, next));
+  }
+
+  /** The lines on screen, saved or not, in the shape the PDF renders. */
+  function screenLines(): QuotationItemRecord[] {
+    if (!quotation) return [];
+    return items
+      .filter((item) => item.description.trim())
+      .map((item, index) => ({
+        id: item.id,
+        quotation_id: quotation.id,
+        description: item.description,
+        quantity: Number(item.quantity) || 1,
+        unit_price_paise: parsePaise(item.unitPrice) ?? 0,
+        line_total_paise: computeLineTotal(
+          Number(item.quantity) || 1,
+          parsePaise(item.unitPrice) ?? 0,
+        ),
+        source_package_slug: item.sourcePackageSlug,
+        sort_order: index * 10,
+      }));
+  }
 
   // Intra- or inter-state is decided from the two state codes rather than left
   // to whoever is typing. Only while GST is switched on for the business.
@@ -775,21 +828,7 @@ export default function QuotationEditor({
           ...buildPatch(),
           valid_until: validUntil || null,
         } as QuotationRecord,
-        items: items
-          .filter((item) => item.description.trim())
-          .map((item, index) => ({
-            id: item.id,
-            quotation_id: quotation.id,
-            description: item.description,
-            quantity: Number(item.quantity) || 1,
-            unit_price_paise: parsePaise(item.unitPrice) ?? 0,
-            line_total_paise: computeLineTotal(
-              Number(item.quantity) || 1,
-              parsePaise(item.unitPrice) ?? 0,
-            ),
-            source_package_slug: item.sourcePackageSlug,
-            sort_order: index * 10,
-          })),
+        items: screenLines(),
         business,
         policies,
       });
@@ -828,13 +867,20 @@ export default function QuotationEditor({
       window.open(data.signedUrl, "_blank", "noopener,noreferrer");
       return;
     }
-    // A draft has no stored file, so render one for the browser only.
+    // A draft has no stored file, so render one for the browser only — from
+    // what is on screen, header AND lines. Taking the lines from the database
+    // here once printed an unsaved quotation with an empty table under a
+    // subtotal that counted them.
     if (!business) return;
     setIsRendering(true);
     const { renderQuotationPdf } = await import("@/lib/pdf/renderQuotation");
     const blob = await renderQuotationPdf({
-      quotation: { ...quotation, ...buildPatch() } as QuotationRecord,
-      items: await fetchLines(),
+      quotation: {
+        ...quotation,
+        ...buildPatch(),
+        valid_until: validUntil || null,
+      } as QuotationRecord,
+      items: screenLines(),
       business,
       policies,
     });
@@ -983,7 +1029,6 @@ export default function QuotationEditor({
       );
       return [...current, ...additions];
     });
-    if (!pax) setPax(line.quantity);
     touch();
   }
 
@@ -1348,46 +1393,33 @@ export default function QuotationEditor({
           <div className="mt-6 border-t border-stone-100 pt-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className={`${LABEL} mb-0`}>Who is travelling</p>
-              <button
-                type="button"
-                onClick={() => {
-                  const implied = paxFromBreakdown({
-                    adults: Number(adults) || 0,
-                    children_with_bed: Number(childrenWithBed) || 0,
-                    children_without_bed: Number(childrenWithoutBed) || 0,
-                  });
-                  if (implied) {
-                    setPax(String(implied));
-                    touch();
-                  }
-                }}
-                className="font-body text-xs font-semibold text-[#997A15] underline-offset-4 hover:underline"
-              >
-                Use this as the pax count
-              </button>
+              {paxCount !== null && (
+                <p className="font-body text-xs font-semibold text-[#997A15]">
+                  {paxCount} pax on the quotation
+                </p>
+              )}
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-4">
               {(
                 [
-                  ["Adults", adults, setAdults],
-                  ["Child (bed)", childrenWithBed, setChildrenWithBed],
+                  ["Adults", adults, "adults"],
+                  ["Child (bed)", childrenWithBed, "children_with_bed"],
                   [
                     "Child (no bed)",
                     childrenWithoutBed,
-                    setChildrenWithoutBed,
+                    "children_without_bed",
                   ],
-                  ["Infants", infants, setInfants],
+                  ["Infants", infants, "infants"],
                 ] as const
-              ).map(([label, value, set]) => (
+              ).map(([label, value, field]) => (
                 <label key={label} className="block">
                   <span className={LABEL}>{label}</span>
                   <input
                     inputMode="numeric"
                     value={value}
-                    onChange={(event) => {
-                      set(event.target.value);
-                      touch();
-                    }}
+                    onChange={(event) =>
+                      changeTraveller(field, event.target.value)
+                    }
                     placeholder="0"
                     className={FIELD}
                   />
@@ -1395,9 +1427,10 @@ export default function QuotationEditor({
               ))}
             </div>
             <p className="mt-2 font-body text-xs text-[#526168]">
-              Infants are left out of the pax count on purpose — they occupy no
-              bed, and counting them would divide the total by one more person
-              than it was priced for.
+              Adults and children make the pax count, and costing lines priced
+              for everyone follow it. Infants are left out on purpose — they
+              occupy no bed, and counting them would divide the total by one
+              more person than it was priced for.
             </p>
           </div>
 
@@ -1628,7 +1661,7 @@ export default function QuotationEditor({
                   type="button"
                   onClick={() => {
                     const next = items.filter((row) => row.id !== item.id);
-                    setItems(next.length ? next : [blankQuoteItem()]);
+                    setItems(next.length ? next : [blankQuoteItem(paxCount)]);
                     touch();
                   }}
                   aria-label={`Remove line ${index + 1}`}
@@ -1643,13 +1676,45 @@ export default function QuotationEditor({
           <button
             type="button"
             onClick={() => {
-              setItems((current) => [...current, blankQuoteItem()]);
+              setItems((current) => [...current, blankQuoteItem(paxCount)]);
               touch();
             }}
             className="mt-3 inline-flex items-center gap-1.5 font-body text-sm font-semibold text-[#997A15] hover:underline"
           >
             <FiPlus /> Add a line by hand
           </button>
+
+          {/* A priced line whose quantity disagrees with the travellers. Often
+              deliberate (a child rate for two), so it is pointed out rather
+              than corrected — but a quotation saved before lines followed the
+              breakdown can carry 1 against five adults, and this is the fix. */}
+          {paxCount !== null &&
+            items.some(
+              (item) =>
+                item.description.trim() &&
+                (parsePaise(item.unitPrice) ?? 0) > 0 &&
+                Number(item.quantity) !== paxCount,
+            ) && (
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-body text-xs text-amber-800">
+                Some lines are not priced for all {paxCount} travellers.{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setItems((current) =>
+                      current.map((item) =>
+                        (parsePaise(item.unitPrice) ?? 0) > 0
+                          ? { ...item, quantity: String(paxCount) }
+                          : item,
+                      ),
+                    );
+                    touch();
+                  }}
+                  className="font-semibold underline underline-offset-2"
+                >
+                  Price every line for {paxCount} pax
+                </button>
+              </p>
+            )}
 
           {/* The description convention, stated where it is typed. Without this
               the nesting on the PDF is undiscoverable. */}
@@ -1725,31 +1790,6 @@ export default function QuotationEditor({
                 </label>
               )}
 
-              <label className="block">
-                <span className={LABEL}>Pax on the quotation</span>
-                <input
-                  inputMode="numeric"
-                  value={pax}
-                  onChange={(event) => {
-                    setPax(event.target.value);
-                    touch();
-                  }}
-                  placeholder={suggestedPax ? String(suggestedPax) : ""}
-                  className={FIELD}
-                />
-                {suggestedPax !== null && paxCount !== suggestedPax && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPax(String(suggestedPax));
-                      touch();
-                    }}
-                    className="mt-1 font-body text-xs font-semibold text-[#997A15] hover:underline"
-                  >
-                    The lines add up to {suggestedPax} — use that
-                  </button>
-                )}
-              </label>
 
               {business?.default_tax_mode !== "none" && (
                 <>
