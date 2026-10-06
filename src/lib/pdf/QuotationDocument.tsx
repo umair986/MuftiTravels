@@ -807,8 +807,12 @@ export default function QuotationDocument({
             signature are the document; these lists are what it is sold on, and
             when they sat above the signature a long list pushed the signature
             alone onto page two. They and the terms after them may flow on. */}
+        {/* wrap={false}: two side-by-side panels do not split across a page
+            break, they crush. Left to wrap, the includes panel was squeezed
+            into the last few points of page one with its text clipped, and
+            the not-included panel went on alone overleaf. Whole or not at all. */}
         {inclusions.length || exclusions.length ? (
-          <View style={[styles.row, { marginTop: 9, gap: 8 }]}>
+          <View style={[styles.row, { marginTop: 9, gap: 8 }]} wrap={false}>
             {inclusions.length ? (
               <View style={styles.listPanel}>
                 <Text style={styles.panelHeading}>WHAT THIS INCLUDES</Text>
