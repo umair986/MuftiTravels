@@ -10,6 +10,7 @@
     "test": "tsx --test src/lib/*.test.ts",
     "test:pdf": "esbuild scripts/render-invoice-check.mts --bundle --platform=node --format=esm --target=node22 --jsx=automatic --external:pdfkit --outfile=node_modules/.cache/mt/render-check.mjs --log-level=error && node node_modules/.cache/mt/render-check.mjs",
     "test:quotation:pdf": "esbuild scripts/render-quotation-check.mts --bundle --platform=node --format=esm --target=node22 --jsx=automatic --external:pdfkit --outfile=node_modules/.cache/mt/render-quotation-check.mjs --log-level=error && node node_modules/.cache/mt/render-quotation-check.mjs",
+    "sample:quotation": "esbuild scripts/render-quotation-sample.mts --bundle --platform=node --format=esm --target=node22 --jsx=automatic --external:pdfkit --external:sharp --outfile=node_modules/.cache/mt/render-quotation-sample.mjs --log-level=error && node node_modules/.cache/mt/render-quotation-sample.mjs",
     "sample:pdf": "esbuild scripts/render-invoice-sample.mts --bundle --platform=node --format=esm --target=node22 --jsx=automatic --external:pdfkit --external:sharp --outfile=node_modules/.cache/mt/render-sample.mjs --log-level=error && node node_modules/.cache/mt/render-sample.mjs"
   },
   "dependencies": {

@@ -17,12 +17,18 @@ import { computeInvoiceTotals } from "./finance";
 import { MAX_PAISE, parsePaise, paiseToInputValue, rupeesToPaise } from "./money";
 import {
   defaultPax,
+  durationLabel,
+  inferDurationDays,
   isExpired,
+  parseDescriptionLines,
+  paxFromBreakdown,
   perPersonPaise,
   quotationDisplayStatus,
   quotationFileName,
   quotationPdfPath,
   resolveQuoteDiscount,
+  totalTravellers,
+  travellerSummary,
   whatsappQuoteUrl,
 } from "./quotations";
 
@@ -302,6 +308,193 @@ describe("whatsappQuoteUrl", () => {
       decodeURIComponent(withoutDate!.split("?text=")[1]),
       /valid until/,
     );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Trip details (migration 025)                                               */
+/* -------------------------------------------------------------------------- */
+
+describe("durationLabel", () => {
+  it("prints the shorthand every Umrah quotation carries", () => {
+    assert.equal(durationLabel(15), "15D/14N");
+    assert.equal(durationLabel(7), "7D/6N");
+  });
+
+  it("does not claim zero nights on a one-day trip", () => {
+    // "1D/0N" reads as a trip with something missing from it.
+    assert.equal(durationLabel(1), "1D");
+  });
+
+  it("says nothing when the duration is unknown", () => {
+    // Empty, not a dash: the caller drops the whole line rather than printing
+    // a label with nothing after it.
+    assert.equal(durationLabel(null), "");
+    assert.equal(durationLabel(undefined), "");
+    assert.equal(durationLabel(0), "");
+    assert.equal(durationLabel(-3), "");
+  });
+});
+
+describe("inferDurationDays", () => {
+  it("counts both ends, the way a brochure does", () => {
+    // Out on the 3rd, back on the 17th, is a fifteen-day trip.
+    assert.equal(inferDurationDays("2026-12-03", "2026-12-17"), 15);
+    assert.equal(inferDurationDays("2026-12-03", "2026-12-03"), 1);
+  });
+
+  it("survives a month and a year boundary", () => {
+    assert.equal(inferDurationDays("2026-12-28", "2027-01-03"), 7);
+  });
+
+  it("gives up rather than guessing", () => {
+    assert.equal(inferDurationDays(null, "2026-12-17"), null);
+    assert.equal(inferDurationDays("2026-12-03", null), null);
+    assert.equal(inferDurationDays("not a date", "2026-12-17"), null);
+    // Backwards: the database rejects this pair anyway.
+    assert.equal(inferDurationDays("2026-12-17", "2026-12-03"), null);
+  });
+});
+
+describe("travellerSummary", () => {
+  it("returns all four counts, zeros included", () => {
+    // "0 infants" is an answer the customer gave; a blank is a question never
+    // asked, and on a document quoting a price per bed that is the price.
+    const rows = travellerSummary({ adults: 10, infants: 0 });
+    assert.deepEqual(
+      rows.map((row) => [row.label, row.count]),
+      [
+        ["Adults", 10],
+        ["Child (bed)", 0],
+        ["Child (no bed)", 0],
+        ["Infants", 0],
+      ],
+    );
+  });
+
+  it("reads a missing or nonsense count as nobody", () => {
+    const rows = travellerSummary({
+      adults: null,
+      children_with_bed: undefined,
+      children_without_bed: -4,
+      infants: Number.NaN,
+    });
+    assert.deepEqual(rows.map((row) => row.count), [0, 0, 0, 0]);
+  });
+});
+
+describe("totalTravellers", () => {
+  it("counts everybody, infants included", () => {
+    assert.equal(
+      totalTravellers({
+        adults: 10,
+        children_with_bed: 2,
+        children_without_bed: 1,
+        infants: 1,
+      }),
+      14,
+    );
+  });
+
+  it("is zero when the breakdown was never filled in", () => {
+    // Which is how the renderer decides not to draw the block at all.
+    assert.equal(totalTravellers({}), 0);
+  });
+});
+
+describe("paxFromBreakdown", () => {
+  it("leaves infants out", () => {
+    // An infant occupies no bed. Counting one would divide the total by a
+    // person it was not priced for and understate the per-person figure.
+    assert.equal(
+      paxFromBreakdown({
+        adults: 10,
+        children_with_bed: 2,
+        children_without_bed: 1,
+      }),
+      13,
+    );
+  });
+
+  it("is null when there is nobody to divide by", () => {
+    assert.equal(paxFromBreakdown({ infants: 2 } as never), null);
+    assert.equal(paxFromBreakdown({}), null);
+  });
+
+  it("agrees with perPersonPaise on the scenario", () => {
+    const pax = paxFromBreakdown({ adults: 10 });
+    assert.equal(pax, 10);
+    assert.equal(perPersonPaise(104_500_000, pax), 10_450_000);
+  });
+});
+
+describe("parseDescriptionLines", () => {
+  it("reads the first line as the item and indents the rest", () => {
+    const lines = parseDescriptionLines(
+      [
+        "Royal Package",
+        "Quint Room - Private",
+        "  Makkah Hotel",
+        "    Makkah Tower",
+      ].join("\n"),
+    );
+
+    assert.deepEqual(lines, [
+      { text: "Royal Package", depth: 0, bold: false },
+      { text: "Quint Room - Private", depth: 0, bold: false },
+      { text: "Makkah Hotel", depth: 1, bold: false },
+      { text: "Makkah Tower", depth: 2, bold: false },
+    ]);
+  });
+
+  it("counts a tab as four spaces", () => {
+    const lines = parseDescriptionLines("Item\n\tHotel");
+    assert.equal(lines[0].text, "Item");
+    assert.deepEqual(lines[1], { text: "Hotel", depth: 2, bold: false });
+  });
+
+  it("caps the depth so a pasted block cannot run off the cell", () => {
+    const [, deep] = parseDescriptionLines("Item\n" + " ".repeat(40) + "Lost");
+    assert.equal(deep.depth, 3);
+  });
+
+  it("takes **asterisks** as a sub-heading and strips them", () => {
+    const [, heading] = parseDescriptionLines("Item\n**Inclusions**");
+    assert.deepEqual(heading, { text: "Inclusions", depth: 0, bold: true });
+  });
+
+  it("drops blank lines rather than drawing them", () => {
+    // They arrive from pasted text far more often than they are meant, and a
+    // cell that grows three empty rows is how a bill spills onto a second page.
+    const lines = parseDescriptionLines("Item\n\n   \n  Hotel\n\n");
+    assert.deepEqual(
+      lines.map((line) => line.text),
+      ["Item", "Hotel"],
+    );
+  });
+
+  it("reads a Windows line ending the same as a Unix one", () => {
+    // Pasted from Word, which is where these itineraries come from today.
+    const lines = parseDescriptionLines("Item\r\n  Hotel");
+    assert.deepEqual(
+      lines.map((line) => [line.text, line.depth]),
+      [
+        ["Item", 0],
+        ["Hotel", 1],
+      ],
+    );
+  });
+
+  it("handles an empty description without throwing", () => {
+    assert.deepEqual(parseDescriptionLines(""), []);
+    assert.deepEqual(parseDescriptionLines(undefined as never), []);
+  });
+
+  it("leaves a plain one-line description exactly as it was", () => {
+    // The shape every quotation written before 025 is in.
+    assert.deepEqual(parseDescriptionLines("15 Days Regular Umrah · Silver"), [
+      { text: "15 Days Regular Umrah · Silver", depth: 0, bold: false },
+    ]);
   });
 });
 

@@ -503,10 +503,120 @@ both stay simple), emailing the quotation, a `customers` table, and multi-curren
 
 ---
 
+## Decision 11 — The trip is on the document, and every field of it is a snapshot
+
+Decisions 1 to 10 built the quotation as a priced OFFER: lines, a discount, a total, an expiry.
+What they left out is everything the customer argues about *before* they get to the price.
+
+The Word document this feature replaces leads with it — quotation id, sales representative,
+service, package, sharing, number of days, a passenger summary broken into adults, children with
+a bed, children without one and infants, and accommodation with the hotel, its distance from the
+Haram, the nights and the check-in and check-out times. None of that had a column, because the
+table was modelled on `invoices`, and an invoice is settled with somebody who already agreed.
+
+`025_quotation_trip_details.sql` adds it. Three things follow, and they are the same arguments
+Decision 2 makes about a price:
+
+**The hotel is text, not a join.** A hotel renamed, re-rated or dropped in November must not
+restate an offer made in April. The admin may copy a name off anywhere they like; what lands in
+the column is a string. This is Decision 2 applied to a fact rather than to a number.
+
+**Accommodation is `jsonb` on the row, not a child table.** It is two or three entries, written
+once, read only by the renderer, never filtered and never aggregated — `inclusions` and
+`exclusions` set that precedent in 024. A `quotation_accommodation` table would buy referential
+integrity against nothing, because there is nothing to refer to.
+
+**`pax` stays authoritative.** The four traveller counts are a BREAKDOWN, not a replacement head
+count, and no constraint ties them together. A quotation whose breakdown is all zeros is the
+normal state of a first draft, and rejecting it would mean the admin cannot save until they have
+asked a question the customer has not been asked. The editor offers a button that copies the
+breakdown into `pax`; the database does not insist. Infants are excluded from that copy — an
+infant occupies no bed, and dividing the total by one more person than it was priced for
+understates the per-person figure, which is the one number Decision 4 says the customer is
+actually negotiating.
+
+### Nothing here is required
+
+Every column defaults to something that renders as *say nothing*, and every block on the PDF is
+conditional on having been filled in. A quotation written before 025 prints exactly the document
+it printed before 025. `render-quotation-check.mts` asserts this directly, and asserts it twice:
+once with the columns at their defaults, and once with the keys **deleted** — which is what a row
+looks like coming out of PostgREST in the window between the app deploying and the migration
+being run by hand.
+
+### Options rejected
+
+| Option | Why not |
+|---|---|
+| A `hotels` table the quotation references | The catalogue coupling Decision 1 confines to one directory, re-opened for data with no pricing role. A renamed hotel would restate a sent offer. |
+| `adults`/`children` only, as `enquiries` has | The distinction that matters is a bed, not an age. A child sharing a parent's bed and one occupying their own are different prices, and the document has to say which. |
+| Derive `duration_days` from the two dates | The common case at quotation time is "15 days in December" with no dates fixed at all. A derived column prints nothing for the most-quoted fact on the page. Typed, and prefilled from the dates when both are known. |
+| `time` columns for check-in and check-out | "12:00 PM (Saudi local time)" is the whole answer. A timezone-less SQL type keeps the half nobody asked about and loses the half they did. Nothing sorts or compares these. |
+| A fifth status, or any workflow around the new fields | They are content. Content on a quotation stays editable after sending by design (Decision 6), and a re-send writes a new PDF at a new path — which is how a changed hotel reaches the customer. |
+
+---
+
+## Decision 12 — One priced line may carry a whole itinerary
+
+The reference table puts a package name, the room, and then two levels of inclusions — hotels,
+transfers, ziyarat, meals, visa, laundry, Zam Zam — inside a **single cell**, against one rate and
+one amount.
+
+Splitting that into rows is the obvious alternative and it is wrong: it would put a rate and an
+amount beside "Zam Zam Water", and a subtotal that counts the package price several times over.
+
+So the structure is a **convention over plain text**, parsed at render time by
+`parseDescriptionLines`:
+
+```
+Royal Package            <- line 0, always the item title
+Quint Room - Private     <- depth 0
+**Inclusions**           <- depth 0, a sub-heading
+  Makkah Hotel           <- depth 1
+    Makkah Tower         <- depth 2
+```
+
+Two spaces indent a level, a tab counts as four, depth is capped at 3 so a pasted block cannot run
+off the right edge of the cell, and `**asterisks**` mark a sub-heading — the same emphasis
+convention `src/app/guides/RichText.tsx` already uses, rather than a second one invented here.
+Blank lines are dropped: they arrive from pasted text far more often than they are meant, and a
+cell that grows three empty rows is how a bill spills onto a second page.
+
+`quotation_items` still stores **text and amounts only**. The structure is a rendering convention,
+not a schema, which is the whole reason this is allowed to exist — Decision 1's constraint is
+untouched by it. 025 widens `quotation_items_text_len` from 500 characters to 4000 to make room;
+4000 rather than unbounded, because the cap stops a pasted document rather than a typed itinerary.
+
+### The table that carries it
+
+The items table is a **ruled grid** — boxed, with vertical rules between the columns and a shaded
+header band — where the invoice's is a ruled list with no verticals at all. That is not
+inconsistency between two documents a customer holds side by side. An invoice line is one phrase
+against one amount, and a vertical rule beside it is noise. A quotation line is a package with two
+levels of itinerary nested inside a single cell, and without a rule to its right the reader cannot
+tell where the description stops and the rate it belongs to begins.
+
+A **zero rate prints blank**, not "₹0": a line priced at nothing is an inclusion carried inside the
+package above it — the air ticket, the visa — and "₹0" against it reads as a thing being given
+away rather than a thing already paid for.
+
+---
+
+---
+
 ## Schema
 
-One migration: `supabase/migrations/024_quotations.sql`. Applied by hand, like every other —
-**until it is applied, every quotation screen fails at runtime.**
+Two migrations: `supabase/migrations/024_quotations.sql` and `025_quotation_trip_details.sql`.
+Applied by hand, like every other — **until they are applied, every quotation screen fails at
+runtime.**
+
+025 adds Decision 11's columns to `quotations` (`service_type`, `package_type`, `sharing_type`,
+`sales_rep_name`, `sales_rep_phone`, `return_date`, `duration_days`, `adults`,
+`children_with_bed`, `children_without_bed`, `infants`, `accommodation`), widens
+`quotation_items.description` to 4000 characters for Decision 12, and rebuilds
+`quotation_overview` with `package_type`, `duration_days` and `sales_rep_name` so the list screen
+does not need a query per row. It touches neither `send_quotation()` nor
+`bump_quotation_revision()`: the new columns are content, and content stays editable.
 
 ### `business_profile` — two new columns
 
@@ -730,6 +840,7 @@ src/app/admin/quotations/
     QuotationEditor.tsx    the form, live totals, send / share / convert
 scripts/
   render-quotation-check.mts   measures the rendered PDF, asserts page counts from both ends
+  render-quotation-sample.mts  writes three PDFs to look at by eye — the half a script cannot judge
 ```
 
 Client components throughout, `createClient()` from `@/lib/supabase/client` with the house
@@ -768,6 +879,7 @@ FINANCE   Quotations · Invoices · Expenses · Departures · Reports
 | **4 ✅** | `QuotationDocument.tsx`, `renderQuotation.ts`, `scripts/pdfMeasure.mts`, `scripts/render-quotation-check.mts` (16 cases) |
 | **5 ✅** | `AdminQuotationsPage`, `QuotationEditor`, sidebar entry, business-settings fields |
 | **6 ✅** | "Quote" on `/admin/enquiries` and `/admin/meta-ads`; "Convert to invoice" |
+| **7 ✅** | `025_quotation_trip_details.sql`; the ruled items table, Decisions 11 and 12, `scripts/render-quotation-sample.mts` |
 
 Phase 2 before 3, and 4 before 5, were the two orderings that mattered: the arithmetic had to be
 right before any UI depended on it, and the document had to exist before the editor could know
@@ -778,11 +890,12 @@ what to collect.
 ```powershell
 npx tsc --noEmit
 npm run lint
-npm test                      # 93 cases, including quotations + packages.client
+npm test                      # 114 cases, including quotations + packages.client
 npm run test:pdf              # the invoice document, unchanged
-npm run test:quotation:pdf    # the quotation document
+npm run test:quotation:pdf    # the quotation document, 22 checks
 npm run build
-npm run sample:pdf -- .	mp   # then look at the result by eye
+npm run sample:pdf -- $env:TEMP          # the invoice and receipts, by eye
+npm run sample:quotation -- $env:TEMP    # the quotation, by eye
 ```
 
 Plus the Decision 1 grep above, which must return nothing.

@@ -51,14 +51,17 @@
  * Like render-invoice-check.mts this counts failures and prints them rather than
  * calling process.exit. If one grows an exit code, both should.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Font, renderToBuffer } from "@react-pdf/renderer";
 import {
+  decompressedStreams,
   drawnLines,
+  drawnLinesIn,
   headerSpacing,
   imageDraws,
   linesAtSize,
+  missingGlyphs,
   pageCount,
   pagesWithSize,
   usesEmbeddedGlyphs,
@@ -157,6 +160,91 @@ type Case = {
   maxPages?: number;
   /** Set only where pagination legitimately pushes the totals off page 1. */
   totalsOffPageOne?: boolean;
+  /** Migration 025's blocks: what is quoted, who travels, where they stay. */
+  trip?: boolean;
+  /** A description carrying a nested itinerary rather than one phrase. */
+  nested?: boolean;
+};
+
+/**
+ * The shape the reference document puts inside ONE priced cell: a package, the
+ * room under it, then two levels of inclusions. Indent is two spaces a level
+ * and **asterisks** mark a sub-heading — see parseDescriptionLines.
+ */
+const NESTED_DESCRIPTION = [
+  "Royal Package",
+  "Quint Room - Private",
+  "**Inclusions**",
+  "  Makkah Hotel",
+  "    Makkah Tower - 9 Nights",
+  "  Madinah Hotel",
+  "    Nozul Rowza Al Aqeeq - 5 Nights",
+  "  Transfers",
+  "    Jeddah Airport to Makkah Hotel",
+  "    Makkah Hotel to Madinah Hotel",
+  "    Madinah Hotel to Jeddah Airport",
+  "  Makkah Ziyarat",
+  "    Local Ziyarat with guide",
+  "  Madinah Ziyarat",
+  "    Local Ziyarat with guide",
+  "  Meals",
+  "    Breakfast, lunch and dinner — Indian buffet",
+  "  Visa",
+  "  SIM card",
+  "  Laundry on alternate days",
+  "  Premium Umrah kit",
+  "  Zam Zam water",
+].join("\n");
+
+/** One migration-025 trip, as an admin who answered every question would. */
+const TRIP = {
+  service_type: "Umrah",
+  package_type: "Gold & Gold Plus Package",
+  sharing_type: "Quad sharing",
+  sales_rep_name: "Mohammed Rashid",
+  sales_rep_phone: "+91 98192 43474",
+  return_date: "2027-03-26",
+  duration_days: 15,
+  adults: 10,
+  children_with_bed: 2,
+  children_without_bed: 1,
+  infants: 1,
+  accommodation: [
+    {
+      city: "Makkah",
+      hotel: "Elaf Diamond",
+      distance: "300 m",
+      room: "Sharing",
+      nights: 9,
+      check_in: "04:00 PM",
+      check_out: "12:00 PM",
+    },
+    {
+      city: "Madinah",
+      hotel: "Gulnar Taiba",
+      distance: "00 m",
+      room: "Sharing",
+      nights: 5,
+      check_in: "01:00 PM",
+      check_out: "12:00 PM",
+    },
+  ],
+};
+
+/** The same row with every 025 field left as the database defaults it. */
+const NO_TRIP = {
+  service_type: "",
+  package_type: "",
+  sharing_type: "",
+  sales_rep_name: "",
+  sales_rep_phone: "",
+  return_date: null,
+  duration_days: null,
+  adults: 0,
+  children_with_bed: 0,
+  children_without_bed: 0,
+  infants: 0,
+  accommodation: [],
 };
 
 function build(testCase: Case): {
@@ -173,7 +261,9 @@ function build(testCase: Case): {
         quotation_id: "quo-1",
         description:
           index === 0
-            ? "15 Days Regular Umrah · Silver · Quad"
+            ? testCase.nested
+              ? NESTED_DESCRIPTION
+              : "15 Days Regular Umrah · Silver · Quad"
             : `Extra night in Madinah, room ${index} · Triple`,
         quantity,
         unit_price_paise: unit,
@@ -227,6 +317,7 @@ function build(testCase: Case): {
     departure_city: "Mumbai",
     travel_date: "2027-03-12",
     pax: testCase.pax,
+    ...(testCase.trip ? TRIP : NO_TRIP),
     source_enquiry_id: null,
     source_meta_lead_id: null,
     trip_id: null,
@@ -364,9 +455,59 @@ const cases: Case[] = [
     minPages: 2,
     totalsOffPageOne: true,
   },
+  // Migration 025, every block filled: what is quoted, four traveller counts,
+  // two hotels. This is the document the Word file it replaces produces.
+  {
+    name: "every 025 block",
+    lines: 1,
+    pax: 13,
+    taxMode: "none",
+    discountMode: "percent",
+    trip: true,
+    maxPages: 2,
+  },
+  // One priced line carrying twenty-two lines of itinerary. The cell grows, the
+  // price must not move off page 1 behind it.
+  {
+    name: "nested itinerary",
+    lines: 1,
+    pax: 10,
+    taxMode: "none",
+    discountMode: "none",
+    nested: true,
+    maxPages: 2,
+  },
+  // Both at once, plus the annexure: the heaviest document this can produce.
+  {
+    name: "025 + nested + terms",
+    lines: 2,
+    pax: 13,
+    taxMode: "none",
+    discountMode: "percent",
+    trip: true,
+    nested: true,
+    withPolicies: true,
+    minPages: 2,
+    totalsOffPageOne: true,
+  },
 ];
 
 let failures = 0;
+
+/**
+ * Text runs across EVERY page, not just the first.
+ *
+ * drawnLines() takes the first content stream, which is the right instrument
+ * for "did this reach page one". It is the wrong one for "did this reach the
+ * document at all": a taller description pushes content onto page two, so the
+ * first page's run count goes DOWN as content is added, and a check built on it
+ * reads the addition as a deletion.
+ */
+function runsOnEveryPage(buffer: Buffer): number {
+  return decompressedStreams(buffer)
+    .filter((stream) => stream.includes("BT") && stream.includes("Tf"))
+    .reduce((sum, stream) => sum + drawnLinesIn(stream).length, 0);
+}
 
 function report(name: string, ok: boolean, detail: string) {
   if (!ok) failures += 1;
@@ -645,6 +786,169 @@ for (const testCase of cases) {
     "logo, name once",
     draws === 1 && runsAt16 === 0,
     `imageDraws=${draws} runsAt16pt=${runsAt16}`,
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * A nested description reaches the page, line for line.
+ *
+ * The whole point of parseDescriptionLines is that one priced line can carry an
+ * itinerary. The failure it guards against is silent: react-pdf will happily
+ * draw the first line and drop the rest, or draw them all on top of each other,
+ * and the PDF is valid either way.
+ *
+ * Counted as a DIFFERENCE against the same quotation with a one-phrase
+ * description, because the rest of the document contributes a run count that is
+ * not worth predicting. A wrapped line draws more than one run, so the
+ * assertion is a lower bound — dropping a line would put the difference under
+ * it.
+ * ------------------------------------------------------------------------- */
+{
+  const flat = build({
+    name: "x",
+    lines: 1,
+    pax: 10,
+    taxMode: "none",
+    discountMode: "none",
+  });
+  const deep = build({
+    name: "x",
+    lines: 1,
+    pax: 10,
+    taxMode: "none",
+    discountMode: "none",
+    nested: true,
+  });
+
+  const flatBuffer = await renderToBuffer(
+    QuotationDocument({ ...flat, business, policies: [] }) as never,
+  );
+  const deepBuffer = await renderToBuffer(
+    QuotationDocument({ ...deep, business, policies: [] }) as never,
+  );
+
+  const extra = NESTED_DESCRIPTION.split("\n").length - 1;
+  const grew = runsOnEveryPage(deepBuffer) - runsOnEveryPage(flatBuffer);
+
+  report(
+    "nested lines drawn",
+    grew >= extra,
+    `extraLines=${extra} extraRuns=${grew}`,
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * A quotation nobody filled the 025 fields in on is unchanged by 025.
+ *
+ * Every new block is conditional, and the way to prove it is to render the same
+ * quotation three ways and get the same page back each time:
+ *
+ *   - with the columns at their database defaults ('' / 0 / []),
+ *   - with the keys DELETED, which is what a row loaded before the migration is
+ *     applied actually looks like coming out of PostgREST,
+ *   - and with the trip filled in, which must differ.
+ *
+ * The second is the one that earns its keep. The app ships before the migration
+ * is run by hand, and a renderer that reads quotation.accommodation.filter on a
+ * row that has no such column throws inside a worker where nothing catches it.
+ * ------------------------------------------------------------------------- */
+{
+  const empty = build({
+    name: "x",
+    lines: 1,
+    pax: 10,
+    taxMode: "none",
+    discountMode: "none",
+  });
+  const filled = build({
+    name: "x",
+    lines: 1,
+    pax: 10,
+    taxMode: "none",
+    discountMode: "none",
+    trip: true,
+  });
+
+  // A row from a database where 025 has not been applied: the keys are absent,
+  // not empty.
+  const legacy = { ...empty.quotation } as Record<string, unknown>;
+  for (const key of Object.keys(NO_TRIP)) delete legacy[key];
+
+  const emptyBuffer = await renderToBuffer(
+    QuotationDocument({ ...empty, business, policies: [] }) as never,
+  );
+  const legacyBuffer = await renderToBuffer(
+    QuotationDocument({
+      quotation: legacy as never,
+      items: empty.items,
+      business,
+      policies: [],
+    }) as never,
+  );
+  const filledBuffer = await renderToBuffer(
+    QuotationDocument({ ...filled, business, policies: [] }) as never,
+  );
+
+  const a = drawnLines(emptyBuffer).length;
+  const b = drawnLines(legacyBuffer).length;
+  const c = drawnLines(filledBuffer).length;
+
+  report(
+    "025 blocks optional",
+    a === b && c > a,
+    `defaults=${a} missingColumns=${b} filled=${c}`,
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Every character these documents hard-code has a glyph in Noto Sans.
+ *
+ * The bug this catches already shipped. The per-person band was written as
+ * "≈ ₹1,04,500"; Noto Sans has no glyph for U+2248; react-pdf drew the rest
+ * of the string and silently left the ≈ out. No warning, no throw, no
+ * fallback font, a valid PDF, and every other check in this file passing. The
+ * only thing that found it was looking at the page.
+ *
+ * Checked against the font's cmap rather than against a render, because a
+ * render has nothing to measure: the character is absent, not wrong. Scanned
+ * over the whole of src/lib/pdf, not just the quotation, since all three
+ * documents set the same two faces and the invoice is one copied line away from
+ * the same trap. The ★ named at the end of CLAUDE.md is the other half of this
+ * family.
+ * ------------------------------------------------------------------------- */
+{
+  // Comments are stripped first, and that is not a detail: this very file and
+  // the document it checks both NAME the offending characters in prose in order
+  // to explain them, so a scan over raw source reports the explanation as the
+  // bug. Line comments are only recognised at the start of a line, so a "//" in
+  // the middle of a URL does not eat the rest of it.
+  const strip = (text: string) =>
+    text.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
+
+  const sources = readdirSync(resolve("src/lib/pdf"))
+    .filter((file) => file.endsWith(".tsx") || file.endsWith(".ts"))
+    .map((file) => ({
+      file,
+      text: strip(readFileSync(resolve("src/lib/pdf", file), "utf8")),
+    }));
+
+  const regular = resolve("public/fonts/NotoSans-Regular.ttf");
+  const semibold = resolve("public/fonts/NotoSans-SemiBold.ttf");
+
+  const offenders = sources.flatMap(({ file, text }) => {
+    const gone = new Set([
+      ...missingGlyphs(text, regular),
+      ...missingGlyphs(text, semibold),
+    ]);
+    return gone.size ? [`${file}: ${[...gone].join(" ")}`] : [];
+  });
+
+  report(
+    "no missing glyphs",
+    offenders.length === 0,
+    offenders.length
+      ? offenders.join("; ")
+      : `scanned=${sources.length} files, both faces`,
   );
 }
 

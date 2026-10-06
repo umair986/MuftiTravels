@@ -43,8 +43,11 @@ import {
   createInvoiceFromQuotation,
   defaultPax,
   DISCOUNT_MODES,
+  durationLabel,
+  inferDurationDays,
   isExpired,
   newQuoteId,
+  paxFromBreakdown,
   perPersonPaise,
   QUOTATION_BUCKET,
   QUOTE_LINK_TTL_SECONDS,
@@ -54,6 +57,7 @@ import {
   whatsappQuoteUrl,
   type DiscountMode,
   type EditableQuoteItem,
+  type QuotationAccommodation,
   type QuotationItemRecord,
   type QuotationRecord,
 } from "@/lib/quotations";
@@ -187,6 +191,24 @@ export default function QuotationEditor({
   const [validUntil, setValidUntil] = useState("");
   const [tripId, setTripId] = useState("");
 
+  /* What is being sold, and who to ask about it. Migration 025. */
+  const [serviceType, setServiceType] = useState("Umrah");
+  const [packageType, setPackageType] = useState("");
+  const [sharingType, setSharingType] = useState("");
+  const [salesRepName, setSalesRepName] = useState("");
+  const [salesRepPhone, setSalesRepPhone] = useState("");
+  const [returnDate, setReturnDate] = useState("");
+  const [durationDays, setDurationDays] = useState("");
+
+  /* Who is travelling. The breakdown behind `pax`, not a replacement for it. */
+  const [adults, setAdults] = useState("");
+  const [childrenWithBed, setChildrenWithBed] = useState("");
+  const [childrenWithoutBed, setChildrenWithoutBed] = useState("");
+  const [infants, setInfants] = useState("");
+
+  /* Where they are staying. */
+  const [stays, setStays] = useState<QuotationAccommodation[]>([]);
+
   /* The costing. */
   const [items, setItems] = useState<EditableQuoteItem[]>([blankQuoteItem()]);
   const [pax, setPax] = useState("");
@@ -286,6 +308,25 @@ export default function QuotationEditor({
     setQuoteDate(record.quote_date ?? toDateInput(new Date()));
     setValidUntil(record.valid_until ?? "");
     setTripId(record.trip_id ?? "");
+
+    setServiceType(record.service_type ?? "Umrah");
+    setPackageType(record.package_type ?? "");
+    setSharingType(record.sharing_type ?? "");
+    setSalesRepName(record.sales_rep_name ?? "");
+    setSalesRepPhone(record.sales_rep_phone ?? "");
+    setReturnDate(record.return_date ?? "");
+    setDurationDays(record.duration_days ? String(record.duration_days) : "");
+
+    setAdults(record.adults ? String(record.adults) : "");
+    setChildrenWithBed(
+      record.children_with_bed ? String(record.children_with_bed) : "",
+    );
+    setChildrenWithoutBed(
+      record.children_without_bed ? String(record.children_without_bed) : "",
+    );
+    setInfants(record.infants ? String(record.infants) : "");
+
+    setStays(record.accommodation ?? []);
 
     setItems(
       lines.length
@@ -429,6 +470,41 @@ export default function QuotationEditor({
       quote_date: quoteDate || toDateInput(new Date()),
       pax: paxCount,
       trip_id: tripId || null,
+
+      /* Trip details (migration 025). Every one of these has a default that
+         renders as "say nothing", so a quotation nobody has filled them in on
+         produces the document it produced before they existed. */
+      service_type: serviceType.trim().slice(0, 80),
+      package_type: packageType.trim().slice(0, 160),
+      sharing_type: sharingType.trim().slice(0, 120),
+      sales_rep_name: salesRepName.trim().slice(0, 120),
+      sales_rep_phone: salesRepPhone.trim().slice(0, 32),
+      return_date: returnDate || null,
+      // Null rather than 0 for an empty field: the CHECK rejects 0, and null is
+      // the database's own way of saying "not discussed yet".
+      duration_days: Math.trunc(Number(durationDays) || 0) || null,
+
+      adults: Math.max(Math.trunc(Number(adults) || 0), 0),
+      children_with_bed: Math.max(Math.trunc(Number(childrenWithBed) || 0), 0),
+      children_without_bed: Math.max(
+        Math.trunc(Number(childrenWithoutBed) || 0),
+        0,
+      ),
+      infants: Math.max(Math.trunc(Number(infants) || 0), 0),
+
+      // Rows with nothing in them are dropped rather than stored: an empty
+      // object would render as a bordered row of dashes on the PDF.
+      accommodation: stays
+        .map((stay) => ({
+          city: stay.city.trim().slice(0, 80),
+          hotel: stay.hotel.trim().slice(0, 160),
+          distance: stay.distance.trim().slice(0, 80),
+          room: stay.room.trim().slice(0, 80),
+          nights: Math.trunc(Number(stay.nights) || 0) || null,
+          check_in: stay.check_in.trim().slice(0, 40),
+          check_out: stay.check_out.trim().slice(0, 40),
+        }))
+        .filter((stay) => stay.city || stay.hotel),
       subtotal_paise: totals.subtotalPaise,
       discount_mode: discountMode,
       discount_percent_bp: discountMode === "percent" ? discountPercentBp : 0,
@@ -467,6 +543,18 @@ export default function QuotationEditor({
       exclusions,
       notes,
       showPolicies,
+      serviceType,
+      packageType,
+      sharingType,
+      salesRepName,
+      salesRepPhone,
+      returnDate,
+      durationDays,
+      adults,
+      childrenWithBed,
+      childrenWithoutBed,
+      infants,
+      stays,
     ],
   );
 
@@ -504,7 +592,9 @@ export default function QuotationEditor({
     const rows = usable.map((item, index) => ({
       id: item.id,
       quotation_id: quotation.id,
-      description: item.description.trim().slice(0, 500),
+      // 4000, matching quotation_items_text_len as migration 025 widened it:
+      // one line can carry a whole nested itinerary.
+      description: item.description.trim().slice(0, 4000),
       quantity: Number(item.quantity) || 1,
       unit_price_paise: parsePaise(item.unitPrice) ?? 0,
       line_total_paise: computeLineTotal(
@@ -1134,6 +1224,318 @@ export default function QuotationEditor({
           </div>
         </section>
 
+        {/* ----------------------------------------------------- the trip --- */}
+        {/* Migration 025. None of it is required: a quotation saved with this
+            card untouched prints exactly the document it printed before these
+            fields existed, because every block on the PDF is conditional on
+            having been filled in. */}
+        <section className={CARD}>
+          <h2 className="font-display text-2xl font-semibold text-[#06131D]">
+            The trip
+          </h2>
+          <p className="mt-1 font-body text-sm text-[#526168]">
+            What the customer compares us on before they get to the price. Each
+            block is left off the PDF when it is empty.
+          </p>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <label className="block">
+              <span className={LABEL}>Service</span>
+              <input
+                value={serviceType}
+                onChange={(event) => {
+                  setServiceType(event.target.value);
+                  touch();
+                }}
+                maxLength={80}
+                placeholder="Umrah"
+                className={FIELD}
+              />
+            </label>
+            <label className="block">
+              <span className={LABEL}>Package</span>
+              <input
+                value={packageType}
+                onChange={(event) => {
+                  setPackageType(event.target.value);
+                  touch();
+                }}
+                maxLength={160}
+                placeholder="Gold &amp; Gold Plus"
+                className={FIELD}
+              />
+            </label>
+            <label className="block">
+              <span className={LABEL}>Sharing</span>
+              <input
+                value={sharingType}
+                onChange={(event) => {
+                  setSharingType(event.target.value);
+                  touch();
+                }}
+                maxLength={120}
+                placeholder="Quad sharing"
+                className={FIELD}
+              />
+            </label>
+
+            <label className="block">
+              <span className={LABEL}>Returning on</span>
+              <input
+                type="date"
+                value={returnDate}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setReturnDate(value);
+                  // Fill the duration from the dates, but never overwrite a
+                  // number already typed: a group flying home separately is
+                  // real, and they would have to retype it on every save.
+                  if (!durationDays) {
+                    const days = inferDurationDays(travelDate || null, value);
+                    if (days) setDurationDays(String(days));
+                  }
+                  touch();
+                }}
+                className={FIELD}
+              />
+            </label>
+            <label className="block">
+              <span className={LABEL}>Days</span>
+              <input
+                inputMode="numeric"
+                value={durationDays}
+                onChange={(event) => {
+                  setDurationDays(event.target.value);
+                  touch();
+                }}
+                placeholder="15"
+                className={FIELD}
+              />
+              <span className="mt-1 block font-body text-xs text-[#526168]">
+                {durationLabel(Number(durationDays) || null) ||
+                  "Prints as 15D/14N"}
+              </span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className={LABEL}>Prepared by</span>
+                <input
+                  value={salesRepName}
+                  onChange={(event) => {
+                    setSalesRepName(event.target.value);
+                    touch();
+                  }}
+                  maxLength={120}
+                  className={FIELD}
+                />
+              </label>
+              <label className="block">
+                <span className={LABEL}>Their phone</span>
+                <input
+                  value={salesRepPhone}
+                  onChange={(event) => {
+                    setSalesRepPhone(event.target.value);
+                    touch();
+                  }}
+                  maxLength={32}
+                  className={FIELD}
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* ------------------------------------------------ travellers --- */}
+          <div className="mt-6 border-t border-stone-100 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className={`${LABEL} mb-0`}>Who is travelling</p>
+              <button
+                type="button"
+                onClick={() => {
+                  const implied = paxFromBreakdown({
+                    adults: Number(adults) || 0,
+                    children_with_bed: Number(childrenWithBed) || 0,
+                    children_without_bed: Number(childrenWithoutBed) || 0,
+                  });
+                  if (implied) {
+                    setPax(String(implied));
+                    touch();
+                  }
+                }}
+                className="font-body text-xs font-semibold text-[#997A15] underline-offset-4 hover:underline"
+              >
+                Use this as the pax count
+              </button>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-4">
+              {(
+                [
+                  ["Adults", adults, setAdults],
+                  ["Child (bed)", childrenWithBed, setChildrenWithBed],
+                  [
+                    "Child (no bed)",
+                    childrenWithoutBed,
+                    setChildrenWithoutBed,
+                  ],
+                  ["Infants", infants, setInfants],
+                ] as const
+              ).map(([label, value, set]) => (
+                <label key={label} className="block">
+                  <span className={LABEL}>{label}</span>
+                  <input
+                    inputMode="numeric"
+                    value={value}
+                    onChange={(event) => {
+                      set(event.target.value);
+                      touch();
+                    }}
+                    placeholder="0"
+                    className={FIELD}
+                  />
+                </label>
+              ))}
+            </div>
+            <p className="mt-2 font-body text-xs text-[#526168]">
+              Infants are left out of the pax count on purpose — they occupy no
+              bed, and counting them would divide the total by one more person
+              than it was priced for.
+            </p>
+          </div>
+
+          {/* --------------------------------------------- accommodation --- */}
+          <div className="mt-6 border-t border-stone-100 pt-5">
+            <p className={LABEL}>Where they are staying</p>
+            <div className="space-y-3">
+              {stays.map((stay, index) => (
+                <div
+                  key={`stay-${index}`}
+                  className="grid gap-2 rounded-xl border border-stone-200 p-3 sm:grid-cols-[6rem_1fr_6rem_5rem_2.25rem]"
+                >
+                  <input
+                    value={stay.city}
+                    onChange={(event) => {
+                      const next = [...stays];
+                      next[index] = { ...stay, city: event.target.value };
+                      setStays(next);
+                      touch();
+                    }}
+                    placeholder="Makkah"
+                    maxLength={80}
+                    className={FIELD}
+                  />
+                  <input
+                    value={stay.hotel}
+                    onChange={(event) => {
+                      const next = [...stays];
+                      next[index] = { ...stay, hotel: event.target.value };
+                      setStays(next);
+                      touch();
+                    }}
+                    placeholder="Elaf Diamond"
+                    maxLength={160}
+                    className={FIELD}
+                  />
+                  <input
+                    value={stay.distance}
+                    onChange={(event) => {
+                      const next = [...stays];
+                      next[index] = { ...stay, distance: event.target.value };
+                      setStays(next);
+                      touch();
+                    }}
+                    placeholder="300 m"
+                    maxLength={80}
+                    className={FIELD}
+                  />
+                  <input
+                    inputMode="numeric"
+                    value={stay.nights ? String(stay.nights) : ""}
+                    onChange={(event) => {
+                      const next = [...stays];
+                      next[index] = {
+                        ...stay,
+                        nights: Number(event.target.value) || null,
+                      };
+                      setStays(next);
+                      touch();
+                    }}
+                    placeholder="Nights"
+                    className={FIELD}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStays(stays.filter((_, i) => i !== index));
+                      touch();
+                    }}
+                    aria-label={`Remove ${stay.city || "hotel"}`}
+                    className="grid h-9 w-9 place-items-center self-center rounded-lg border border-stone-200 text-[#526168] transition hover:bg-stone-50"
+                  >
+                    <FiTrash2 />
+                  </button>
+
+                  <input
+                    value={stay.room}
+                    onChange={(event) => {
+                      const next = [...stays];
+                      next[index] = { ...stay, room: event.target.value };
+                      setStays(next);
+                      touch();
+                    }}
+                    placeholder="Sharing"
+                    maxLength={80}
+                    className={`${FIELD} sm:col-start-1`}
+                  />
+                  <input
+                    value={stay.check_in}
+                    onChange={(event) => {
+                      const next = [...stays];
+                      next[index] = { ...stay, check_in: event.target.value };
+                      setStays(next);
+                      touch();
+                    }}
+                    placeholder="Check-in 04:00 PM"
+                    maxLength={40}
+                    className={FIELD}
+                  />
+                  <input
+                    value={stay.check_out}
+                    onChange={(event) => {
+                      const next = [...stays];
+                      next[index] = { ...stay, check_out: event.target.value };
+                      setStays(next);
+                      touch();
+                    }}
+                    placeholder="Check-out 12:00 PM"
+                    maxLength={40}
+                    className={`${FIELD} sm:col-span-2`}
+                  />
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setStays([
+                  ...stays,
+                  {
+                    city: "",
+                    hotel: "",
+                    distance: "",
+                    room: "",
+                    nights: null,
+                    check_in: "",
+                    check_out: "",
+                  },
+                ]);
+                touch();
+              }}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-stone-200 px-3.5 py-2 font-body text-sm font-semibold text-[#526168] transition hover:bg-stone-50"
+            >
+              <FiPlus /> Add a hotel
+            </button>
+          </div>
+        </section>
+
         {/* ---------------------------------------------------- the price --- */}
         <section className={CARD}>
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1162,7 +1564,12 @@ export default function QuotationEditor({
               >
                 <label className="block">
                   {index === 0 && <span className={LABEL}>Description</span>}
-                  <input
+                  {/* A textarea, not an input, because one priced line carries a
+                      whole nested itinerary on the PDF: first line is the item,
+                      two spaces indent a level, **asterisks** make a
+                      sub-heading. See parseDescriptionLines. */}
+                  <textarea
+                    rows={item.description.includes("\n") ? 6 : 1}
                     value={item.description}
                     onChange={(event) => {
                       const next = [...items];
@@ -1173,8 +1580,8 @@ export default function QuotationEditor({
                       setItems(next);
                       touch();
                     }}
-                    maxLength={500}
-                    className={FIELD}
+                    maxLength={4000}
+                    className={`${FIELD} resize-y font-mono text-xs leading-relaxed`}
                   />
                 </label>
                 <label className="block">
@@ -1243,6 +1650,16 @@ export default function QuotationEditor({
           >
             <FiPlus /> Add a line by hand
           </button>
+
+          {/* The description convention, stated where it is typed. Without this
+              the nesting on the PDF is undiscoverable. */}
+          <p className="mt-3 font-body text-xs leading-relaxed text-[#526168]">
+            A description can run to several lines. The first line is the item
+            name; two spaces at the start of a line indent it one level, four
+            spaces two levels; wrap a line in{" "}
+            <code className="rounded bg-stone-100 px-1">**asterisks**</code> to
+            make it a sub-heading. The whole block stays one priced line.
+          </p>
 
           <div className="mt-6 grid gap-5 border-t border-stone-100 pt-5 lg:grid-cols-2">
             <div className="grid gap-4 sm:grid-cols-2">

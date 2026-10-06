@@ -80,9 +80,37 @@ export type DiscountMode = (typeof DISCOUNT_MODES)[number]["value"];
 /* Row shapes                                                                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * One city's hotel, as it was offered. Migration 025.
+ *
+ * Every field is text, including the times and the distance, because every one
+ * of them is a sentence the business says to the customer rather than a
+ * measurement: "00Mtr", "walking distance" and "opposite Gate 79" are all real
+ * answers, and "12:00 PM (Saudi local time)" is the whole answer, not a `time`
+ * with the important half thrown away. `nights` is the exception, because it is
+ * counted and shown as a number.
+ */
+export type QuotationAccommodation = {
+  city: string;
+  hotel: string;
+  distance: string;
+  room: string;
+  nights: number | null;
+  check_in: string;
+  check_out: string;
+};
+
 export type QuotationItemRecord = {
   id: string;
   quotation_id: string;
+  /**
+   * The line as the customer reads it, and the one field on this row that
+   * carries structure. See parseDescriptionLines: the first line is the item,
+   * leading spaces indent the lines under it, and **asterisks** mark a
+   * sub-heading. It is still plain text in the database — the structure is a
+   * rendering convention, not a schema, which is what keeps quotation_items
+   * storing text and amounts only.
+   */
   description: string;
   /** Pax on this line. numeric(10,2) in the database, to match invoice_items. */
   quantity: number;
@@ -135,6 +163,40 @@ export type QuotationRecord = {
   travel_date: string | null;
   /** Head count for the per-person figure. Null where a head count is meaningless. */
   pax: number | null;
+
+  /* ------------------------------------------------- trip details (025) --- */
+
+  /** "Umrah", "Hajj", "Ziyarat". Free text: next season invents a new one. */
+  service_type: string;
+  /** "Gold & Gold Plus Package". Not a catalogue key — a thing that was said. */
+  package_type: string;
+  /** "Sharing", "Quad", "Triple Room - Private". */
+  sharing_type: string;
+
+  /** Who prepared it. A fact about the offer, not a lookup into admin_users. */
+  sales_rep_name: string;
+  sales_rep_phone: string;
+
+  return_date: string | null;
+  /**
+   * Typed, not derived. "15 days in December" with no dates fixed is the normal
+   * state of a quotation, and a derived column would print nothing for the most
+   * quoted fact on the page. The editor fills it from the dates when both are
+   * known — see inferDurationDays.
+   */
+  duration_days: number | null;
+
+  /**
+   * The breakdown behind `pax`, not a replacement for it. A child sharing a
+   * parent's bed prices differently from one occupying their own, and an infant
+   * occupies neither — the distinction is a bed, not an age.
+   */
+  adults: number;
+  children_with_bed: number;
+  children_without_bed: number;
+  infants: number;
+
+  accommodation: QuotationAccommodation[];
 
   source_enquiry_id: string | null;
   source_meta_lead_id: string | null;
@@ -189,6 +251,13 @@ export type QuotationOverview = {
   pdf_path: string;
   created_at: string;
   updated_at: string;
+
+  /* Added to the view by migration 025, so the list screen can say
+     "15D · Gold Package · Rashid" without a second query per row. */
+  package_type: string;
+  duration_days: number | null;
+  sales_rep_name: string;
+
   /** Computed in SQL against current_date, not against the viewer's clock. */
   is_expired: boolean;
 };
@@ -282,6 +351,165 @@ export function defaultPax(items: { quantity: number }[]): number | null {
   );
   const rounded = Math.round(total);
   return rounded >= 1 ? rounded : null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Trip details                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * "15D/14N" — the shorthand every Umrah quotation in this market carries.
+ *
+ * The subtraction lives here and nowhere else. A 15-day trip is 14 nights, and
+ * the only interesting case is the one-day trip, which has no nights at all and
+ * must not print "1D/0N" as though something were missing.
+ *
+ * Empty string, not a dash, for an unknown duration: the caller omits the line
+ * entirely rather than printing a label with nothing after it.
+ */
+export function durationLabel(days: number | null | undefined): string {
+  if (!days || !Number.isFinite(days) || days < 1) return "";
+  const whole = Math.trunc(days);
+  return whole === 1 ? "1D" : `${whole}D/${whole - 1}N`;
+}
+
+/**
+ * Days between a departure and a return, counting both ends.
+ *
+ * Departing on the 1st and returning on the 15th is a fifteen-day trip, which
+ * is how the customer counts it and how every brochure prints it — hence the
+ * +1. Used by the editor to prefill duration_days when both dates are known;
+ * it never overwrites a number the admin typed, because a group flying back
+ * separately is a real thing and they would have to retype it every save.
+ *
+ * Null when either date is missing or unparseable, or when the arithmetic comes
+ * out backwards — the database rejects that pair anyway.
+ */
+export function inferDurationDays(
+  travelDate: string | null,
+  returnDate: string | null,
+): number | null {
+  if (!travelDate || !returnDate) return null;
+  const start = new Date(`${travelDate}T00:00:00`);
+  const end = new Date(`${returnDate}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+
+  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  return days >= 1 ? days : null;
+}
+
+/**
+ * The passenger summary, as four labelled counts.
+ *
+ * Returns all four even when some are zero. "0 infants" is an answer the
+ * customer gave; a blank is the question never having been asked, and on a
+ * document that is quoting a price per bed the difference is the price. The
+ * caller drops the whole block when nobody has filled any of it in — see
+ * totalTravellers.
+ */
+export function travellerSummary(quotation: {
+  adults?: number | null;
+  children_with_bed?: number | null;
+  children_without_bed?: number | null;
+  infants?: number | null;
+}): { label: string; count: number }[] {
+  const count = (value: number | null | undefined) =>
+    Number.isFinite(value) && (value as number) > 0 ? Math.trunc(value as number) : 0;
+
+  return [
+    { label: "Adults", count: count(quotation.adults) },
+    { label: "Child (bed)", count: count(quotation.children_with_bed) },
+    { label: "Child (no bed)", count: count(quotation.children_without_bed) },
+    { label: "Infants", count: count(quotation.infants) },
+  ];
+}
+
+/**
+ * Everybody travelling, infants included.
+ *
+ * Deliberately NOT what pax means. pax is the head count the per-person figure
+ * divides by — beds, in practice — and an infant on a lap is a traveller who is
+ * not a bed. Zero here is the signal that the breakdown was never filled in,
+ * which is how the renderer decides whether to print the block at all.
+ */
+export function totalTravellers(quotation: {
+  adults?: number | null;
+  children_with_bed?: number | null;
+  children_without_bed?: number | null;
+  infants?: number | null;
+}): number {
+  return travellerSummary(quotation).reduce((sum, row) => sum + row.count, 0);
+}
+
+/**
+ * The head count a breakdown implies, for keeping `pax` in step with it.
+ *
+ * Infants are excluded: they occupy no bed, and including them would divide the
+ * total by one more person than it was priced for, understating the per-person
+ * figure the customer is being quoted.
+ */
+export function paxFromBreakdown(quotation: {
+  adults?: number | null;
+  children_with_bed?: number | null;
+  children_without_bed?: number | null;
+}): number | null {
+  const rows = travellerSummary(quotation).filter(
+    (row) => row.label !== "Infants",
+  );
+  const total = rows.reduce((sum, row) => sum + row.count, 0);
+  return total >= 1 ? total : null;
+}
+
+/**
+ * One item's description, unpacked into the indented lines the PDF draws.
+ *
+ * The reference document this table was modelled on puts a whole itinerary
+ * inside one cell — a package name, the room under it, then "Inclusions" and
+ * two levels of hotels, transfers, ziyarat and meals beneath that. All of it is
+ * ONE priced line; splitting it into rows would put a rate and an amount beside
+ * "Zam Zam Water".
+ *
+ * So the structure is a convention over plain text, not a schema:
+ *
+ *   Royal Package            <- line 0, always the item title
+ *   Quint Room - Private     <- depth 0
+ *   **Inclusions**           <- depth 0, bold
+ *     Makkah Hotel           <- depth 1
+ *       Makkah Tower - 9 N   <- depth 2
+ *
+ * Indent is two spaces per level, a tab counts as four, and depth is capped at
+ * 3 so a stray paste cannot indent a line off the right edge of the cell.
+ * Asterisk pairs mark a sub-heading, matching the only other place this
+ * codebase lets copy carry emphasis (src/app/guides/RichText.tsx).
+ *
+ * Blank lines are dropped rather than rendered as vertical space: they arrive
+ * from pasted text far more often than they are meant, and a cell that grows by
+ * three empty rows is how a bill spills onto a second page.
+ */
+export function parseDescriptionLines(
+  description: string,
+): { text: string; depth: number; bold: boolean }[] {
+  return (description ?? "")
+    .split(/\r?\n/)
+    .map((raw) => {
+      const body = raw.trimEnd();
+      if (!body.trim()) return null;
+
+      const indent = body.length - body.replace(/^[ \t]+/, "").length;
+      const width = body
+        .slice(0, indent)
+        .split("")
+        .reduce((sum, char) => sum + (char === "\t" ? 4 : 1), 0);
+
+      let text = body.trim();
+      const bold = /^\*\*.+\*\*$/.test(text);
+      if (bold) text = text.slice(2, -2).trim();
+
+      return { text, depth: Math.min(Math.floor(width / 2), 3), bold };
+    })
+    .filter((line): line is { text: string; depth: number; bold: boolean } =>
+      Boolean(line),
+    );
 }
 
 /**
@@ -490,6 +718,9 @@ export async function createQuotationFromLead(
     departureCity?: string;
     travelDate?: string | null;
     pax?: number | null;
+    /** The breakdown behind pax, where the lead carried one (migration 025). */
+    adults?: number | null;
+    children?: number | null;
     enquiryId?: string;
     metaLeadId?: string;
   },
@@ -513,6 +744,14 @@ export async function createQuotationFromLead(
       // A zero or negative head count would fail the pax CHECK; null is the
       // database's own way of saying "not known yet".
       pax: seed.pax && seed.pax > 0 ? Math.trunc(seed.pax) : null,
+
+      // An enquiry asks for adults and children but not for beds, so every
+      // child lands in children_with_bed — the costlier reading. An admin who
+      // corrects it downward is lowering a price they have already seen, which
+      // is the safe direction for a mistake to point.
+      adults: Math.max(Math.trunc(seed.adults ?? 0), 0),
+      children_with_bed: Math.max(Math.trunc(seed.children ?? 0), 0),
+
       source_enquiry_id: seed.enquiryId ?? null,
       source_meta_lead_id: seed.metaLeadId ?? null,
       tax_mode: taxMode,

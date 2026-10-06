@@ -54,3 +54,7 @@ tsconfig.tsbuildinfo
 # Per-machine Claude Code permissions. .claude/settings.json is shared on
 # purpose (it wires the graphify hooks); the .local file is not.
 .claude/settings.local.json
+
+# Reference material for the quotation redesign: a real customer's quotation
+# (name, phone, itinerary, prices) and a competitor's. This repo is public.
+src/image/

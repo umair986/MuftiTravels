@@ -13,6 +13,7 @@ npx tsc --noEmit       # Typecheck (not wired to a script)
 npm test               # Node's built-in runner over src/lib/*.test.ts
 npm run test:pdf       # Renders the real InvoiceDocument and asserts 15 properties of the output
 npm run sample:pdf -- <outDir>   # Writes 4 sample invoice/receipt PDFs to look at by eye
+npm run sample:quotation -- <outDir>  # Writes 3 sample quotation PDFs to look at by eye
 ```
 
 `npm test` globs `src/lib/*.test.ts`, so a single file is `npx tsx --test src/lib/finance.test.ts`
@@ -120,9 +121,10 @@ Two traps documented at length in that file and in `scripts/render-invoice-check
 
 ### Quotations
 
-`docs/quotations.md` is the design record — ten numbered decisions, same style as the finance doc.
-Migration `024_quotations.sql`. A quotation is the priced offer that goes out *before* an invoice
-exists, and it deliberately inverts four of the invoice rules:
+`docs/quotations.md` is the design record — twelve numbered decisions, same style as the finance
+doc. Migrations `024_quotations.sql` and `025_quotation_trip_details.sql`. A quotation is the
+priced offer that goes out *before* an invoice exists, and it deliberately inverts four of the
+invoice rules:
 
 **A quotation may read the package catalogue; an invoice may not.** This is the one request
 Decision 5 of the finance doc names in advance and declines. The resolution is that the coupling is
@@ -150,10 +152,25 @@ policy, so the link a customer already holds keeps opening what they were sent. 
 viewer's device clock. `isExpired()` in `src/lib/quotations.ts` mirrors it for a row already in
 hand; the two are a pair.
 
+**The trip is a snapshot too, and none of it is required.** Migration 025 adds what the customer
+compares agents on before they reach the price — service, package, sharing, sales rep, duration,
+four traveller counts, and `accommodation` as `jsonb` on the row. The hotel is text, never a join,
+for the same reason a price is copied rather than linked. Every column defaults to something that
+renders as *say nothing*, every block on the PDF is conditional, and the checker proves a
+pre-025 row still produces the old document — including a row whose columns are **absent**, which
+is what PostgREST returns in the window between a deploy and the migration being applied by hand.
+
+**One priced line may carry a whole itinerary.** `parseDescriptionLines` in
+`src/lib/quotations.ts` reads a multi-line `description`: line 0 is the item, two spaces indent a
+level (a tab counts as four, depth caps at 3), `**asterisks**` mark a sub-heading. Splitting it
+into rows would put a rate beside "Zam Zam Water", so the structure is a rendering convention and
+`quotation_items` still stores text and amounts only. That is why the items table is a ruled grid
+where the invoice's is a ruled list, and why a zero rate prints blank rather than "₹0".
+
 The totals arithmetic is `computeInvoiceTotals`, reused unchanged — `resolveQuoteDiscount` only
 resolves the whole-quote discount in front of it. `npm run test:quotation:pdf` measures the
-rendered document; its grand total is 11.5pt and its per-person band 10.5pt specifically so the
-checker can locate them, so don't "tidy" those to 11pt.
+rendered document; its grand total is 11.5pt, its per-person band 10.5pt and its table head 8.5pt
+specifically so the checker can locate or exclude them, so don't "tidy" those to 11pt or 8pt.
 
 ### Guides
 
@@ -184,8 +201,13 @@ gold `#D4AF37` (`#997A15` for text on light), ink `#06131D`, muted `#526168` —
   marketing site. Treat `docs/` as current and the README as history.
 - `src/lib/pdf/fonts.ts` registers Noto Sans from browser paths (`/fonts/NotoSans-*.ttf`), which is
   why the scripts in `scripts/` re-register it from disk *before* importing `InvoiceDocument` — the
-  first registration for a family wins. The font has no glyph for `★` and similar symbols, which
-  vanish silently from typed line descriptions.
+  first registration for a family wins. The font has only Regular and SemiBold: asking for italic
+  **throws** at render time. It has no glyph for `★`, `≈` and similar symbols, and those do not
+  throw — react-pdf splits the text run and the character is simply absent from the output, with no
+  warning and a perfectly valid PDF. One shipped in the quotation's per-person band. The
+  `no missing glyphs` check in `render-quotation-check.mts` now scans every non-ASCII character
+  hard-coded in `src/lib/pdf/` against both faces' cmaps; it strips comments first, because that
+  file and the documents both name the offending characters in prose to explain them.
 
 ## graphify
 

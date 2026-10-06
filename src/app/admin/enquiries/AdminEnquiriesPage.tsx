@@ -304,6 +304,8 @@ export default function AdminEnquiriesPage() {
       departureCity: enquiry.departure_city,
       travelDate: enquiry.preferred_date,
       pax: pax > 0 ? pax : null,
+      adults: enquiry.adults,
+      children: enquiry.children,
       enquiryId: enquiry.id,
     });
     if (!id) {

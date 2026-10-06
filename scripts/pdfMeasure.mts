@@ -11,6 +11,8 @@
  * Nothing here knows anything about invoices or quotations. It reads a PDF
  * buffer and reports geometry.
  */
+import { readFileSync } from "node:fs";
+import { create as createFont } from "fontkit";
 import { inflateSync } from "node:zlib";
 
 export function pageCount(buffer: Buffer): number {
@@ -202,4 +204,50 @@ export function pagesWithSize(buffer: Buffer, size: number): number[] {
       drawnLinesIn(stream).some((line) => line.size === size) ? page : -1,
     )
     .filter((page) => page >= 0);
+}
+
+/* fontkit is @react-pdf/renderer's own font parser, already installed. Typed
+   loosely here because it ships no types this script can reach, and cached
+   because missingGlyphs is called once per source file per face. */
+type Cmap = { glyphsForString: (text: string) => { id: number }[] };
+const fontCache = new Map<string, Cmap>();
+
+function openFont(fontPath: string): Cmap {
+  const cached = fontCache.get(fontPath);
+  if (cached) return cached;
+  const font = createFont(readFileSync(fontPath)) as unknown as Cmap;
+  fontCache.set(fontPath, font);
+  return font;
+}
+
+/**
+ * Which characters of `text` the font at `fontPath` has no glyph for.
+ *
+ * Checked against the FONT, not against a rendered page, because a rendered
+ * page cannot answer the question. @react-pdf/renderer does not draw .notdef
+ * for a character it cannot set and does not warn: it splits the text run and
+ * the character is simply absent from the output. The PDF is valid, the layout
+ * engine is happy, and the only difference is a figure with a symbol missing
+ * from the front of it. That is how "≈ ₹1,04,500" shipped in the
+ * quotation's per-person band — the ≈ was never drawn and nothing said so.
+ *
+ * So the check runs over the SOURCE: every non-ASCII character a document
+ * hard-codes, against the cmap of the font it will be set in. Deduplicated, in
+ * first-seen order, so a failure names the character once rather than once per
+ * occurrence.
+ */
+export function missingGlyphs(text: string, fontPath: string): string[] {
+  const font = openFont(fontPath);
+
+  const missing: string[] = [];
+  for (const char of new Set([...text])) {
+    // ASCII is in every font worth registering, and skipping it keeps this
+    // fast enough to run over a whole directory.
+    if (char.codePointAt(0)! < 128) continue;
+    const glyphs = font.glyphsForString(char);
+    if (!glyphs.length || glyphs.some((glyph) => glyph.id === 0)) {
+      missing.push(char);
+    }
+  }
+  return missing;
 }
