@@ -422,8 +422,9 @@ const cases: Case[] = [
     revision: 3,
     maxPages: 1,
   },
-  // Terms are an annexure, so these must be exactly two pages: one of bill, one
-  // of terms. Three would mean the quotation itself spilled.
+  // Terms flow on after the lists rather than forcing a page of their own, but
+  // a full set of them still runs past page one: exactly two pages. Three would
+  // mean the forced break, or a spill, had come back.
   {
     name: "with policies",
     lines: 2,

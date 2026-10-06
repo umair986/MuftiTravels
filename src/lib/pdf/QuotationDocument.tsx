@@ -275,8 +275,9 @@ const styles = {
       borderWidth: 1,
       borderColor: RULE,
       borderRadius: 3,
-      padding: 9,
-      marginTop: 9,
+      paddingVertical: 5,
+      paddingHorizontal: 8,
+      marginTop: 4,
     },
     policyHeading: {
       fontSize: 9.5,
@@ -286,8 +287,8 @@ const styles = {
       color: GOLD,
       borderBottomWidth: 1,
       borderBottomColor: RULE,
-      paddingBottom: 4,
-      marginBottom: 5,
+      paddingBottom: 2,
+      marginBottom: 3,
     },
   }),
 };
@@ -514,7 +515,17 @@ export default function QuotationDocument({
 
         {/* -------------------------------------------- accommodation ------ */}
         {stays.length ? (
-          <View style={[styles.panel, { marginTop: 8 }]} wrap={false}>
+          // `panel` carries flex: 1 for the side-by-side rows it is built for.
+          // Here it sits in the page's column, where flex: 1 let it grow into
+          // every spare point on page one and draw an empty box. Not `flex: 0`
+          // either: that sets flexBasis 0 and collapses the box to nothing.
+          <View
+            style={[
+              styles.panel,
+              { marginTop: 8, flexGrow: 0, flexShrink: 0, flexBasis: "auto" },
+            ]}
+            wrap={false}
+          >
             <Text style={styles.panelHeading}>ACCOMMODATION</Text>
             {stays.map((stay, index) => (
               <View
@@ -738,7 +749,64 @@ export default function QuotationDocument({
           </View>
         </View>
 
+        {/* -------------------------------------------------- validity ----- */}
+        {/* One paragraph, not two. The first draft said "valid until" in a gold
+            line and then said it again in the small print, which cost the page a
+            line it did not have. */}
+        <View style={styles.validity}>
+          <Text style={{ color: GOLD, fontWeight: 600 }}>
+            {quotation.valid_until
+              ? `Valid until ${formatPdfDate(quotation.valid_until)}.`
+              : "Subject to availability at the time of booking."}
+            <Text style={styles.tiny}>
+              {"  "}Rates are per person on the sharing shown and depend on
+              flight and hotel availability. Seats confirm on receipt of the
+              booking advance. This is a quotation, not an invoice — no payment
+              is due against it.
+            </Text>
+          </Text>
+        </View>
+
+        {/* --------------------------------------------- how to proceed ---- */}
+        <View style={[styles.row, { marginTop: 9, gap: 8 }]} wrap={false}>
+          {hasBank ? (
+            <View style={styles.panel}>
+              <Text style={styles.panelHeading}>TO CONFIRM YOUR BOOKING</Text>
+              <Text style={styles.muted}>
+                Confirm by reply and we will raise your invoice. Payment details,
+                for when you are ready:
+              </Text>
+              {business.bank_name ? (
+                <Text style={{ marginTop: 2 }}>{business.bank_name}</Text>
+              ) : null}
+              {business.bank_account_number ? (
+                <Text style={styles.muted}>
+                  A/c {business.bank_account_number}
+                  {business.bank_ifsc ? ` · IFSC ${business.bank_ifsc}` : ""}
+                </Text>
+              ) : null}
+              {business.upi_id ? (
+                <Text style={styles.muted}>UPI {business.upi_id}</Text>
+              ) : null}
+            </View>
+          ) : (
+            <View style={styles.panel}>
+              <Text style={styles.panelHeading}>TO CONFIRM YOUR BOOKING</Text>
+              <Text style={styles.muted}>
+                Reply to confirm and we will raise your invoice with payment
+                details.
+              </Text>
+            </View>
+          )}
+
+          <SignaturePanel business={business} />
+        </View>
+
         {/* ------------------------------------------- what this includes --- */}
+        {/* Below the signature, not above it. The price, the validity and the
+            signature are the document; these lists are what it is sold on, and
+            when they sat above the signature a long list pushed the signature
+            alone onto page two. They and the terms after them may flow on. */}
         {inclusions.length || exclusions.length ? (
           <View style={[styles.row, { marginTop: 9, gap: 8 }]}>
             {inclusions.length ? (
@@ -775,71 +843,18 @@ export default function QuotationDocument({
           </View>
         ) : null}
 
-        {/* -------------------------------------------------- validity ----- */}
-        {/* One paragraph, not two. The first draft said "valid until" in a gold
-            line and then said it again in the small print, which cost the page a
-            line it did not have. */}
-        <View style={styles.validity}>
-          <Text style={{ color: GOLD, fontWeight: 600 }}>
-            {quotation.valid_until
-              ? `Valid until ${formatPdfDate(quotation.valid_until)}.`
-              : "Subject to availability at the time of booking."}
-            <Text style={styles.tiny}>
-              {"  "}Rates are per person on the sharing shown and depend on
-              flight and hotel availability. Seats confirm on receipt of the
-              booking advance. This is a quotation, not an invoice — no payment
-              is due against it.
-            </Text>
-          </Text>
-        </View>
-
-        {/* --------------------------------------------- how to proceed ---- */}
-        <View style={[styles.row, { marginTop: 9, gap: 8 }]}>
-          {hasBank ? (
-            <View style={styles.panel}>
-              <Text style={styles.panelHeading}>TO CONFIRM YOUR BOOKING</Text>
-              <Text style={styles.muted}>
-                Confirm by reply and we will raise your invoice. Payment details,
-                for when you are ready:
-              </Text>
-              {business.bank_name ? (
-                <Text style={{ marginTop: 2 }}>{business.bank_name}</Text>
-              ) : null}
-              {business.bank_account_number ? (
-                <Text style={styles.muted}>
-                  A/c {business.bank_account_number}
-                  {business.bank_ifsc ? ` · IFSC ${business.bank_ifsc}` : ""}
-                </Text>
-              ) : null}
-              {business.upi_id ? (
-                <Text style={styles.muted}>UPI {business.upi_id}</Text>
-              ) : null}
-            </View>
-          ) : (
-            <View style={styles.panel}>
-              <Text style={styles.panelHeading}>TO CONFIRM YOUR BOOKING</Text>
-              <Text style={styles.muted}>
-                Reply to confirm and we will raise your invoice with payment
-                details.
-              </Text>
-            </View>
-          )}
-
-          <SignaturePanel business={business} />
-        </View>
-
         <PdfFooter
           label={`Quotation ${number}${revisionLabel ? ` · ${revisionLabel}` : ""}`}
           business={business}
         />
 
         {/* ------------------------------------------------- policies ----- */}
-        {/* On its own page, for the same reason the invoice puts them there:
-            thirty-odd lines of terms threaded in above would push the price
-            itself onto a second page and bury the thing the customer opened
-            the file to see. */}
+        {/* After everything else, so they can never push the price or the
+            signature off page one — but flowing on from the lists rather than
+            forcing a page of their own. A forced break left most of page two
+            blank and cost the document a whole extra page. */}
         {policyLists.length ? (
-          <View break>
+          <View style={{ marginTop: 12 }}>
             <Text style={styles.annexTitle}>POLICIES &amp; IMPORTANT NOTES</Text>
             <Text style={[styles.tiny, { marginTop: 3 }]}>
               These terms would form part of your booking against{" "}
