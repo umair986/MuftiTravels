@@ -1,7 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { FaKaaba, FaHotel, FaMosque, FaMoon, FaStarAndCrescent } from "react-icons/fa";
 import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
+import {
+  DEPARTURE_CITIES,
+  cityKeyFromName,
+  packageCity,
+  type CityKey,
+} from "@/lib/departures";
 import Footer from "@/app/components/Footer";
 import type { CmsPackageRecord } from "@/lib/packages";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
@@ -11,7 +18,8 @@ const groupDefinitions = [
   {
     category: "Umrah Fixed Group",
     title: "Fixed Group Packages",
-    description: "Air and hotel packages from Mumbai, Delhi and Lucknow.",
+    description:
+      "Air and hotel packages from Mumbai, Delhi, Lucknow, Hyderabad, Bangalore and Ahmedabad, priced month by month.",
     icon: <FaKaaba />,
   },
   {
@@ -44,22 +52,24 @@ const groupDefinitions = [
 ];
 
 /**
- * Narrow the catalog to what the visitor asked for in the hero search.
+ * Narrow the catalog to what the visitor asked for — the hero search, or the
+ * city chips on this page.
  *
- * City is matched against the package name and destinations because departure
- * city is not a field on the record — fixed-group packages carry it in their
- * name ("15 Days Regular Umrah from Mumbai").
+ * City is the package's `departure_city` (migration 026), read through
+ * packageCity so a row from before the migration is still placed by its slug.
+ * It used to be a substring match on the name, which put "Umrah + Dubai" under
+ * any city whose name appeared in its description. A city value that is not
+ * one of the six ("All India", or anything typed into the URL) narrows
+ * nothing.
  */
 function matchPackages(
   packages: CmsPackageRecord[],
   filter: CatalogFilter,
 ): CmsPackageRecord[] {
+  const city = cityKeyFromName(filter.city);
   return packages.filter((item) => {
     if (filter.category && item.category !== filter.category) return false;
-    if (filter.city && filter.city !== "All India") {
-      const haystack = `${item.name} ${item.destinations}`.toLowerCase();
-      if (!haystack.includes(filter.city.toLowerCase())) return false;
-    }
+    if (city && packageCity(item) !== city) return false;
     return true;
   });
 }
@@ -76,6 +86,7 @@ export default function PackagesCatalogPage({
   filter: CatalogFilter;
 }) {
   const hasFilter = Boolean(filter.city || filter.category || filter.season);
+  const activeCity = cityKeyFromName(filter.city);
   const matches = hasFilter ? matchPackages(packages, filter) : packages;
 
   // Never strand the visitor on an empty page: if the search matches nothing,
@@ -104,6 +115,8 @@ export default function PackagesCatalogPage({
             </p>
           </header>
 
+          <CityChips active={activeCity} category={filter.category} />
+
           {hasFilter && (
             <CatalogFilters filter={filter} matchCount={matches.length} />
           )}
@@ -131,6 +144,62 @@ export default function PackagesCatalogPage({
       </main>
       <Footer />
     </>
+  );
+}
+
+/**
+ * One tap to narrow the catalogue to a departure city. Links, not buttons, so
+ * each filtered view has an address that can be shared and is crawlable, and
+ * the page needs no client state for it. A chosen category is carried along.
+ *
+ * Wraps rather than scrolling sideways: seven chips fit in two rows on a
+ * 360px phone, and a horizontal scroller hides the last cities off-screen with
+ * nothing to say they are there.
+ */
+function CityChips({
+  active,
+  category,
+}: {
+  active: CityKey | null;
+  category: string;
+}) {
+  const href = (city: CityKey | null) => {
+    const params = new URLSearchParams();
+    if (city) params.set("city", city);
+    if (category) params.set("category", category);
+    const query = params.toString();
+    return query ? `/packages?${query}` : "/packages";
+  };
+  const chip = (selected: boolean) =>
+    `rounded-full border px-4 py-2 font-body text-xs font-semibold transition sm:text-sm ${
+      selected
+        ? "border-[#D4AF37] bg-[#06131D] text-[#F3E5AB]"
+        : "border-stone-200 bg-white text-stone-700 hover:border-[#D4AF37] hover:text-[#06131D]"
+    }`;
+
+  return (
+    <nav
+      aria-label="Departure city"
+      className="mt-10 flex flex-wrap justify-center gap-2"
+    >
+      <Link
+        href={href(null)}
+        aria-current={active === null ? "page" : undefined}
+        className={chip(active === null)}
+      >
+        All cities
+      </Link>
+      {DEPARTURE_CITIES.map((city) => (
+        <Link
+          key={city.key}
+          href={href(city.key)}
+          aria-current={active === city.key ? "page" : undefined}
+          className={chip(active === city.key)}
+        >
+          {city.name}
+        </Link>
+      ))}
+    </nav>
   );
 }
 

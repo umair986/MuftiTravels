@@ -35,11 +35,28 @@ const cityOptions: DropdownOption[] = [
     badge: "Direct Flights",
     sublabel: "Chaudhary Charan Singh (LKO)",
   },
+  // No "Direct Flights" badge below until the business confirms one — the same
+  // rule as `direct` in src/lib/cityLanding.ts.
+  {
+    value: "Hyderabad",
+    label: "Hyderabad",
+    sublabel: "Rajiv Gandhi Intl (HYD)",
+  },
+  {
+    value: "Bangalore",
+    label: "Bangalore",
+    sublabel: "Kempegowda Intl (BLR)",
+  },
+  {
+    value: "Ahmedabad",
+    label: "Ahmedabad",
+    sublabel: "Sardar Vallabhbhai Patel Intl (AMD)",
+  },
   {
     value: "All India",
     label: "All India",
     badge: "Connecting",
-    sublabel: "Bengaluru, Hyderabad, Calicut, etc.",
+    sublabel: "Any other city, via a connection",
   },
 ];
 

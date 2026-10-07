@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FiX } from "react-icons/fi";
+import { cityKeyFromName, cityName } from "@/lib/departures";
 
 export type CatalogFilter = {
   city: string;
@@ -26,7 +27,12 @@ export default function CatalogFilters({
 }) {
   const chips = [
     filter.city && filter.city !== "All India"
-      ? { label: "Departing from", value: filter.city, filters: true }
+      ? {
+          label: "Departing from",
+          // "bangalore" from a chip reads as "Bangalore"; anything else as sent.
+          value: cityName(cityKeyFromName(filter.city)) || filter.city,
+          filters: true,
+        }
       : null,
     filter.category ? { label: "Type", value: filter.category, filters: true } : null,
     filter.season ? { label: "When", value: filter.season, filters: false } : null,

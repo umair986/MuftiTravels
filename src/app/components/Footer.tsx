@@ -5,6 +5,15 @@ import Link from "next/link";
 import { FaInstagram, FaFacebook, FaWhatsapp } from "react-icons/fa";
 import { FiPhone, FiMapPin, FiShield } from "react-icons/fi";
 import { FOUNDED_YEAR } from "@/lib/business";
+import { CATEGORY_SLUGS } from "@/lib/categories";
+import { DEPARTURE_CITIES, cityPath } from "@/lib/departures";
+
+const FOOTER_CATEGORIES = [
+  { name: "Ramadan Umrah", href: `/packages/${CATEGORY_SLUGS.Ramzan}` },
+  { name: "Hajj packages", href: `/packages/${CATEGORY_SLUGS.Hajj}` },
+  { name: "Land packages", href: `/packages/${CATEGORY_SLUGS["Umrah Land Package"]}` },
+  { name: "Umrah + Ziyarat", href: `/packages/${CATEGORY_SLUGS.Ziyarat}` },
+];
 
 export default function Footer() {
   return (
@@ -73,50 +82,32 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Col 2: Curated Packages (Span 3) */}
+          {/* Col 2: Packages (Span 3). Cities and categories, never single
+              packages: Umrah packages are made per month and retired when the
+              month ends (docs/monthly-packages.md), so a link to one would
+              break within weeks. These addresses last. */}
           <div className="lg:col-span-3 space-y-3">
             <p className="font-serif text-base font-bold text-white tracking-wide border-b border-[#D4AF37]/20 pb-2">
-              Curated Packages
+              Packages
             </p>
-            <ul className="space-y-2 text-xs sm:text-sm text-stone-400">
+            <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:text-sm text-stone-400">
+              {DEPARTURE_CITIES.map((city) => (
+                <li key={city.key}>
+                  <Link href={cityPath(city.key)} className="hover:text-[#D4AF37] transition-colors">
+                    Umrah from {city.name}
+                  </Link>
+                </li>
+              ))}
+              {FOOTER_CATEGORIES.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="hover:text-[#D4AF37] transition-colors">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
               <li>
-                <Link href="/umrah-packages-from-mumbai" className="hover:text-[#D4AF37] transition-colors">
-                  Umrah Packages from Mumbai
-                </Link>
-              </li>
-              <li>
-                <Link href="/umrah-packages-from-delhi" className="hover:text-[#D4AF37] transition-colors">
-                  Umrah Packages from Delhi
-                </Link>
-              </li>
-              <li>
-                <Link href="/umrah-packages-from-lucknow" className="hover:text-[#D4AF37] transition-colors">
-                  Umrah Packages from Lucknow
-                </Link>
-              </li>
-              <li>
-                <Link href="/packages/umrah-fixed-group/15-days-regular-umrah-from-mumbai" className="hover:text-[#D4AF37] transition-colors">
-                  15 Days Umrah from Mumbai
-                </Link>
-              </li>
-              <li>
-                <Link href="/packages/umrah-fixed-group/15-days-regular-umrah-from-delhi" className="hover:text-[#D4AF37] transition-colors">
-                  15 Days Umrah from Delhi
-                </Link>
-              </li>
-              <li>
-                <Link href="/packages/umrah-fixed-group/15-days-regular-umrah-from-lucknow" className="hover:text-[#D4AF37] transition-colors">
-                  15 Days Umrah from Lucknow
-                </Link>
-              </li>
-              <li>
-                <Link href="/packages/umrah-land-package/14-days-umrah-land-package" className="hover:text-[#D4AF37] transition-colors">
-                  14 Days Umrah Land Package
-                </Link>
-              </li>
-              <li>
-                <Link href="/packages/umrah-land-package/30-days-super-saver-land-package" className="hover:text-[#D4AF37] transition-colors">
-                  30 Days Super Saver Land
+                <Link href="/packages" className="font-semibold text-[#D4AF37] hover:text-[#F3E5AB] transition-colors">
+                  All packages →
                 </Link>
               </li>
             </ul>
