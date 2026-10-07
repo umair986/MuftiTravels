@@ -6,13 +6,25 @@ import { createClient } from "@/lib/supabase/client";
 import { slugifyKey } from "@/lib/taxonomy";
 import { PACKAGE_CATEGORIES, schemaForCategory } from "@/lib/categoryFields";
 import { categorySlug } from "@/lib/categories";
+import {
+  DEPARTURE_CITIES,
+  MONTHLY_CATEGORY,
+  currentIstMonth,
+  fromMonthInput,
+  toMonthInput,
+} from "@/lib/departures";
 
 /**
  * Creates a package as an unpublished draft.
  *
- * Only name and category are collected — everything else has a database
- * default, and the full editor opens straight afterwards. Starting unpublished
- * means a half-filled package can never appear on the live site.
+ * Only name, category, departure city and month are collected — everything
+ * else has a database default, and the full editor opens straight afterwards.
+ * Starting unpublished means a half-filled package can never appear on the
+ * live site.
+ *
+ * City and month (migration 026) default for the monthly product — an Umrah
+ * fixed group from Mumbai, this month — and are blank for everything else, so
+ * a Hajj package is never given a month it would expire at by accident.
  */
 export default function CreatePackageDialog({
   open,
@@ -38,8 +50,18 @@ export default function CreatePackageDialog({
   const [category, setCategory] = useState(
     fixedCategory || allowedCategories?.[0] || PACKAGE_CATEGORIES[0],
   );
+  const [departureCity, setDepartureCity] = useState("");
+  /** `YYYY-MM`, as the month input holds it. */
+  const [month, setMonth] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+
+  /** The defaults that follow from a category: see the header note. */
+  function applyCategoryDefaults(next: string) {
+    const monthly = next === MONTHLY_CATEGORY;
+    setDepartureCity(monthly ? DEPARTURE_CITIES[0].key : "");
+    setMonth(monthly ? toMonthInput(currentIstMonth()) : "");
+  }
 
   const categories = useMemo(() => {
     const merged = new Set<string>([
@@ -57,10 +79,11 @@ export default function CreatePackageDialog({
   // Reset each time the dialog opens, so a cancelled attempt leaves nothing.
   useEffect(() => {
     if (open) {
+      const initial =
+        fixedCategory || allowedCategories?.[0] || PACKAGE_CATEGORIES[0];
       setName("");
-      setCategory(
-        fixedCategory || allowedCategories?.[0] || PACKAGE_CATEGORIES[0],
-      );
+      setCategory(initial);
+      applyCategoryDefaults(initial);
       setError("");
       setIsSaving(false);
     }
@@ -100,11 +123,16 @@ export default function CreatePackageDialog({
     setIsSaving(true);
     setError("");
 
+    const validMonth = fromMonthInput(month);
     const { error: insertError } = await supabase.from("packages").insert({
       slug,
       name: name.trim(),
       category,
       is_published: false,
+      // Sent only when set, so a site that has not run migration 026 can still
+      // create a package that needs neither.
+      ...(departureCity ? { departure_city: departureCity } : {}),
+      ...(validMonth ? { valid_month: validMonth } : {}),
     });
 
     setIsSaving(false);
@@ -163,7 +191,7 @@ export default function CreatePackageDialog({
               onKeyDown={(event) => {
                 if (event.key === "Enter" && canSubmit) void handleCreate();
               }}
-              placeholder="e.g. 21 Days Hajj from Mumbai"
+              placeholder="e.g. 15 Days Umrah from Mumbai — November 2026"
               className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-3 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
             />
           </label>
@@ -172,7 +200,10 @@ export default function CreatePackageDialog({
             Category
             <select
               value={category}
-              onChange={(event) => setCategory(event.target.value)}
+              onChange={(event) => {
+                setCategory(event.target.value);
+                applyCategoryDefaults(event.target.value);
+              }}
               disabled={Boolean(fixedCategory)}
               className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-3 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20 disabled:bg-stone-100 disabled:text-[#526168]"
             >
@@ -196,6 +227,38 @@ export default function CreatePackageDialog({
               )
             )}
           </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
+              Departs from
+              <select
+                value={departureCity}
+                onChange={(event) => setDepartureCity(event.target.value)}
+                className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-3 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+              >
+                <option value="">Not city-specific</option>
+                {DEPARTURE_CITIES.map((city) => (
+                  <option key={city.key} value={city.key}>
+                    {city.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
+              Priced for
+              <input
+                type="month"
+                value={month}
+                onChange={(event) => setMonth(event.target.value)}
+                className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+              />
+            </label>
+            <p className="font-body text-xs font-normal text-[#526168] sm:col-span-2">
+              {month
+                ? "Leaves the website automatically when this month ends, and is flagged on the dashboard for you to delete."
+                : "No month — never expires. Right for Hajj and Ramadan."}
+            </p>
+          </div>
 
           <div className="rounded-lg border border-stone-200 bg-[#FAF8F5] p-3">
             <p className="font-body text-xs font-semibold text-[#06131D]">

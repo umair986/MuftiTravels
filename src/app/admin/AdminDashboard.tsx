@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { FiArrowUpRight, FiInbox } from "react-icons/fi";
+import { FiAlertTriangle, FiArrowUpRight, FiInbox } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
+import { currentIstMonth } from "@/lib/departures";
 import AdminShell from "./AdminShell";
 
 type AdminDashboardProps = {
@@ -40,6 +41,7 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
   const [enquiryCount, setEnquiryCount] = useState<number | null>(null);
   const [galleryCount, setGalleryCount] = useState<number | null>(null);
   const [recent, setRecent] = useState<RecentEnquiry[] | null>(null);
+  const [expiredCount, setExpiredCount] = useState(0);
 
   useEffect(() => {
     const supabase = createClient();
@@ -53,6 +55,7 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
         { count: enquiries },
         { count: gallery },
         { data: newest },
+        { count: expired },
       ] = await Promise.all([
         client
           .from("packages")
@@ -77,6 +80,14 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
           .is("deleted_at", null)
           .order("created_at", { ascending: false })
           .limit(5),
+        // Packages past their month (migration 026). Hidden from the site
+        // already; the business deletes them by hand, so this is the prompt.
+        // Before 026 is applied the column is missing, the count errors, and
+        // the alert simply does not show.
+        client
+          .from("packages")
+          .select("id", { count: "exact", head: true })
+          .lt("valid_month", currentIstMonth()),
       ]);
 
       setPublishedCount(published ?? 0);
@@ -84,6 +95,7 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
       setEnquiryCount(enquiries ?? 0);
       setGalleryCount(gallery ?? 0);
       setRecent((newest as RecentEnquiry[]) ?? []);
+      setExpiredCount(expired ?? 0);
     }
 
     void load();
@@ -95,6 +107,26 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
       description="What needs attention across the site."
       email={email}
     >
+      {expiredCount > 0 && (
+        <Link
+          href="/admin/packages?status=expired"
+          className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 p-4 transition hover:border-red-300 sm:p-5"
+        >
+          <span className="flex items-start gap-2.5 font-body text-sm text-red-800">
+            <FiAlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <span>
+              <strong>
+                {expiredCount} {expiredCount === 1 ? "package is" : "packages are"}{" "}
+                past {expiredCount === 1 ? "its" : "their"} month
+              </strong>{" "}
+              and hidden from the website. Review and delete{" "}
+              {expiredCount === 1 ? "it" : "them"}.
+            </span>
+          </span>
+          <FiArrowUpRight className="h-4 w-4 flex-shrink-0 text-red-700" />
+        </Link>
+      )}
+
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="New Enquiries"

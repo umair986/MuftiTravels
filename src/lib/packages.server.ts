@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import type { CmsPackageRecord } from "@/lib/packages";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
 import type { SiteContentList } from "@/lib/siteContent";
+import { isCityKey, isMonthExpired, type CityKey } from "@/lib/departures";
 
 /**
  * Server-side reads for published package content.
@@ -99,11 +100,36 @@ const loadCatalogCached = unstable_cache(
 
 /** Every published package, plus the tier and tag registries. */
 export async function getPublicCatalog(): Promise<PublicCatalog> {
+  let catalog: PublicCatalog;
   try {
-    return await loadCatalogCached();
+    catalog = await loadCatalogCached();
   } catch {
-    return loadCatalog();
+    catalog = await loadCatalog();
   }
+  return withoutExpired(catalog);
+}
+
+/**
+ * Drop packages whose month is over — AFTER the data cache, not inside it.
+ *
+ * The select policy (migration 026) already hides them from every fresh read,
+ * but the data cache holds a read for up to an hour; filtering what comes out
+ * of it means any page rendered after midnight IST leaves October out.
+ *
+ * It does not make midnight exact on its own. The home and city pages are
+ * statically rendered and revalidated hourly (ISR), so an expired package can
+ * stay on an already-rendered page for up to an hour into the new month. That
+ * was judged acceptable — see docs/monthly-packages.md — and nothing here
+ * should be read as promising otherwise.
+ */
+function withoutExpired(catalog: PublicCatalog): PublicCatalog {
+  const now = new Date();
+  const packages = catalog.packages.filter(
+    (item) => !isMonthExpired(item.valid_month, now),
+  );
+  return packages.length === catalog.packages.length
+    ? catalog
+    : { ...catalog, packages };
 }
 
 /** Published packages in one category, with the registries alongside. */
@@ -115,4 +141,24 @@ export async function getCategoryCatalog(
     ...catalog,
     packages: catalog.packages.filter((item) => item.category === category),
   };
+}
+
+/**
+ * The city a package belonged to, for a package the public can no longer see
+ * — its month is over, or it has been deleted. Null for anything else,
+ * including a draft (migration 026, package_city_for_slug).
+ *
+ * Only asked on a miss, so it is not cached: a missing package is rare, and a
+ * cached "no city" would outlive the package being deleted.
+ */
+export async function getRetiredPackageCity(
+  slug: string,
+): Promise<CityKey | null> {
+  const supabase = createServerClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("package_city_for_slug", {
+    p_slug: slug,
+  });
+  if (error) return null;
+  return isCityKey(data) ? data : null;
 }

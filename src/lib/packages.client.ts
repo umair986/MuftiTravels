@@ -18,6 +18,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isMonthExpired } from "./departures";
 import { rupeesToPaise } from "./money";
 import { tierName, type PackageTierRecord } from "./taxonomy";
 
@@ -70,11 +71,12 @@ export type QuotableRate = {
 export async function fetchQuotablePackages(
   supabase: SupabaseClient,
 ): Promise<QuotablePackage[]> {
+  // `*` rather than a column list, and the month filtered here rather than in
+  // the query: naming valid_month would fail the whole read on a database
+  // that has not run migration 026, leaving the picker empty.
   const { data, error } = await supabase
     .from("packages")
-    .select(
-      "slug, name, category, duration_days, duration_nights, destinations, features, prices",
-    )
+    .select("*")
     .eq("is_published", true)
     .order("category", { ascending: true })
     .order("sort_order", { ascending: true })
@@ -82,16 +84,21 @@ export async function fetchQuotablePackages(
 
   if (error || !data) return [];
 
-  return data.map((row) => ({
-    slug: (row.slug as string) ?? "",
-    name: (row.name as string) ?? "",
-    category: (row.category as string) ?? "",
-    durationDays: (row.duration_days as number) ?? 0,
-    durationNights: (row.duration_nights as number) ?? 0,
-    destinations: (row.destinations as string) ?? "",
-    features: (row.features as string[]) ?? [],
-    prices: (row.prices as CataloguePrices) ?? {},
-  }));
+  // An admin's read sees packages past their month (they need to, to delete
+  // them); a quotation must not be priced off last month's rates.
+  const now = new Date();
+  return data
+    .filter((row) => !isMonthExpired(row.valid_month as string | null, now))
+    .map((row) => ({
+      slug: (row.slug as string) ?? "",
+      name: (row.name as string) ?? "",
+      category: (row.category as string) ?? "",
+      durationDays: (row.duration_days as number) ?? 0,
+      durationNights: (row.duration_nights as number) ?? 0,
+      destinations: (row.destinations as string) ?? "",
+      features: (row.features as string[]) ?? [],
+      prices: (row.prices as CataloguePrices) ?? {},
+    }));
 }
 
 /**

@@ -10,14 +10,20 @@ import { CATEGORY_SLUGS } from "@/lib/categories";
 import { CATEGORY_LANDING } from "@/lib/categoryLanding";
 import {
   CITY_LANDING,
-  cheapestPrice,
   formatRupees,
   type CityKey,
   type TripFacts,
 } from "@/lib/cityLanding";
+import {
+  cityFromPrice,
+  groupByMonth,
+  monthlyUmrah,
+  packagesForCity,
+} from "@/lib/cityPackages";
 import { getGuide } from "@/lib/guides";
+import type { CmsPackageRecord } from "@/lib/packages";
 import { getPublicCatalog, type PublicCatalog } from "@/lib/packages.server";
-import { tierName } from "@/lib/taxonomy";
+import { tierName, type PackageTagRecord, type PackageTierRecord } from "@/lib/taxonomy";
 import {
   BUSINESS,
   breadcrumbSchema,
@@ -26,7 +32,13 @@ import {
 } from "@/lib/seo";
 
 /**
- * Departure-city landing page — /umrah-packages-from-{mumbai,delhi,lucknow}.
+ * Departure-city landing page — /umrah-packages-from-<city>, one per entry in
+ * DEPARTURE_CITIES.
+ *
+ * This is the page with the permanent address. Umrah packages are made per
+ * month and leave the site when their month ends (docs/monthly-packages.md),
+ * so the link that gets shared, advertised and ranked is this one, and the
+ * monthly packages beneath it come and go. Newest month first.
  *
  * Laid out like the category landing pages so the two read as one family:
  * heading and intro, the packages that depart from this city, the office (where
@@ -45,35 +57,40 @@ const MAP_EMBED =
   "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d942.797227481456!2d72.84293416954392!3d19.05543006650086!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7c923b0543ed1%3A0x7fba5dc35363fd9a!2sNational%20Girl%27s%20High%20School%20%26%20Junior%20College!5e0!3m2!1sen!2sin!4v1749732890489!5m2!1sen!2sin";
 
 /**
- * The city's fixed-group package, read from the admin — or undefined when it
- * is not published. Metadata and page both go through here, so the price in
- * the search snippet, the hero, the card and the FAQ are always one number.
+ * The city's current Umrah offer: its newest month's package, and the lowest
+ * price across every month still on sale — or undefined when the city has no
+ * current Umrah package. Metadata and page both go through here, so the price
+ * in the search snippet, the hero, the home-page card and the FAQ are always
+ * one number.
  */
-function resolveFixedGroup(city: CityKey, catalog: PublicCatalog) {
-  const slug = CITY_LANDING[city].fixedGroupSlug;
-  const record = catalog.packages.find(
-    (item) => item.category === "Umrah Fixed Group" && item.slug === slug,
-  );
-  if (!record) return undefined;
+function resolveCityUmrah(city: CityKey, catalog: PublicCatalog) {
+  const umrah = monthlyUmrah(catalog.packages, city);
+  const lead = umrah[0];
+  if (!lead) return undefined;
 
-  const cell = cheapestPrice(record.prices);
+  const cell = cityFromPrice(catalog.packages, city);
   const trip: TripFacts = {
-    price: cell && { ...cell, tier: tierName(cell.tier, catalog.tiers) },
-    days: record.duration_days,
-    nights: record.duration_nights,
+    price: cell && {
+      amount: cell.amount,
+      room: cell.room,
+      tier: tierName(cell.tier, catalog.tiers),
+    },
+    days: lead.duration_days,
+    nights: lead.duration_nights,
   };
   return {
-    record,
-    href: `/packages/${CATEGORY_SLUGS["Umrah Fixed Group"]}/${record.slug}`,
-    tierCount: Object.keys(record.prices ?? {}).length,
+    lead,
+    umrah,
+    href: `/packages/${CATEGORY_SLUGS["Umrah Fixed Group"]}/${lead.slug}`,
+    tierCount: Object.keys(lead.prices ?? {}).length,
     trip,
   };
 }
 
 export async function cityMetadata(city: CityKey): Promise<Metadata> {
   const copy = CITY_LANDING[city];
-  const fixedGroup = resolveFixedGroup(city, await getPublicCatalog());
-  const price = fixedGroup?.trip.price;
+  const cityUmrah = resolveCityUmrah(city, await getPublicCatalog());
+  const price = cityUmrah?.trip.price;
   const description = copy.metaDescription(
     price ? formatRupees(price.amount) : undefined,
   );
@@ -86,8 +103,8 @@ export async function cityMetadata(city: CityKey): Promise<Metadata> {
       description,
       type: "website",
       // Without a package photo the root layout's default share image applies.
-      ...(fixedGroup?.record.image_url
-        ? { images: [{ url: fixedGroup.record.image_url, alt: copy.heading }] }
+      ...(cityUmrah?.lead.image_url
+        ? { images: [{ url: cityUmrah.lead.image_url, alt: copy.heading }] }
         : {}),
     },
   };
@@ -97,23 +114,27 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
   const copy = CITY_LANDING[city];
   const catalog = await getPublicCatalog();
   const { packages, tiers, tags } = catalog;
-  const fixedGroup = resolveFixedGroup(city, catalog);
-  const price = fixedGroup?.trip.price;
-  const faqs = copy.faqs(fixedGroup?.trip);
+  const cityUmrah = resolveCityUmrah(city, catalog);
+  const price = cityUmrah?.trip.price;
+  const faqs = copy.faqs(cityUmrah?.trip);
   const whatsapp = `${WHATSAPP_URL}${encodeURIComponent(copy.city)}.`;
 
-  // The city's own package leads; any further fixed groups for the city added
-  // through the admin follow it.
-  const cityPattern = new RegExp(`\\b${copy.city}\\b`, "i");
-  const moreFromCity = packages.filter(
-    (item) =>
-      item.category === "Umrah Fixed Group" &&
-      item.slug !== copy.fixedGroupSlug &&
-      (cityPattern.test(item.name) || cityPattern.test(item.slug)),
-  );
-  const cityPackages = fixedGroup
-    ? [fixedGroup.record, ...moreFromCity]
-    : moreFromCity;
+  // Newest month first; each month gets its own heading so "November 2026"
+  // and "October 2026" read as two offers rather than one long row.
+  const monthGroups = groupByMonth(cityUmrah?.umrah ?? []);
+  const fromCity = packagesForCity(packages, city);
+  const otherSections = (
+    [
+      { category: "Ramzan", heading: `Ramadan Umrah from ${copy.city}` },
+      { category: "Hajj", heading: `Hajj from ${copy.city}` },
+      { category: "Ziyarat", heading: `Umrah + Ziyarat from ${copy.city}` },
+    ] as const
+  )
+    .map((section) => ({
+      ...section,
+      packages: fromCity.filter((item) => item.category === section.category),
+    }))
+    .filter((section) => section.packages.length);
   const landPackages = packages.filter(
     (item) => item.category === "Umrah Land Package",
   );
@@ -199,34 +220,78 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
             <h2 className="font-display text-3xl font-bold text-[#06131D] sm:text-4xl">
               Umrah from {copy.city}: flights, hotels and visa
             </h2>
-{fixedGroup ? (
+            {cityUmrah ? (
               <p className="mt-2 max-w-2xl font-body text-sm text-[#526168]">
-                Fixed-group departures from {copy.city}, {fixedGroup.trip.days}{" "}
-                days and {fixedGroup.trip.nights} nights, with{" "}
-                {fixedGroup.tierCount} hotel tiers to choose from.
+                Fixed-group departures from {copy.city}, {cityUmrah.trip.days}{" "}
+                days and {cityUmrah.trip.nights} nights, with{" "}
+                {cityUmrah.tierCount === 1
+                  ? "one hotel tier"
+                  : `${cityUmrah.tierCount} hotel tiers to choose from`}
+                . Prices are set
+                month by month with flight and hotel rates; Ramadan and winter
+                departures are priced separately.{" "}
+                <a
+                  href={whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-[#997A15] underline-offset-4 hover:underline"
+                >
+                  WhatsApp us for the nearest date and today&apos;s rate.
+                </a>
               </p>
             ) : null}
 
-            <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
-              <ManagedPackagesCatalog
-                packages={cityPackages}
-                tiers={tiers}
-                tags={tags}
-                fallback={
-                  <div className="col-span-full rounded-2xl border border-dashed border-[#D4AF37]/40 bg-white p-10 text-center">
-                    <p className="font-display text-2xl font-semibold text-[#06131D]">
-                      Dates for the next {copy.city} group are being finalised
-                    </p>
-                    <p className="mx-auto mt-2 max-w-xl font-body text-sm text-[#526168]">
-                      Tell us your travel month and group size and we will send
-                      the itinerary and pricing as soon as they are confirmed.
-                    </p>
+            {monthGroups.length ? (
+              monthGroups.map((group) => (
+                <div key={group.month ?? "undated"} className="mt-10">
+                  {group.label ? (
+                    <h3 className="flex items-center gap-3 font-display text-2xl font-semibold text-[#06131D]">
+                      <span className="h-px w-8 bg-[#D4AF37]" />
+                      {group.label}
+                    </h3>
+                  ) : null}
+                  <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
+                    <ManagedPackagesCatalog
+                      packages={group.packages}
+                      tiers={tiers}
+                      tags={tags}
+                      fallback={null}
+                    />
                   </div>
-                }
-              />
-            </div>
+                </div>
+              ))
+            ) : (
+              <div className="mt-8 rounded-2xl border border-dashed border-[#D4AF37]/40 bg-white p-10 text-center">
+                <p className="font-display text-2xl font-semibold text-[#06131D]">
+                  This month&apos;s {copy.city} prices are being finalised
+                </p>
+                <p className="mx-auto mt-2 max-w-xl font-body text-sm text-[#526168]">
+                  Tell us your travel month and group size and we will send the
+                  nearest date, the itinerary and today&apos;s price.
+                </p>
+                <a
+                  href={whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 font-body text-sm font-bold text-white transition hover:bg-[#1EBE5A]"
+                >
+                  <FaWhatsapp className="h-4 w-4" /> Ask on WhatsApp
+                </a>
+              </div>
+            )}
           </div>
         </section>
+
+        {/* Ramadan, Hajj and Ziyarat departing this city — only those it has */}
+        {otherSections.map((section) => (
+          <CitySection
+            key={section.category}
+            heading={section.heading}
+            packages={section.packages}
+            tiers={tiers}
+            tags={tags}
+          />
+        ))}
 
         {/* Land packages — for pilgrims flying on their own ticket */}
         <section className="border-t border-[#06131D]/10 px-5 py-14 sm:px-8 lg:px-12">
@@ -343,8 +408,8 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
             </h2>
             <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                ...(fixedGroup
-                  ? [{ href: fixedGroup.href, label: fixedGroup.record.name }]
+                ...(cityUmrah
+                  ? [{ href: cityUmrah.href, label: cityUmrah.lead.name }]
                   : []),
                 ...(documentsGuide
                   ? [
@@ -385,5 +450,35 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
       </main>
       <Footer />
     </>
+  );
+}
+
+function CitySection({
+  heading,
+  packages,
+  tiers,
+  tags,
+}: {
+  heading: string;
+  packages: CmsPackageRecord[];
+  tiers: PackageTierRecord[];
+  tags: PackageTagRecord[];
+}) {
+  return (
+    <section className="border-t border-[#06131D]/10 px-5 py-14 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-7xl">
+        <h2 className="font-display text-3xl font-bold text-[#06131D] sm:text-4xl">
+          {heading}
+        </h2>
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
+          <ManagedPackagesCatalog
+            packages={packages}
+            tiers={tiers}
+            tags={tags}
+            fallback={null}
+          />
+        </div>
+      </div>
+    </section>
   );
 }

@@ -20,6 +20,13 @@ import CategoryDetailsFields from "./CategoryDetailsFields";
 import { PACKAGE_CATEGORIES } from "@/lib/categoryFields";
 import Image from "next/image";
 import { revalidatePackages } from "@/lib/revalidate";
+import {
+  DEPARTURE_CITIES,
+  formatMonth,
+  fromMonthInput,
+  isMonthExpired,
+  toMonthInput,
+} from "@/lib/departures";
 import { useToast } from "../components/ui/toast/useToast";
 
 const packageSlug = "14-days-umrah-land-package";
@@ -64,6 +71,10 @@ type FormState = {
   rating: string;
   reviews: string;
   isPublished: boolean;
+  /** Migration 026: a DEPARTURE_CITIES key, or "" for not city-specific. */
+  departureCity: string;
+  /** Migration 026: `YYYY-MM` as the month input holds it, or "" for none. */
+  validMonth: string;
 };
 
 const emptyForm: FormState = {
@@ -82,6 +93,8 @@ const emptyForm: FormState = {
   rating: "5",
   reviews: "0",
   isPublished: true,
+  departureCity: "",
+  validMonth: "",
 };
 
 function pricesToRows(prices: CmsPackageRecord["prices"]): PriceRow[] {
@@ -176,6 +189,8 @@ export default function ManagedPackageEditor({
             reviews: String(packageRecord.reviews ?? 0),
             prices: pricesToRows(packageRecord.prices),
             isPublished: packageRecord.is_published,
+            departureCity: packageRecord.departure_city ?? "",
+            validMonth: toMonthInput(packageRecord.valid_month),
           };
           setForm(loaded);
           setSavedForm(loaded);
@@ -385,6 +400,14 @@ export default function ManagedPackageEditor({
             }
           : {}),
         is_published: form.isPublished,
+        // Written only once migration 026 has added the columns — a row read
+        // before then has no such keys, and writing them would fail the save.
+        ...("departure_city" in record
+          ? {
+              departure_city: form.departureCity,
+              valid_month: fromMonthInput(form.validMonth),
+            }
+          : {}),
       })
       .eq("id", record.id)
       .select()
@@ -494,6 +517,46 @@ export default function ManagedPackageEditor({
             .map((value) => ({ value, label: value }))}
           onChange={(value) => updateField("category", value)}
         />
+        {record && "departure_city" in record ? (
+          <>
+            <EditorOptionSelect
+              label="Departs from"
+              value={form.departureCity}
+              options={[
+                { value: "", label: "Not city-specific" },
+                ...DEPARTURE_CITIES.map((city) => ({
+                  value: city.key,
+                  label: city.name,
+                })),
+              ]}
+              onChange={(value) => updateField("departureCity", value)}
+            />
+            <label className="space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
+              Priced for (month)
+              <input
+                type="month"
+                value={form.validMonth}
+                onChange={(event) =>
+                  updateField("validMonth", event.target.value)
+                }
+                className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+              />
+              <span
+                className={`block text-xs font-normal ${
+                  isMonthExpired(fromMonthInput(form.validMonth))
+                    ? "font-semibold text-red-700"
+                    : "text-[#526168]"
+                }`}
+              >
+                {!form.validMonth
+                  ? "No month — never expires. Right for Hajj and Ramadan."
+                  : isMonthExpired(fromMonthInput(form.validMonth))
+                    ? `${formatMonth(fromMonthInput(form.validMonth))} is over — this package is hidden from the website.`
+                    : `Shown on the website until the end of ${formatMonth(fromMonthInput(form.validMonth))}.`}
+              </span>
+            </label>
+          </>
+        ) : null}
         <EditorField
           label="Display order (lower shows first)"
           type="number"

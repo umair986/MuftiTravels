@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { CATEGORY_BY_SLUG } from "@/lib/categories";
 import { cmsPackageToPackageData } from "@/lib/packages";
-import { getPublicCatalog } from "@/lib/packages.server";
+import { CITY_LANDING } from "@/lib/cityLanding";
+import {
+  getPublicCatalog,
+  getRetiredPackageCity,
+} from "@/lib/packages.server";
 import JsonLd from "@/app/components/JsonLd";
 import { breadcrumbSchema, packageSchema } from "@/lib/seo";
 import PackageDetailPageClient from "./PackageDetailPageClient";
@@ -73,6 +77,13 @@ export default async function PackageDetailPage({
     await getPackage(routeParams);
 
   if (!categoryName || !pkg) {
+    // A monthly package whose month is over, or one since deleted: send the
+    // visitor to its city's current packages rather than a 404. This is the
+    // October link forwarded on WhatsApp and opened in November. A 307, not a
+    // 308 — browsers cache a permanent redirect indefinitely, and a package
+    // whose month the admin extends again must be reachable again.
+    const city = await getRetiredPackageCity(routeParams.slug);
+    if (city) redirect(CITY_LANDING[city].path);
     notFound();
   }
 

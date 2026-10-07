@@ -6,7 +6,7 @@ import Hero from "./components/Hero";
 import About from "./components/About";
 import WhyChooseUs from "./components/WhyChooseUs";
 import JourneyTimeline from "./components/JourneyTimeline";
-import Packages from "./components/Packages";
+import DepartureCities from "./components/DepartureCities";
 import AffiliatedPartners from "./components/AffiliatedPartners";
 import Testimonials from "./components/Testimonials";
 import GallerySection from "./components/GallerySection";
@@ -14,7 +14,7 @@ import ContactSection from "./components/ContactSection";
 import Footer from "./components/Footer";
 
 export default async function Home() {
-  const [{ packages, tiers, tags }, galleryCollections] = await Promise.all([
+  const [{ packages }, galleryCollections] = await Promise.all([
     getPublicCatalog(),
     getHomeCollections(),
   ]);
@@ -35,8 +35,8 @@ export default async function Home() {
       {/* 4. The 5 Blessed Stages of Umrah (Signature Timeline Blueprint) */}
       <JourneyTimeline />
 
-      {/* 5. Curated Packages Catalog (Fixed Group, Land Packages, Ziyarat) */}
-      <Packages packages={packages} tiers={tiers} tags={tags} />
+      {/* 5. Departure cities — this month's packages, Mumbai featured */}
+      <DepartureCities packages={packages} />
 
       {/* 6. Why Choose Us (Bento Grid Architecture) */}
       <WhyChooseUs />

@@ -24,6 +24,17 @@ export type CmsPackageRecord = {
   details?: PackageDetails;
   /** Set by the database trigger; used for sitemap lastModified. */
   updated_at?: string;
+  /**
+   * Migration 026. A key from DEPARTURE_CITIES, or "" for a package that is
+   * not city-specific. Optional because rows read before 026 is applied lack it.
+   */
+  departure_city?: string;
+  /**
+   * Migration 026. `YYYY-MM-01` — the month this package was priced for; it
+   * leaves the site when the month ends. Null for Hajj and Ramadan, which
+   * never expire. See src/lib/departures.ts.
+   */
+  valid_month?: string | null;
 };
 
 export function cmsPackageToPackageData(record: CmsPackageRecord): PackageData {

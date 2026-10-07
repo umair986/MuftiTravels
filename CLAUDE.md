@@ -19,12 +19,13 @@ npm run sample:quotation -- <outDir>  # Writes 3 sample quotation PDFs to look a
 `npm test` globs `src/lib/*.test.ts`, so a single file is `npx tsx --test src/lib/finance.test.ts`
 and a single case is `npx tsx --test --test-name-pattern "computeInvoiceTotals" src/lib/finance.test.ts`.
 
-There are three test files: `finance.test.ts`, because money arithmetic is where a bug is both
+There are four test files: `finance.test.ts`, because money arithmetic is where a bug is both
 customer-facing and legally relevant, `guides.test.ts`, which checks the guide copy parser and
-that every guide cites sources, and `quotations.test.ts`, which covers the quotation helpers —
+that every guide cites sources, `quotations.test.ts`, which covers the quotation helpers —
 discount, per-person, expiry, the description parser, and how costing lines follow the traveller
-count. Don't read the absence of tests elsewhere as an invitation to skip
-them where they'd earn their keep.
+count — and `departures.test.ts`, which pins when a monthly package expires (midnight IST).
+Don't read the absence of tests elsewhere as an invitation to skip them where they'd earn their
+keep.
 
 Windows/PowerShell is the primary shell here; a Bash tool is also available and takes POSIX syntax.
 
@@ -57,7 +58,7 @@ audits *the migration files in this repo*, not the live database.
 
 ### Supabase migrations are the source of truth
 
-`supabase/migrations/NNN_name.sql`, applied in order, currently up to `023`. House style, and
+`supabase/migrations/NNN_name.sql`, applied in order, currently up to `026`. House style, and
 follow it:
 
 - Heavily commented — the comment explains *why*, including options rejected.
@@ -181,6 +182,24 @@ specifically so the checker can locate or exclude them, so don't "tidy" those to
 must go through review. Every factual claim cites an official source in the article's `sources`,
 and `reviewed` is the date those were last checked; re-check them before bumping it. Copy supports
 only `[label](url)` and `**bold**`, rendered as React nodes by `src/app/guides/RichText.tsx`.
+
+### Monthly packages and departure cities
+
+`docs/monthly-packages.md` is the design record (migration `026`). An Umrah package is made
+**for a month** (`valid_month`, always the 1st) and **from a city** (`departure_city`, a key from
+`DEPARTURE_CITIES` in `src/lib/departures.ts`). The rules that bite:
+
+- **Expiry is the select policy, not a job.** Public reads only see rows whose month is not over,
+  computed in IST by `public.current_ist_month()`; `currentIstMonth()` mirrors it in TypeScript
+  and the two are a pair. `getPublicCatalog()` also filters *after* its cache. Expired rows are
+  never deleted automatically — the business deletes them by hand from the dashboard's alert.
+- **The city page is the permanent address.** `/umrah-packages-from-<city>` lists that city's
+  current packages newest month first; the home page links to cities, not packages. A missing
+  package's detail URL redirects to its city via `package_city_for_slug()`.
+- **A seventh city** needs an entry in `DEPARTURE_CITIES`, copy in `CITY_LANDING`, and a route
+  file — no migration. Don't claim a direct flight (`direct: true`) the business hasn't confirmed.
+- **Code must survive the window before 026 is applied** — rows then lack both keys. See Decision
+  10 of the doc before adding a read or write of either column.
 
 ### Public catalogue conventions
 
