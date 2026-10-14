@@ -12,6 +12,7 @@ import { FaPlaneDeparture, FaWhatsapp } from "react-icons/fa";
 
 import Footer from "@/app/components/Footer";
 import JsonLd from "@/app/components/JsonLd";
+import { PackedGroup, PackedGroupGrid } from "@/app/components/PackedGroups";
 import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
 import { CATEGORY_SLUGS } from "@/lib/categories";
 import { CATEGORY_LANDING } from "@/lib/categoryLanding";
@@ -31,7 +32,7 @@ import {
 import { getGuide } from "@/lib/guides";
 import type { CmsPackageRecord } from "@/lib/packages";
 import { getPublicCatalog, type PublicCatalog } from "@/lib/packages.server";
-import { tierName, type PackageTagRecord, type PackageTierRecord } from "@/lib/taxonomy";
+import { tierName } from "@/lib/taxonomy";
 import {
   BUSINESS,
   breadcrumbSchema,
@@ -128,7 +129,7 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
   const whatsapp = `${WHATSAPP_URL}${encodeURIComponent(copy.city)}.`;
 
   // Newest month first; each month gets its own heading so "November 2026"
-  // and "October 2026" read as two offers rather than one long row.
+  // and "October 2026" read as two offers, packed side by side (PackedGroups).
   const monthGroups = groupByMonth(cityUmrah?.umrah ?? []);
   const fromCity = packagesForCity(packages, city);
   const otherSections = (
@@ -250,24 +251,29 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
             ) : null}
 
             {monthGroups.length ? (
-              monthGroups.map((group) => (
-                <div key={group.month ?? "undated"} className="mt-10">
-                  {group.label ? (
-                    <PeriodHeading
-                      label={group.label}
-                      packages={group.packages}
-                    />
-                  ) : null}
-                  <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
+              <PackedGroupGrid className="mt-6">
+                {monthGroups.map((group) => (
+                  <PackedGroup
+                    key={group.month ?? "undated"}
+                    count={group.packages.length}
+                    heading={
+                      group.label ? (
+                        <PeriodHeading
+                          label={group.label}
+                          packages={group.packages}
+                        />
+                      ) : null
+                    }
+                  >
                     <ManagedPackagesCatalog
                       packages={group.packages}
                       tiers={tiers}
                       tags={tags}
                       fallback={null}
                     />
-                  </div>
-                </div>
-              ))
+                  </PackedGroup>
+                ))}
+              </PackedGroupGrid>
             ) : (
               <div className="mt-8 rounded-2xl border border-dashed border-[#D4AF37]/40 bg-white p-10 text-center">
                 <p className="font-display text-2xl font-semibold text-[#06131D]">
@@ -291,15 +297,31 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
         </section>
 
         {/* Ramadan, Hajj and Ziyarat departing this city — only those it has */}
-        {otherSections.map((section) => (
-          <CitySection
-            key={section.category}
-            heading={section.heading}
-            packages={section.packages}
-            tiers={tiers}
-            tags={tags}
-          />
-        ))}
+        {otherSections.length ? (
+          <section className="border-t border-[#06131D]/10 px-5 pb-14 pt-8 sm:px-8 lg:px-12">
+            <PackedGroupGrid className="mx-auto max-w-7xl">
+              {otherSections.map((section) => (
+                <PackedGroup
+                  key={section.category}
+                  count={section.packages.length}
+                  heading={
+                    <h2 className="flex items-center gap-3 pt-6 font-display text-2xl font-bold text-[#06131D] sm:text-3xl">
+                      <span className="h-px w-8 shrink-0 bg-[#D4AF37]" />
+                      {section.heading}
+                    </h2>
+                  }
+                >
+                  <ManagedPackagesCatalog
+                    packages={section.packages}
+                    tiers={tiers}
+                    tags={tags}
+                    fallback={null}
+                  />
+                </PackedGroup>
+              ))}
+            </PackedGroupGrid>
+          </section>
+        ) : null}
 
         {/* Land packages — for pilgrims flying on their own ticket */}
         <section className="border-t border-[#06131D]/10 px-5 py-14 sm:px-8 lg:px-12">
@@ -474,9 +496,9 @@ function PeriodHeading({
 }) {
   const { dates, airlines } = flightSummary(packages);
   return (
-    <div>
+    <div className="pt-4">
       <h3 className="flex items-center gap-3 font-display text-2xl font-semibold text-[#06131D] sm:text-3xl">
-        <span className="h-px w-8 bg-[#D4AF37]" />
+        <span className="h-px w-8 shrink-0 bg-[#D4AF37]" />
         {label}
       </h3>
       {dates || airlines.length ? (
@@ -500,35 +522,5 @@ function PeriodHeading({
         </dl>
       ) : null}
     </div>
-  );
-}
-
-function CitySection({
-  heading,
-  packages,
-  tiers,
-  tags,
-}: {
-  heading: string;
-  packages: CmsPackageRecord[];
-  tiers: PackageTierRecord[];
-  tags: PackageTagRecord[];
-}) {
-  return (
-    <section className="border-t border-[#06131D]/10 px-5 py-14 sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-7xl">
-        <h2 className="font-display text-3xl font-bold text-[#06131D] sm:text-4xl">
-          {heading}
-        </h2>
-        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
-          <ManagedPackagesCatalog
-            packages={packages}
-            tiers={tiers}
-            tags={tags}
-            fallback={null}
-          />
-        </div>
-      </div>
-    </section>
   );
 }

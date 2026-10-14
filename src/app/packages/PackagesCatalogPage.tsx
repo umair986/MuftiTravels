@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FaKaaba, FaHotel, FaMosque, FaMoon, FaStarAndCrescent } from "react-icons/fa";
 import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
+import { PackedGroup, PackedGroupGrid } from "@/app/components/PackedGroups";
 import {
   DEPARTURE_CITIES,
   cityKeyFromName,
@@ -123,23 +124,42 @@ export default function PackagesCatalogPage({
 
           {/* Every package comes from the admin; a category with nothing
               published is left out rather than padded with placeholders. */}
-          {groups
-            .filter((group) =>
-              visible.some((item) => item.category === group.category),
-            )
-            .map((group) => (
-            <PackageGroup
-              key={group.category}
-              title={group.title}
-              description={group.description}
-              icon={group.icon}
-              packages={visible.filter(
-                (item) => item.category === group.category,
-              )}
-              tiers={tiers}
-              tags={tags}
-            />
-          ))}
+          <PackedGroupGrid className="mt-6">
+            {groups
+              .map((group) => ({
+                ...group,
+                packages: visible.filter(
+                  (item) => item.category === group.category,
+                ),
+              }))
+              .filter((group) => group.packages.length)
+              .map((group) => (
+                <PackedGroup
+                  key={group.category}
+                  count={group.packages.length}
+                  heading={
+                    <div className="h-full border-b border-[#06131D]/10 pb-5 pt-10">
+                      <h2 className="flex items-center gap-3 font-display text-2xl font-bold text-[#06131D] sm:text-3xl">
+                        <span className="shrink-0 text-[#D4AF37]">
+                          {group.icon}
+                        </span>
+                        {group.title}
+                      </h2>
+                      <p className="mt-2 font-body text-sm text-stone-600">
+                        {group.description}
+                      </p>
+                    </div>
+                  }
+                >
+                  <ManagedPackagesCatalog
+                    packages={group.packages}
+                    tiers={tiers}
+                    tags={tags}
+                    fallback={null}
+                  />
+                </PackedGroup>
+              ))}
+          </PackedGroupGrid>
         </div>
       </main>
       <Footer />
@@ -200,43 +220,5 @@ function CityChips({
         </Link>
       ))}
     </nav>
-  );
-}
-
-function PackageGroup({
-  title,
-  description,
-  icon,
-  packages,
-  tiers,
-  tags,
-}: {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  packages: CmsPackageRecord[];
-  tiers: PackageTierRecord[];
-  tags: PackageTagRecord[];
-}) {
-  return (
-    <section className="mt-20 first:mt-16">
-      <div className="mb-8 flex items-end justify-between gap-4 border-b border-[#06131D]/10 pb-5">
-        <div>
-          <h2 className="flex items-center gap-3 font-display text-3xl font-bold text-[#06131D] sm:text-4xl">
-            <span className="text-[#D4AF37]">{icon}</span>
-            {title}
-          </h2>
-          <p className="mt-2 font-body text-sm text-stone-600">{description}</p>
-        </div>
-      </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <ManagedPackagesCatalog
-          packages={packages}
-          tiers={tiers}
-          tags={tags}
-          fallback={null}
-        />
-      </div>
-    </section>
   );
 }
