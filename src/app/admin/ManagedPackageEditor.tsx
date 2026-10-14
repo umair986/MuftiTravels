@@ -18,7 +18,8 @@ import {
   type PackageDetails,
 } from "@/lib/categoryFields";
 import CategoryDetailsFields from "./CategoryDetailsFields";
-import MonthPicker from "./MonthPicker";
+import DatePicker from "../components/ui/pickers/DatePicker";
+import MonthPicker from "../components/ui/pickers/MonthPicker";
 import { PACKAGE_CATEGORIES } from "@/lib/categoryFields";
 import Image from "next/image";
 import { revalidatePackages } from "@/lib/revalidate";
@@ -1063,13 +1064,13 @@ function FlightFields({
     flightVia?: string;
   }) => void;
 }) {
-  const [draft, setDraft] = useState("");
   const summary = formatDepartureDates(dates);
 
-  function addDate() {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(draft)) return;
-    onChange({ departureDates: [...new Set([...dates, draft])].sort() });
-    setDraft("");
+  // Picking a date adds it straight away — there is nothing to confirm, and
+  // the dots in the calendar show which dates are already on the list.
+  function addDate(date: string) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    onChange({ departureDates: [...new Set([...dates, date])].sort() });
   }
 
   return (
@@ -1084,28 +1085,13 @@ function FlightFields({
 
       <div className="mt-4 space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
         Departure dates
-        <div className="flex gap-2">
-          <input
-            type="date"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                addDate();
-              }
-            }}
-            className="h-10 flex-1 rounded-lg border border-stone-200 bg-white px-3 font-normal outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
-          />
-          <button
-            type="button"
-            onClick={addDate}
-            disabled={!draft}
-            className="rounded-lg bg-[#D4AF37] px-3 font-body text-xs font-bold text-[#06131D] hover:bg-[#F3E5AB] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Add date
-          </button>
-        </div>
+        <DatePicker
+          value=""
+          onChange={addDate}
+          marked={dates}
+          clearable={false}
+          placeholder="Pick a date to add it"
+        />
         {dates.length ? (
           <div className="flex flex-wrap gap-2 pt-1">
             {dates.map((date) => (

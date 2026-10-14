@@ -11,7 +11,7 @@ import {
   schemaForCategory,
 } from "@/lib/categoryFields";
 import { categorySlug } from "@/lib/categories";
-import MonthPicker from "./MonthPicker";
+import MonthPicker from "../components/ui/pickers/MonthPicker";
 import {
   DEPARTURE_CITIES,
   MONTHLY_CATEGORY,

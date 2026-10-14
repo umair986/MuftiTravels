@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import DatePicker from "@/app/components/ui/pickers/DatePicker";
 import { FiDownload, FiEye, FiPlus, FiTrash2 } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import { createClient } from "@/lib/supabase/client";
@@ -541,11 +542,10 @@ export default function PaymentsPanel({
               <div className="grid gap-3 sm:grid-cols-4">
                 <label className="block">
                   <span className={LABEL}>Received on</span>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={paidOn}
-                    onChange={(event) => setPaidOn(event.target.value)}
-                    className={FIELD}
+                    onChange={(next) => setPaidOn(next)}
+                    boxClassName="rounded-lg border border-stone-200 bg-white px-3 py-2"
                   />
                 </label>
                 <label className="block">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import DatePicker from "@/app/components/ui/pickers/DatePicker";
 import { FiPaperclip, FiTrash2, FiX } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/finance";
@@ -252,11 +253,9 @@ export default function ExpenseFormDialog({
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className={LABEL}>Date</span>
-            <input
-              type="date"
+            <DatePicker
               value={spentOn}
-              onChange={(event) => setSpentOn(event.target.value)}
-              className={FIELD}
+              onChange={(next) => setSpentOn(next)}
             />
           </label>
 

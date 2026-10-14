@@ -5,13 +5,13 @@ import {
   FiUser,
   FiPhone,
   FiMail,
-  FiCalendar,
   FiCheckCircle,
   FiSend,
   FiMapPin,
 } from "react-icons/fi";
 import { FaWhatsapp, FaKaaba } from "react-icons/fa";
 import CustomDropdown, { DropdownOption } from "./ui/CustomDropdown";
+import DatePicker, { localToday } from "./ui/pickers/DatePicker";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "./ui/toast/useToast";
 
@@ -350,18 +350,14 @@ export default function ContactForm() {
         <label className="block text-xs font-semibold text-stone-700 mb-1">
           Preferred Travel Date / Month
         </label>
-        <div className="relative">
-          <FiCalendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4" />
-          <input
-            id="travel-date"
-            type="date"
-            name="date"
-            value={formData.date}
-            min={new Date().toISOString().split("T")[0]}
-            onChange={handleChange}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 text-stone-900 text-sm focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20 bg-stone-50/50"
-          />
-        </div>
+        <DatePicker
+          id="travel-date"
+          value={formData.date}
+          min={localToday()}
+          onChange={(date) => setFormData({ ...formData, date })}
+          placeholder="Pick a date"
+          boxClassName="rounded-xl border border-stone-300 bg-stone-50/50 px-3.5 py-2.5"
+        />
         <p className="mt-1 text-[11px] text-stone-500">
           Not sure yet? Leave it blank and tell us the month in the notes below.
         </p>

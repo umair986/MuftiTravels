@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import DatePicker from "@/app/components/ui/pickers/DatePicker";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -1256,14 +1257,12 @@ export default function QuotationEditor({
             </label>
             <label className="block">
               <span className={LABEL}>Travelling around</span>
-              <input
-                type="date"
+              <DatePicker
                 value={travelDate}
-                onChange={(event) => {
-                  setTravelDate(event.target.value);
+                onChange={(next) => {
+                  setTravelDate(next);
                   touch();
                 }}
-                className={FIELD}
               />
             </label>
           </div>
@@ -1326,11 +1325,10 @@ export default function QuotationEditor({
 
             <label className="block">
               <span className={LABEL}>Returning on</span>
-              <input
-                type="date"
+              <DatePicker
                 value={returnDate}
-                onChange={(event) => {
-                  const value = event.target.value;
+                min={travelDate || undefined}
+                onChange={(value) => {
                   setReturnDate(value);
                   // Fill the duration from the dates, but never overwrite a
                   // number already typed: a group flying home separately is
@@ -1341,7 +1339,6 @@ export default function QuotationEditor({
                   }
                   touch();
                 }}
-                className={FIELD}
               />
             </label>
             <label className="block">
@@ -1827,14 +1824,12 @@ export default function QuotationEditor({
 
               <label className="block">
                 <span className={LABEL}>Valid until</span>
-                <input
-                  type="date"
+                <DatePicker
                   value={validUntil}
-                  onChange={(event) => {
-                    setValidUntil(event.target.value);
+                  onChange={(next) => {
+                    setValidUntil(next);
                     touch();
                   }}
-                  className={FIELD}
                 />
                 <span className="mt-1 block font-body text-xs text-[#526168]">
                   Set on every send from your{" "}

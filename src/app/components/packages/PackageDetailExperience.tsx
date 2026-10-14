@@ -41,6 +41,7 @@ import { createClient } from "@/lib/supabase/client";
 import { tierName } from "@/lib/taxonomy";
 import PackageTagBadges from "@/app/components/PackageTagBadges";
 import TierHotels from "./TierHotels";
+import DatePicker, { localToday } from "@/app/components/ui/pickers/DatePicker";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
 import { useToast } from "@/app/components/ui/toast/useToast";
 
@@ -217,12 +218,7 @@ function EnquiryDialog({
                 </div>
               ))}
             </div>
-            <Field
-              label="Preferred departure date"
-              name="date"
-              type="date"
-              required={false}
-            />
+            <DateField label="Preferred departure date" name="date" />
             {error && (
               <p role="alert" className="text-sm text-red-600">
                 {error}
@@ -264,6 +260,28 @@ function Field({
         className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-3 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
       />
     </label>
+  );
+}
+
+/**
+ * The enquiry form is uncontrolled and read through `FormData`, so the
+ * picker's hidden input carries the date under `name`, as the native
+ * `<input type="date">` did.
+ */
+function DateField({ label, name }: { label: string; name: string }) {
+  const [value, setValue] = useState("");
+  return (
+    <div className="space-y-1.5 text-sm font-semibold text-[#06131D]">
+      {label}
+      <DatePicker
+        name={name}
+        value={value}
+        onChange={setValue}
+        min={localToday()}
+        placeholder="Pick a date (optional)"
+        boxClassName="rounded-lg border border-stone-200 bg-white px-3.5 py-3"
+      />
+    </div>
   );
 }
 

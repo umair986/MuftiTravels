@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import DatePicker from "@/app/components/ui/pickers/DatePicker";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -1366,28 +1367,24 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
               <div className="mt-4 space-y-3">
                 <label className="block">
                   <span className={LABEL}>Invoice date</span>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={issueDate}
-                    onChange={(event) => {
-                      setIssueDate(event.target.value);
+                    onChange={(next) => {
+                      setIssueDate(next);
                       touch();
                     }}
                     disabled={readOnly}
-                    className={FIELD}
                   />
                 </label>
                 <label className="block">
                   <span className={LABEL}>Due date</span>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={dueDate}
-                    onChange={(event) => {
-                      setDueDate(event.target.value);
+                    onChange={(next) => {
+                      setDueDate(next);
                       touch();
                     }}
                     disabled={readOnly}
-                    className={FIELD}
                   />
                 </label>
                 <label className="block">

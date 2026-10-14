@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import DatePicker from "@/app/components/ui/pickers/DatePicker";
 import { FiEdit2, FiPlus, FiTrash2, FiX } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 import { TRIP_STATUSES, tripStatusLabel, type TripStatus } from "@/lib/finance";
@@ -456,30 +457,27 @@ export default function AdminTripsPage() {
               </label>
               <label className="block">
                 <span className={LABEL}>Departs</span>
-                <input
-                  type="date"
+                <DatePicker
                   value={editing.departure_date ?? ""}
-                  onChange={(event) =>
+                  onChange={(next) =>
                     setEditing({
                       ...editing,
-                      departure_date: event.target.value || null,
+                      departure_date: next || null,
                     })
                   }
-                  className={FIELD}
                 />
               </label>
               <label className="block">
                 <span className={LABEL}>Returns</span>
-                <input
-                  type="date"
+                <DatePicker
                   value={editing.return_date ?? ""}
-                  onChange={(event) =>
+                  min={editing.departure_date ?? undefined}
+                  onChange={(next) =>
                     setEditing({
                       ...editing,
-                      return_date: event.target.value || null,
+                      return_date: next || null,
                     })
                   }
-                  className={FIELD}
                 />
               </label>
               <label className="block sm:col-span-2">
