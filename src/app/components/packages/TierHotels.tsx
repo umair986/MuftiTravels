@@ -127,7 +127,7 @@ function hasHotelFacts(record: PackageTierRecord | undefined): boolean {
   return Boolean(record?.makkah_distance || record?.madinah_distance);
 }
 
-/** "300 m from the Haram instead of 1,300–1,500 m; 100 m from … instead of 900 m." */
+/** "300 m from the Haram instead of 1,500 m; 0 m from … instead of 900 m." */
 function upgradeLine(
   from: PackageTierRecord | undefined,
   to: PackageTierRecord | undefined,

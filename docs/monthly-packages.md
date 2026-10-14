@@ -168,12 +168,14 @@ beyond "Direct" / "Via Muscat" goes in the package description.
 
 ### 13. Hotel distance belongs to the tier
 
-What separates Gold from Super Saver is where the hotels are: Gold about 300 m
-from the Haram and 100 m from Masjid an-Nabawi, Super Saver 1,300–1,500 m and
-900 m. The business places every tier's hotels in a known band, so distance,
-stars and selling points are columns on `package_tiers`, edited once in Tags &
-Tiers, rather than repeated on every package. Distances are text because the
-honest answer is often a band. Every package page shows them as one tab per
+What separates one tier from another is where the hotels are. The flyers
+write it as "(1500 + 900)": Makkah, then Madinah — one distance per city, not
+a range. As confirmed by the business (migration 029, which replaced 028's
+guesses): Super Saver 1,500 m + 900 m, Bronze 600 + 400, Silver 500 + 100,
+Gold 300 + 0. The business places every tier's hotels at a known distance, so
+distance, stars and selling points are columns on `package_tiers`, edited once
+in Tags & Tiers, rather than repeated on every package. Distances are text so
+they read on the site exactly as the business writes them. Every package page shows them as one tab per
 tier it is priced in ("Where you'll stay"), sharing the selected tier with
 the price box, so choosing Gold in either place prices Gold. One tier may be
 `is_recommended`: its tab is badged, and from any other tab a line compares

@@ -60,7 +60,7 @@ audits *the migration files in this repo*, not the live database.
 
 ### Supabase migrations are the source of truth
 
-`supabase/migrations/NNN_name.sql`, applied in order, currently up to `028`. House style, and
+`supabase/migrations/NNN_name.sql`, applied in order, currently up to `029`. House style, and
 follow it:
 
 - Heavily commented — the comment explains *why*, including options rejected.

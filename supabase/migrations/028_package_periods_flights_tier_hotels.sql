@@ -17,7 +17,7 @@
 --      of selling points, shown as one tab per tier on every package page.
 --      This is the main thing that separates one tier from another,
 --      and it belongs to the tier, not to each package: the
---      business places every tier's hotels in a known band of distance.
+--      business places every tier's hotels at a known distance in each city.
 --
 -- The design record is docs/monthly-packages.md, decisions 11-13. Safe to run
 -- more than once.
@@ -137,9 +137,8 @@ alter table public.packages
 -- ---------------------------------------------------------------------------
 -- 3. Tier hotels
 --
--- Distances are text, not metres in an integer: the honest answer for a tier
--- is often a band ("1,300-1,500 m"), and the business writes it the way the
--- customer should read it. hotel_stars is 0 for "do not show". highlights are
+-- Distances are text, not metres in an integer, so the business writes them
+-- the way the customer should read them ("1,500 m"). hotel_stars is 0 for "do not show". highlights are
 -- short selling lines, one per array element, shown in the tier's tab on a
 -- package page. is_recommended marks the tier those tabs badge and nudge the
 -- customer towards — Gold today.
@@ -182,7 +181,7 @@ set makkah_distance = '300 m', madinah_distance = '100 m'
 where key = 'gold' and makkah_distance = '' and madinah_distance = '';
 
 update public.package_tiers
-set makkah_distance = '1,300–1,500 m', madinah_distance = '900 m'
+set makkah_distance = '1,500 m', madinah_distance = '900 m'
 where key = 'super-saver' and makkah_distance = '' and madinah_distance = '';
 
 -- Gold's selling points, as starting copy for the comparison — written here
