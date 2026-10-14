@@ -28,7 +28,10 @@ import { revalidatePackages } from "@/lib/revalidate";
 
 type UsageMap = Record<string, string[]>;
 
-/** The hotel columns migration 028 adds to a tier. */
+/**
+ * The hotel columns migrations 028 and 030 add to a tier. The names (030) are
+ * optional keys: absent until 030 is applied, and then not written at all.
+ */
 type TierHotelChanges = Required<
   Pick<
     PackageTierRecord,
@@ -38,7 +41,8 @@ type TierHotelChanges = Required<
     | "highlights"
     | "is_recommended"
   >
->;
+> &
+  Pick<PackageTierRecord, "makkah_hotel" | "madinah_hotel">;
 
 export default function AdminTaxonomyPage() {
   const [supabase] = useState(createClient);
@@ -583,12 +587,20 @@ function TierHotelFields({
   tier: PackageTierRecord;
   onSave: (tier: PackageTierRecord, changes: TierHotelChanges) => void;
 }) {
+  // Hotel names exist once migration 030 has added the columns.
+  const hasNames = "makkah_hotel" in tier;
   const saved: TierHotelChanges = {
     makkah_distance: tier.makkah_distance ?? "",
     madinah_distance: tier.madinah_distance ?? "",
     hotel_stars: tier.hotel_stars ?? 0,
     highlights: tier.highlights ?? [],
     is_recommended: tier.is_recommended ?? false,
+    ...(hasNames
+      ? {
+          makkah_hotel: tier.makkah_hotel ?? "",
+          madinah_hotel: tier.madinah_hotel ?? "",
+        }
+      : {}),
   };
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(saved);
@@ -633,6 +645,21 @@ function TierHotelFields({
 
       {open && (
         <div className="mt-3 grid gap-3 rounded-lg border border-stone-200 bg-white p-3 sm:grid-cols-3">
+          {hasNames && (
+            <label className="space-y-1 font-body text-xs font-semibold text-[#06131D] sm:col-span-2">
+              Makkah hotel{" "}
+              <span className="font-normal text-[#526168]">(optional)</span>
+              <input
+                value={form.makkah_hotel ?? ""}
+                onChange={(event) =>
+                  setForm({ ...form, makkah_hotel: event.target.value })
+                }
+                placeholder="e.g. a tie-up hotel's name"
+                maxLength={120}
+                className={inputClass}
+              />
+            </label>
+          )}
           <label className="space-y-1 font-body text-xs font-semibold text-[#06131D]">
             Distance to Haram, Makkah
             <input
@@ -645,6 +672,21 @@ function TierHotelFields({
               className={inputClass}
             />
           </label>
+          {hasNames && (
+            <label className="space-y-1 font-body text-xs font-semibold text-[#06131D] sm:col-span-2">
+              Madinah hotel{" "}
+              <span className="font-normal text-[#526168]">(optional)</span>
+              <input
+                value={form.madinah_hotel ?? ""}
+                onChange={(event) =>
+                  setForm({ ...form, madinah_hotel: event.target.value })
+                }
+                placeholder="e.g. a tie-up hotel's name"
+                maxLength={120}
+                className={inputClass}
+              />
+            </label>
+          )}
           <label className="space-y-1 font-body text-xs font-semibold text-[#06131D]">
             Distance to Masjid an-Nabawi
             <input

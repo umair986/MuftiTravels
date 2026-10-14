@@ -19,6 +19,9 @@ export type PackageTierRecord = {
    */
   makkah_distance?: string;
   madinah_distance?: string;
+  /** Migration 030: the tie-up hotel, optional; "" names none. */
+  makkah_hotel?: string;
+  madinah_hotel?: string;
   hotel_stars?: number;
   highlights?: string[];
   /** The tier a package page's "Where you'll stay" tabs mark as recommended. */

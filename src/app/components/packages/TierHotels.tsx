@@ -210,6 +210,7 @@ function TierPanel({
               place="Makkah"
               to="from Masjid al-Haram"
               value={record.makkah_distance}
+              hotel={record.makkah_hotel}
               highlight={isRecommended}
             />
           ) : null}
@@ -218,6 +219,7 @@ function TierPanel({
               place="Madinah"
               to="from Masjid an-Nabawi"
               value={record.madinah_distance}
+              hotel={record.madinah_hotel}
               highlight={isRecommended}
             />
           ) : null}
@@ -250,13 +252,17 @@ function Distance({
   place,
   to,
   value,
+  hotel,
   highlight,
 }: {
   place: string;
   to: string;
   value: string;
+  /** The tie-up hotel (migration 030); omitted when the tier names none. */
+  hotel?: string;
   highlight: boolean;
 }) {
+  const name = hotel?.trim();
   return (
     <div className="flex items-start gap-3">
       <FiMapPin className="mt-1 h-4 w-4 shrink-0 text-[#D4AF37]" />
@@ -264,6 +270,11 @@ function Distance({
         <dt className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">
           {place}
         </dt>
+        {name ? (
+          <dd className="mt-0.5 text-sm font-semibold text-[#F3E5AB]">
+            {name}
+          </dd>
+        ) : null}
         <dd className="text-sm text-stone-300">
           <span
             className={`font-display text-3xl font-bold ${

@@ -60,7 +60,7 @@ audits *the migration files in this repo*, not the live database.
 
 ### Supabase migrations are the source of truth
 
-`supabase/migrations/NNN_name.sql`, applied in order, currently up to `029`. House style, and
+`supabase/migrations/NNN_name.sql`, applied in order, currently up to `030`. House style, and
 follow it:
 
 - Heavily commented — the comment explains *why*, including options rejected.
@@ -206,7 +206,8 @@ only `[label](url)` and `**bold**`, rendered as React nodes by `src/app/guides/R
   the last one, and expiry is on `coalesce(valid_until_month, valid_month)`. Never test
   `valid_month` alone for expiry — use `isPackageExpired()` / `formatPeriod()`, which pair with
   the select policy.
-- **Hotel distance is a tier fact** (Decision 13): `makkah_distance`, `madinah_distance`,
+- **Hotel distance is a tier fact** (Decision 13): `makkah_distance`, `madinah_distance`, the
+  optional `makkah_hotel` / `madinah_hotel` names (030),
   `hotel_stars`, `highlights` and `is_recommended` on `package_tiers`, edited in Tags & Tiers and
   rendered as tier tabs on every package page by `src/app/components/packages/TierHotels.tsx`,
   which shares its selected tier with the price box. Flight dates and airline are per
