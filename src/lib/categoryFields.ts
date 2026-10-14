@@ -1,9 +1,10 @@
 /**
- * Category-specific package fields.
+ * Package detail fields.
  *
- * Everything a Hajj or Ramzan package needs beyond the shared package form is
- * declared here and stored in packages.details (jsonb). Adding a field is a
- * change to this file — no migration, no new column.
+ * Everything a package needs beyond the shared package form is declared here
+ * — the Makkah/Madinah nights every package has, and what Hajj and Ramzan add
+ * — and stored in packages.details (jsonb). Adding a field is a change to this
+ * file: no migration, no new column.
  *
  * Keys are snake_case and permanent: renaming one orphans the data already
  * saved under the old key. Change a `label` freely; change a `key` never.
@@ -156,6 +157,28 @@ const RAMZAN: CategorySchema = {
   ],
 };
 
+/**
+ * Fields every package has, whatever its category: how the nights split
+ * between the two cities. They live in `details` like the rest, under the same
+ * keys Ramzan packages already used, so nothing saved before is lost.
+ */
+export const STAY_FIELDS: FieldDef[] = [
+  { kind: "number", key: "makkah_nights", label: "Nights in Makkah", min: 0 },
+  {
+    kind: "number",
+    key: "madinah_nights",
+    label: "Nights in Madinah",
+    min: 0,
+    help: "Together these should add up to the package's total nights.",
+  },
+];
+
+const STAY: CategorySchema = {
+  title: "Stay",
+  description: "How the nights split between Makkah and Madinah.",
+  fields: [],
+};
+
 /* -------------------------------------------------------------------------- */
 
 const SCHEMAS: Record<string, CategorySchema> = {
@@ -163,11 +186,29 @@ const SCHEMAS: Record<string, CategorySchema> = {
   Ramzan: RAMZAN,
 };
 
-/** The extra fields for a category, or undefined when it uses the plain form. */
+/**
+ * The detail fields for a category: the Makkah/Madinah nights every package
+ * has, then whatever its category adds. Undefined only with no category.
+ */
 export function schemaForCategory(
   category: string | undefined,
 ): CategorySchema | undefined {
-  return category ? SCHEMAS[category] : undefined;
+  if (!category) return undefined;
+  const own = SCHEMAS[category] ?? STAY;
+  return { ...own, fields: [...STAY_FIELDS, ...own.fields] };
+}
+
+/** Makkah and Madinah nights, when the admin has filled both or either. */
+export function stayNights(details: PackageDetails | undefined): {
+  makkah: number;
+  madinah: number;
+} {
+  const nights = (value: unknown) =>
+    Math.max(0, Math.trunc(Number(value) || 0));
+  return {
+    makkah: nights(details?.makkah_nights),
+    madinah: nights(details?.madinah_nights),
+  };
 }
 
 /** Categories that get their own fields — used to label things in the admin. */

@@ -2,10 +2,14 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FiArrowRight, FiClock, FiMapPin } from "react-icons/fi";
+import { FiArrowRight, FiCalendar, FiClock, FiMapPin } from "react-icons/fi";
+import { FaKaaba, FaPlaneDeparture } from "react-icons/fa";
+import { stayNights } from "@/lib/categoryFields";
+import { formatDepartureDates } from "@/lib/departures";
 import { CmsPackageRecord } from "@/lib/packages";
+import { cardPrice } from "@/lib/packages";
 import {
-  lowestTier,
+  tierName,
   type PackageTagRecord,
   type PackageTierRecord,
 } from "@/lib/taxonomy";
@@ -47,6 +51,61 @@ export default function ManagedPackagesCatalog({
   );
 }
 
+/** "7 nights Makkah · 7 nights Madinah", or nothing until the admin fills it. */
+function StayLine({ record }: { record: CmsPackageRecord }) {
+  const { makkah, madinah } = stayNights(record.details);
+  const parts = [
+    makkah && `${makkah} night${makkah === 1 ? "" : "s"} Makkah`,
+    madinah && `${madinah} night${madinah === 1 ? "" : "s"} Madinah`,
+  ].filter(Boolean);
+  if (!parts.length) return null;
+  return (
+    <p className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#06131D]">
+      <FaKaaba className="h-3.5 w-3.5 shrink-0 text-[#B2891E]" />
+      {parts.join(" · ")}
+    </p>
+  );
+}
+
+/**
+ * "Saudia · Direct" and "Departs 5, 19 Nov · 3 Dec" — whichever the package
+ * has (migration 028). Nothing at all when it has neither, and a blank routing
+ * never prints "Direct".
+ */
+function FlightLine({ record }: { record: CmsPackageRecord }) {
+  const airline = (record.airline ?? "").trim();
+  const routing =
+    record.flight_routing === "direct"
+      ? "Direct"
+      : record.flight_routing === "via"
+        ? record.flight_via?.trim()
+          ? `Via ${record.flight_via.trim()}`
+          : "Connecting"
+        : "";
+  const carrier = [airline, routing].filter(Boolean).join(" · ");
+  const dates = formatDepartureDates(record.departure_dates);
+  if (!carrier && !dates) return null;
+
+  return (
+    <div className="mt-4 space-y-1.5 rounded-xl border border-[#D4AF37]/25 bg-[#FFFCF3] px-3.5 py-2.5 text-xs text-[#06131D]">
+      {carrier && (
+        <p className="flex items-center gap-2 font-semibold">
+          <FaPlaneDeparture className="h-3.5 w-3.5 shrink-0 text-[#B2891E]" />
+          {carrier}
+        </p>
+      )}
+      {dates && (
+        <p className="flex items-start gap-2">
+          <FiCalendar className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#B2891E]" />
+          <span>
+            <span className="font-semibold">Departs</span> {dates}
+          </span>
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ManagedPackageCard({
   record,
   tiers,
@@ -57,25 +116,11 @@ function ManagedPackageCard({
   tags: PackageTagRecord[];
 }) {
   const router = useRouter();
-  // Cheapest tier this package actually offers, by registry order. Replaces a
-  // hardcoded "Super Saver" lookup that broke as soon as the tier was renamed.
-  const preferredTier = lowestTier(record.prices, tiers);
-  const preferredPrices = preferredTier
-    ? record.prices[preferredTier.key as keyof typeof record.prices]
-    : undefined;
-  const preferredPrice = (() => {
-    const prices = preferredPrices ?? {};
-    const firstKey = Object.keys(prices)[0];
-    return (firstKey ? prices[firstKey] : undefined) ??
-      Object.values(prices)[0] ??
-      record.starting_price;
-  })();
-  const preferredSharingLabel = preferredPrices
-    ? Object.keys(preferredPrices)[0]
-    : undefined;
-  // A package can legitimately carry no price yet — a Hajj season still being
-  // costed, for instance. Show that rather than a confident "₹0".
-  const hasPrice = Number(preferredPrice) > 0;
+  // The admin's chosen price, or the lowest one in the table — see cardPrice().
+  // Undefined when nothing is priced yet — a Hajj season still being costed,
+  // for instance — and the card says "On request" rather than a confident "₹0".
+  const shown = cardPrice(record);
+  const shownTierName = shown ? tierName(shown.tier, tiers) : undefined;
   const slug = categorySlug(record.category);
 
   return (
@@ -94,7 +139,7 @@ function ManagedPackageCard({
           className="absolute right-3 top-3 justify-end"
         />
         <span className="absolute left-3 top-3 rounded-full bg-amber-700/90 px-3 py-1 text-xs font-bold text-white">
-          {preferredTier?.name || "Package"}
+          {shownTierName || "Package"}
         </span>
         <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full border border-[#D4AF37]/30 bg-[#06131D]/85 px-3 py-1 text-xs font-medium text-[#F3E5AB]">
           <FiMapPin className="h-3.5 w-3.5 text-[#D4AF37]" />
@@ -116,21 +161,19 @@ function ManagedPackageCard({
           <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-stone-600">
             {record.description}
           </p>
+          <StayLine record={record} />
+          <FlightLine record={record} />
         </div>
         <div className="mt-6 flex items-end justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">
-              {!hasPrice
-                ? "Pricing"
-                : preferredTier
-                  ? `${preferredTier.name}${preferredSharingLabel ? ` · ${preferredSharingLabel}` : ""}`
-                  : "Starting from"}
+              {shown ? `${shownTierName} · ${shown.sharing}` : "Pricing"}
             </p>
             <p className="font-body text-2xl font-bold tabular-nums tracking-tight text-[#06131D]">
-              {hasPrice ? (
+              {shown ? (
                 <>
                   {record.currency === "INR" ? "₹" : record.currency}
-                  {Number(preferredPrice).toLocaleString("en-IN")}
+                  {shown.amount.toLocaleString("en-IN")}
                 </>
               ) : (
                 "On request"

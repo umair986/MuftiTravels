@@ -4,8 +4,9 @@
  * Pure: no Supabase, no React, no import from the catalogue, so the month
  * arithmetic stays testable on its own (departures.test.ts). Umrah prices,
  * airlines and hotels move month to month, so an Umrah package is made for one
- * month and stops being shown once that month is over. Hajj and Ramadan
- * packages carry no month and never expire.
+ * month — or for a run of months whose rates were fixed together, like
+ * November–December (migration 028) — and stops being shown once its last
+ * month is over. Hajj and Ramadan packages carry no month and never expire.
  *
  * A month is stored as the first day of the month, `YYYY-MM-01`, in a `date`
  * column. Everything here reads and writes that form.
@@ -147,6 +148,90 @@ export function isMonthExpired(
   return month < currentIstMonth(now);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Periods: a package priced for a run of months                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A package's dates, as the rows carry them. `valid_until_month` (migration
+ * 028) is the LAST month its rates cover when they cover more than one —
+ * November–December rates are one package, not two. Null, or absent on a row
+ * read before 028 is applied, means the package covers its one month.
+ */
+export type PackagePeriod = {
+  valid_month?: string | null;
+  valid_until_month?: string | null;
+};
+
+/** The last month a package covers, `YYYY-MM-01`, or null for an undated one. */
+export function packageEndMonth(item: PackagePeriod): string | null {
+  const start = normaliseMonth(item.valid_month);
+  if (!start) return null;
+  const end = normaliseMonth(item.valid_until_month);
+  // A stray end before the start is the start: the CHECK in 028 forbids it,
+  // and a row from before the CHECK should still read as one month.
+  return end && end > start ? end : start;
+}
+
+/**
+ * True once the LAST month a package covers is over — November–December
+ * rates stay on the site through December. Mirrors the select policy in
+ * migration 028; the two are a pair.
+ */
+export function isPackageExpired(
+  item: PackagePeriod,
+  now: Date = new Date(),
+): boolean {
+  return isMonthExpired(packageEndMonth(item), now);
+}
+
+/**
+ * "November 2026", "November–December 2026", or "December 2026–January 2027"
+ * across a new year. Empty for an undated package.
+ */
+export function formatPeriod(item: PackagePeriod): string {
+  const start = normaliseMonth(item.valid_month);
+  const end = packageEndMonth(item);
+  if (!start || !end) return "";
+  if (end === start) return formatMonth(start);
+  const [startName, startYear] = formatMonth(start).split(" ");
+  const [endName, endYear] = formatMonth(end).split(" ");
+  return startYear === endYear
+    ? `${startName}–${endName} ${endYear}`
+    : `${startName} ${startYear}–${endName} ${endYear}`;
+}
+
+/** How many months a package covers: 1 for a single month, 0 for undated. */
+export function periodLength(item: PackagePeriod): number {
+  const start = normaliseMonth(item.valid_month);
+  const end = packageEndMonth(item);
+  if (!start || !end) return 0;
+  const months = (value: string) =>
+    Number(value.slice(0, 4)) * 12 + Number(value.slice(5, 7));
+  return months(end) - months(start) + 1;
+}
+
+/**
+ * The period after this one, the same length — what "Duplicate for next
+ * month" creates. November–December becomes January–February; a single
+ * month becomes the next single month. Never starts before `notBefore`
+ * (this month, by default): duplicating a package whose period is long over
+ * gives one that starts now rather than another one already expired.
+ */
+export function nextPeriod(
+  item: PackagePeriod,
+  notBefore: string = currentIstMonth(),
+): { valid_month: string; valid_until_month: string | null } {
+  const end = packageEndMonth(item);
+  let start = end ? nextMonth(end) : notBefore;
+  if (start < notBefore) start = notBefore;
+  let last = start;
+  for (let i = 1; i < Math.max(1, periodLength(item)); i += 1) {
+    last = nextMonth(last);
+  }
+  return { valid_month: start, valid_until_month: last === start ? null : last };
+}
+
 /** "November 2026". Empty for no month, so the caller can drop the label. */
 export function formatMonth(validMonth: string | null | undefined): string {
   const month = normaliseMonth(validMonth);
@@ -177,13 +262,13 @@ export function fromMonthInput(value: string): string | null {
 }
 
 /**
- * Newest month first, then the admin's display order. Packages with no month
+ * Newest month first, then cheapest first. Packages with no month
  * come after every dated one: on a city page the monthly Umrah offers lead,
  * and anything undated is the standing offer behind them.
  */
 export function compareNewestMonthFirst(
-  a: { valid_month?: string | null; sort_order?: number },
-  b: { valid_month?: string | null; sort_order?: number },
+  a: PackagePeriod & { starting_price?: number },
+  b: PackagePeriod & { starting_price?: number },
 ): number {
   const monthA = normaliseMonth(a.valid_month) ?? "";
   const monthB = normaliseMonth(b.valid_month) ?? "";
@@ -192,7 +277,17 @@ export function compareNewestMonthFirst(
     if (!monthB) return -1;
     return monthA < monthB ? 1 : -1;
   }
-  return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+  // Same first month, different runs (November vs November–December): keep
+  // each run together so the city page gives it one heading. Shorter first.
+  const endA = packageEndMonth(a) ?? "";
+  const endB = packageEndMonth(b) ?? "";
+  if (endA !== endB) return endA < endB ? -1 : 1;
+  // Then cheapest first, unpriced last. There is no hand-set display order:
+  // the business sorts by month, and a hidden number in the editor would only
+  // reorder packages for reasons nobody could see.
+  const priceA = Number(a.starting_price) > 0 ? Number(a.starting_price) : Infinity;
+  const priceB = Number(b.starting_price) > 0 ? Number(b.starting_price) : Infinity;
+  return priceA === priceB ? 0 : priceA < priceB ? -1 : 1;
 }
 
 /**
@@ -206,10 +301,49 @@ export function renameForMonth(
   fromMonth: string | null | undefined,
   toMonth: string,
 ): string {
-  const from = formatMonth(fromMonth);
-  const to = formatMonth(toMonth);
-  if (from && name.includes(from)) return name.replace(from, to);
-  return `${name.trim()} — ${to}`;
+  return renameForPeriod(
+    name,
+    { valid_month: fromMonth },
+    { valid_month: toMonth },
+  );
+}
+
+/** renameForMonth for a run of months: "— November–December 2026" swaps whole. */
+export function renameForPeriod(
+  name: string,
+  from: PackagePeriod,
+  to: PackagePeriod,
+): string {
+  const fromLabel = formatPeriod(from);
+  const toLabel = formatPeriod(to);
+  if (fromLabel && name.includes(fromLabel)) {
+    return name.replace(fromLabel, toLabel);
+  }
+  return `${name.trim()} — ${toLabel}`;
+}
+
+/**
+ * Flight departure dates, as a pilgrim reads them: "5, 19 Nov · 3 Dec".
+ * Dates are `YYYY-MM-DD` (a Postgres `date[]`); invalid ones are dropped,
+ * the rest sorted, and the year left off — the period heading carries it.
+ */
+export function formatDepartureDates(dates: readonly string[] | null | undefined): string {
+  const valid = [...new Set(dates ?? [])]
+    .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value))
+    .sort();
+  const byMonth: { key: string; label: string; days: number[] }[] = [];
+  for (const value of valid) {
+    const label = MONTH_NAMES[Number(value.slice(5, 7)) - 1]?.slice(0, 3);
+    if (!label) continue;
+    const key = value.slice(0, 7);
+    const day = Number(value.slice(8, 10));
+    const last = byMonth.at(-1);
+    if (last && last.key === key) last.days.push(day);
+    else byMonth.push({ key, label, days: [day] });
+  }
+  return byMonth
+    .map((group) => `${group.days.join(", ")} ${group.label}`)
+    .join(" · ");
 }
 
 function toMonthValue(year: number, monthIndex: number): string {

@@ -19,11 +19,13 @@ npm run sample:quotation -- <outDir>  # Writes 3 sample quotation PDFs to look a
 `npm test` globs `src/lib/*.test.ts`, so a single file is `npx tsx --test src/lib/finance.test.ts`
 and a single case is `npx tsx --test --test-name-pattern "computeInvoiceTotals" src/lib/finance.test.ts`.
 
-There are four test files: `finance.test.ts`, because money arithmetic is where a bug is both
+There are six test files: `finance.test.ts`, because money arithmetic is where a bug is both
 customer-facing and legally relevant, `guides.test.ts`, which checks the guide copy parser and
 that every guide cites sources, `quotations.test.ts`, which covers the quotation helpers —
 discount, per-person, expiry, the description parser, and how costing lines follow the traveller
-count — and `departures.test.ts`, which pins when a monthly package expires (midnight IST).
+count — `packages.client.test.ts`, which covers what the quotation's package picker copies and
+which characters survive into a PDF, `departures.test.ts`, which pins when a monthly package expires (midnight IST), and
+`packages.test.ts`, which pins the one price a package card shows (`cardPrice`, migration 027).
 Don't read the absence of tests elsewhere as an invitation to skip them where they'd earn their
 keep.
 
@@ -58,7 +60,7 @@ audits *the migration files in this repo*, not the live database.
 
 ### Supabase migrations are the source of truth
 
-`supabase/migrations/NNN_name.sql`, applied in order, currently up to `026`. House style, and
+`supabase/migrations/NNN_name.sql`, applied in order, currently up to `028`. House style, and
 follow it:
 
 - Heavily commented — the comment explains *why*, including options rejected.
@@ -200,6 +202,20 @@ only `[label](url)` and `**bold**`, rendered as React nodes by `src/app/guides/R
   file — no migration. Don't claim a direct flight (`direct: true`) the business hasn't confirmed.
 - **Code must survive the window before 026 is applied** — rows then lack both keys. See Decision
   10 of the doc before adding a read or write of either column.
+- **A package may cover a run of months** (migration `028`, Decision 11): `valid_until_month` is
+  the last one, and expiry is on `coalesce(valid_until_month, valid_month)`. Never test
+  `valid_month` alone for expiry — use `isPackageExpired()` / `formatPeriod()`, which pair with
+  the select policy.
+- **Hotel distance is a tier fact** (Decision 13): `makkah_distance`, `madinah_distance`,
+  `hotel_stars`, `highlights` and `is_recommended` on `package_tiers`, edited in Tags & Tiers and
+  rendered as tier tabs on every package page by `src/app/components/packages/TierHotels.tsx`,
+  which shares its selected tier with the price box. Flight dates and airline are per
+  package; a blank `flight_routing` must never print as "Direct".
+- **Order is month, then price — never hand-set.** `compareNewestMonthFirst` sorts every public
+  list and the admin lists (newest period first, then cheapest, unpriced last). The editor has no
+  display-order field; `packages.sort_order` still exists but nothing reads or writes it.
+- **Every package has Makkah/Madinah nights** — `STAY_FIELDS` in `src/lib/categoryFields.ts`,
+  stored in `details` under `makkah_nights` / `madinah_nights`, read through `stayNights()`.
 
 ### Public catalogue conventions
 

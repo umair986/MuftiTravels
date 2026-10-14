@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FiArrowRight, FiClock, FiMapPin, FiPhone } from "react-icons/fi";
-import { FaWhatsapp } from "react-icons/fa";
+import {
+  FiArrowRight,
+  FiCalendar,
+  FiClock,
+  FiMapPin,
+  FiPhone,
+} from "react-icons/fi";
+import { FaPlaneDeparture, FaWhatsapp } from "react-icons/fa";
+
 
 import Footer from "@/app/components/Footer";
 import JsonLd from "@/app/components/JsonLd";
@@ -16,6 +23,7 @@ import {
 } from "@/lib/cityLanding";
 import {
   cityFromPrice,
+  flightSummary,
   groupByMonth,
   monthlyUmrah,
   packagesForCity,
@@ -245,10 +253,10 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
               monthGroups.map((group) => (
                 <div key={group.month ?? "undated"} className="mt-10">
                   {group.label ? (
-                    <h3 className="flex items-center gap-3 font-display text-2xl font-semibold text-[#06131D]">
-                      <span className="h-px w-8 bg-[#D4AF37]" />
-                      {group.label}
-                    </h3>
+                    <PeriodHeading
+                      label={group.label}
+                      packages={group.packages}
+                    />
                   ) : null}
                   <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
                     <ManagedPackagesCatalog
@@ -450,6 +458,48 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
       </main>
       <Footer />
     </>
+  );
+}
+
+/**
+ * "November–December 2026", with the period's flight dates and airlines
+ * beneath it when its packages carry them (migration 028).
+ */
+function PeriodHeading({
+  label,
+  packages,
+}: {
+  label: string;
+  packages: CmsPackageRecord[];
+}) {
+  const { dates, airlines } = flightSummary(packages);
+  return (
+    <div>
+      <h3 className="flex items-center gap-3 font-display text-2xl font-semibold text-[#06131D] sm:text-3xl">
+        <span className="h-px w-8 bg-[#D4AF37]" />
+        {label}
+      </h3>
+      {dates || airlines.length ? (
+        <dl className="mt-3 flex flex-col gap-2 pl-11 font-body text-sm text-[#526168] sm:flex-row sm:flex-wrap sm:gap-x-8">
+          {dates ? (
+            <div className="flex items-start gap-2">
+              <FiCalendar className="mt-0.5 h-4 w-4 shrink-0 text-[#B2891E]" />
+              <dt className="font-semibold text-[#06131D]">Flight dates</dt>
+              <dd>{dates}</dd>
+            </div>
+          ) : null}
+          {airlines.length ? (
+            <div className="flex items-start gap-2">
+              <FaPlaneDeparture className="mt-0.5 h-4 w-4 shrink-0 text-[#B2891E]" />
+              <dt className="font-semibold text-[#06131D]">
+                {airlines.length === 1 ? "Airline" : "Airlines"}
+              </dt>
+              <dd>{airlines.join(", ")}</dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
+    </div>
   );
 }
 

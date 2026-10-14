@@ -82,12 +82,17 @@ export default function AdminDashboard({ email }: AdminDashboardProps) {
           .limit(5),
         // Packages past their month (migration 026). Hidden from the site
         // already; the business deletes them by hand, so this is the prompt.
-        // Before 026 is applied the column is missing, the count errors, and
-        // the alert simply does not show.
+        // "Past" means past its LAST month (migration 028), so November–
+        // December rates are not flagged in December. Before 026/028 are
+        // applied a column is missing, the count errors, and the alert simply
+        // does not show.
         client
           .from("packages")
           .select("id", { count: "exact", head: true })
-          .lt("valid_month", currentIstMonth()),
+          .lt("valid_month", currentIstMonth())
+          .or(
+            `valid_until_month.is.null,valid_until_month.lt.${currentIstMonth()}`,
+          ),
       ]);
 
       setPublishedCount(published ?? 0);

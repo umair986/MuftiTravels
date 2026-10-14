@@ -13,6 +13,16 @@ export type PackageTierRecord = {
   key: string;
   name: string;
   sort_order: number;
+  /**
+   * Migration 028: where this tier's hotels are. Optional because a row read
+   * before 028 is applied lacks them; "" and 0 mean say nothing.
+   */
+  makkah_distance?: string;
+  madinah_distance?: string;
+  hotel_stars?: number;
+  highlights?: string[];
+  /** The tier a package page's "Where you'll stay" tabs mark as recommended. */
+  is_recommended?: boolean;
 };
 
 export type PackageTagRecord = {

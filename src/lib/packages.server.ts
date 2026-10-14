@@ -4,7 +4,12 @@ import { createServerClient } from "@/lib/supabase/server";
 import type { CmsPackageRecord } from "@/lib/packages";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
 import type { SiteContentList } from "@/lib/siteContent";
-import { isCityKey, isMonthExpired, type CityKey } from "@/lib/departures";
+import {
+  compareNewestMonthFirst,
+  isCityKey,
+  isPackageExpired,
+  type CityKey,
+} from "@/lib/departures";
 
 /**
  * Server-side reads for published package content.
@@ -51,8 +56,7 @@ async function loadCatalog(): Promise<PublicCatalog> {
       supabase
         .from("packages")
         .select("*")
-        .eq("is_published", true)
-        .order("sort_order", { ascending: true }),
+        .eq("is_published", true),
       supabase
         .from("package_tiers")
         .select("*")
@@ -74,7 +78,12 @@ async function loadCatalog(): Promise<PublicCatalog> {
   if (packagesResult.error) return emptyCatalog;
 
   return {
-    packages: (packagesResult.data as CmsPackageRecord[]) ?? [],
+    // Every public list is newest month first, then cheapest — see
+    // compareNewestMonthFirst. Sorted once here so the category pages, city
+    // pages and home page all agree.
+    packages: ((packagesResult.data as CmsPackageRecord[]) ?? []).sort(
+      compareNewestMonthFirst,
+    ),
     tiers: (tiersResult.data as PackageTierRecord[]) ?? [],
     tags: (tagsResult.data as PackageTagRecord[]) ?? [],
     content: (contentResult.data as SiteContentList[]) ?? [],
@@ -125,7 +134,7 @@ export async function getPublicCatalog(): Promise<PublicCatalog> {
 function withoutExpired(catalog: PublicCatalog): PublicCatalog {
   const now = new Date();
   const packages = catalog.packages.filter(
-    (item) => !isMonthExpired(item.valid_month, now),
+    (item) => !isPackageExpired(item, now),
   );
   return packages.length === catalog.packages.length
     ? catalog

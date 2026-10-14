@@ -17,11 +17,11 @@ import { CmsPackageRecord } from "@/lib/packages";
 import { formatRupees } from "@/lib/money";
 import {
   cityName,
-  currentIstMonth,
-  formatMonth,
-  isMonthExpired,
-  nextMonth,
-  renameForMonth,
+  compareNewestMonthFirst,
+  formatPeriod,
+  isPackageExpired,
+  nextPeriod,
+  renameForPeriod,
 } from "@/lib/departures";
 import { slugifyKey } from "@/lib/taxonomy";
 import { createClient } from "@/lib/supabase/client";
@@ -100,11 +100,12 @@ export default function AdminPackageCollectionPage({
     } else if (category) {
       query = query.eq("category", category);
     }
-    const { data, error: queryError } = await query.order("sort_order", {
-      ascending: true,
-    });
+    const { data, error: queryError } = await query;
     if (queryError) setError(queryError.message);
-    setRecords((data as CmsPackageRecord[]) ?? []);
+    // The same order as the website: newest month first, then cheapest.
+    setRecords(
+      ((data as CmsPackageRecord[]) ?? []).sort(compareNewestMonthFirst),
+    );
     setIsLoading(false);
   }, [category, categories, supabase]);
 
@@ -115,7 +116,7 @@ export default function AdminPackageCollectionPage({
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return records.filter((record) => {
-      const expired = isMonthExpired(record.valid_month);
+      const expired = isPackageExpired(record);
       if (status === "expired" && !expired) return false;
       if (status === "published" && (!record.is_published || expired))
         return false;
@@ -129,28 +130,26 @@ export default function AdminPackageCollectionPage({
   }, [records, search, status]);
 
   const publishedCount = records.filter(
-    (record) => record.is_published && !isMonthExpired(record.valid_month),
+    (record) => record.is_published && !isPackageExpired(record),
   ).length;
   const expiredCount = records.filter((record) =>
-    isMonthExpired(record.valid_month),
+    isPackageExpired(record),
   ).length;
 
   const editHref = (slug: string) =>
     `${basePath}/${encodeURIComponent(slug)}`;
 
   /**
-   * Copy a package as a draft for the following month — the month after its
-   * own, or this month if that one is already over. Everything is copied:
-   * prices, hotels, inclusions, photo. The admin changes what moved (the
-   * price, the airline, a hotel) and publishes. The original is untouched.
+   * Copy a package as a draft for the period after its own, the same length —
+   * November–December becomes January–February — or starting this month if
+   * that is already over. Everything is copied except the flight dates, which
+   * belong to the old months: prices, hotels, inclusions, photo, airline. The
+   * admin changes what moved and publishes. The original is untouched.
    */
   async function duplicateForNextMonth(record: CmsPackageRecord) {
     if (!supabase || isDuplicating) return;
-    const thisMonth = currentIstMonth();
-    let target = record.valid_month ? nextMonth(record.valid_month) : thisMonth;
-    if (target < thisMonth) target = thisMonth;
-
-    const name = renameForMonth(record.name, record.valid_month, target);
+    const target = nextPeriod(record);
+    const name = renameForPeriod(record.name, record, target);
     const taken = new Set(records.map((item) => item.slug));
     const base = slugifyKey(name);
     let slug = base;
@@ -173,7 +172,12 @@ export default function AdminPackageCollectionPage({
       ...copy,
       slug,
       name,
-      valid_month: target,
+      valid_month: target.valid_month,
+      // Migration 028's columns, only where the row has them (Decision 10).
+      ...("valid_until_month" in record
+        ? { valid_until_month: target.valid_until_month }
+        : {}),
+      ...("departure_dates" in record ? { departure_dates: [] } : {}),
       is_published: false,
     });
     setIsDuplicating(false);
@@ -521,7 +525,7 @@ function packageSubtitle(record: CmsPackageRecord) {
   return [
     record.category,
     cityName(record.departure_city),
-    formatMonth(record.valid_month),
+    formatPeriod(record),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -530,7 +534,7 @@ function packageSubtitle(record: CmsPackageRecord) {
 function StatusBadge({ record }: { record: CmsPackageRecord }) {
   // Expired outranks published: a published package past its month is not on
   // the website, and saying "Published" would claim it is.
-  if (isMonthExpired(record.valid_month)) {
+  if (isPackageExpired(record)) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 font-body text-xs font-semibold text-red-700">
         <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> Expired

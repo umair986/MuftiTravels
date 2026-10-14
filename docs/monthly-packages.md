@@ -135,6 +135,54 @@ rows without `departure_city` or `valid_month`. In that window:
   column that would fail its whole read;
 - the dashboard's expired count errors quietly and shows nothing.
 
+Migration 028 follows the same rule: a row without `valid_until_month` reads as
+its one month, the editor shows the "to" month, the Flights block and the tier
+hotel fields only once their columns exist, and the city page prints no flight
+line and no tier comparison until there is data for them.
+
+### 11. Rates can cover a run of months (migration 028)
+
+Sometimes only November's rates are fixed; sometimes November and December are
+fixed together, and then there is **no separate November package**. Decision 1
+still holds — a new package when the rates change — but "the rates" may now
+span months. `valid_until_month` is the last month covered; null means the one
+month in `valid_month`. The select policy, `package_city_for_slug()`,
+`isPackageExpired()` and the dashboard count all expire on
+`coalesce(valid_until_month, valid_month)`.
+
+Rejected: a `daterange` (every reader would need range operators, and the admin
+edits months, not days) and a month count (month arithmetic in both SQL and
+TypeScript). Two first-of-month dates compare as they read.
+
+On the city page a November package and a November–December package are two
+headings, not one — they are two offers. "Duplicate for next month" keeps the
+length: November–December becomes January–February, with flight dates cleared.
+
+### 12. Flights are per package; "direct" is never assumed
+
+Packages are per city, and each city flies its own dates and carrier, so the
+departure dates (`date[]`), airline, and routing live on the package. Routing
+defaults to `''` — say nothing — rather than `direct`, for the same reason the
+city copy will not claim a direct flight the business has not confirmed. Detail
+beyond "Direct" / "Via Muscat" goes in the package description.
+
+### 13. Hotel distance belongs to the tier
+
+What separates Gold from Super Saver is where the hotels are: Gold about 300 m
+from the Haram and 100 m from Masjid an-Nabawi, Super Saver 1,300–1,500 m and
+900 m. The business places every tier's hotels in a known band, so distance,
+stars and selling points are columns on `package_tiers`, edited once in Tags &
+Tiers, rather than repeated on every package. Distances are text because the
+honest answer is often a band. Every package page shows them as one tab per
+tier it is priced in ("Where you'll stay"), sharing the selected tier with
+the price box, so choosing Gold in either place prices Gold. One tier may be
+`is_recommended`: its tab is badged, and from any other tab a line compares
+the two distances and switches to it.
+
+Rejected: a comparison section on the city page. The business wanted it on
+the package, where the customer is choosing a tier, and for every tier rather
+than Gold against the cheapest.
+
 ## Applying it
 
 1. Run `026_monthly_city_packages.sql` in the Supabase SQL editor.
@@ -143,6 +191,10 @@ rows without `departure_city` or `valid_month`. In that window:
    guess would hide packages the moment it ran. Set the month on each existing
    Umrah package in the admin; anything set to September 2026 or earlier
    disappears from the site immediately and appears in the Expired list.
+3. Run `027_package_card_price.sql`, then `028_package_periods_flights_tier_hotels.sql`.
+   028 fills in Gold's and Super Saver's distances and Gold's selling points
+   only where they are blank, and marks Gold recommended only if no tier is.
+   Other tiers' distances are left for the business to enter in Tags & Tiers.
 
 ## Open
 

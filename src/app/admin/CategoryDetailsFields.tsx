@@ -12,8 +12,8 @@ const inputClass =
   "block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 text-sm font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20";
 
 /**
- * Renders the extra fields a category declares. Hajj and Ramzan get their own
- * set; every other category renders nothing at all.
+ * Renders a category's detail fields: the Makkah/Madinah nights every package
+ * has, then whatever Hajj or Ramzan add.
  */
 export default function CategoryDetailsFields({
   schema,

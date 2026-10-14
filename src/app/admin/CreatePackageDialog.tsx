@@ -4,7 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { FiPlus, FiX } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 import { slugifyKey } from "@/lib/taxonomy";
-import { PACKAGE_CATEGORIES, schemaForCategory } from "@/lib/categoryFields";
+import {
+  CATEGORIES_WITH_DETAILS,
+  PACKAGE_CATEGORIES,
+  STAY_FIELDS,
+  schemaForCategory,
+} from "@/lib/categoryFields";
 import { categorySlug } from "@/lib/categories";
 import {
   DEPARTURE_CITIES,
@@ -218,10 +223,12 @@ export default function CreatePackageDialog({
                 Fixed by this screen. Use Packages to file it elsewhere.
               </span>
             ) : (
-              detailSchema && (
+              // Every category has the nights; only Hajj and Ramzan add more.
+              detailSchema &&
+              CATEGORIES_WITH_DETAILS.includes(category) && (
                 <span className="block text-xs font-normal text-[#526168]">
                   {category} packages have extra fields — {schemaSummary(
-                    detailSchema.fields.length,
+                    detailSchema.fields.length - STAY_FIELDS.length,
                   )}
                 </span>
               )

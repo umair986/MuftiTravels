@@ -12,7 +12,7 @@ import { FiArrowRight, FiMapPin, FiPhoneCall } from "react-icons/fi";
 import { CATEGORY_SLUGS } from "@/lib/categories";
 import { CITY_LANDING, formatRupees } from "@/lib/cityLanding";
 import { cityFromPrice, monthlyUmrah } from "@/lib/cityPackages";
-import { DEPARTURE_CITIES, formatMonth, type CityKey } from "@/lib/departures";
+import { DEPARTURE_CITIES, formatPeriod, type CityKey } from "@/lib/departures";
 import type { CmsPackageRecord } from "@/lib/packages";
 
 /**
@@ -52,7 +52,7 @@ type CityCard = {
   name: string;
   href: string;
   price?: number;
-  /** The newest month the city has on sale, e.g. "November 2026". */
+  /** The newest period the city has on sale, e.g. "November–December 2026". */
   month: string;
   image?: string;
 };
@@ -66,7 +66,7 @@ function buildCards(packages: CmsPackageRecord[]): CityCard[] {
       name,
       href: CITY_LANDING[key].path,
       price: cityFromPrice(packages, key)?.amount,
-      month: formatMonth(lead?.valid_month),
+      month: lead ? formatPeriod(lead) : "",
       image: umrah.find((item) => item.image_url)?.image_url,
     };
   });

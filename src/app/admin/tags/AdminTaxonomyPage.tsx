@@ -24,8 +24,21 @@ import {
 import { useToast } from "../../components/ui/toast/useToast";
 import AdminLoginForm from "../AdminLoginForm";
 import AdminShell from "../AdminShell";
+import { revalidatePackages } from "@/lib/revalidate";
 
 type UsageMap = Record<string, string[]>;
+
+/** The hotel columns migration 028 adds to a tier. */
+type TierHotelChanges = Required<
+  Pick<
+    PackageTierRecord,
+    | "makkah_distance"
+    | "madinah_distance"
+    | "hotel_stars"
+    | "highlights"
+    | "is_recommended"
+  >
+>;
 
 export default function AdminTaxonomyPage() {
   const [supabase] = useState(createClient);
@@ -122,6 +135,40 @@ export default function AdminTaxonomyPage() {
       });
     toast.success(`Renamed to "${name.trim()}".`, {
       description: "Every package using it updated.",
+    });
+    void load();
+  }
+
+  /**
+   * Save a tier's hotel details (migration 028). Marking one tier recommended
+   * clears the flag on the others first — the city page leads with one tier.
+   */
+  async function updateTierHotels(
+    tier: PackageTierRecord,
+    changes: TierHotelChanges,
+  ) {
+    if (!supabase) return;
+    if (changes.is_recommended && !tier.is_recommended) {
+      const { error: clearError } = await supabase
+        .from("package_tiers")
+        .update({ is_recommended: false })
+        .neq("id", tier.id);
+      if (clearError)
+        return toast.error("Could not update the recommended tier.", {
+          description: clearError.message,
+        });
+    }
+    const { error: updateError } = await supabase
+      .from("package_tiers")
+      .update(changes)
+      .eq("id", tier.id);
+    if (updateError)
+      return toast.error(`Could not save ${tier.name}'s hotel details.`, {
+        description: updateError.message,
+      });
+    await revalidatePackages();
+    toast.success(`${tier.name} hotel details saved.`, {
+      description: "Live on every package page now.",
     });
     void load();
   }
@@ -312,6 +359,7 @@ export default function AdminTaxonomyPage() {
           usage={tierUsage}
           onAdd={addTier}
           onRename={renameTier}
+          onSaveHotels={updateTierHotels}
           onMove={moveTier}
           onDelete={deleteTier}
         />
@@ -337,6 +385,7 @@ function TierPanel({
   usage,
   onAdd,
   onRename,
+  onSaveHotels,
   onMove,
   onDelete,
 }: {
@@ -344,6 +393,7 @@ function TierPanel({
   usage: UsageMap;
   onAdd: (name: string) => Promise<string | undefined>;
   onRename: (tier: PackageTierRecord, name: string) => void;
+  onSaveHotels: (tier: PackageTierRecord, changes: TierHotelChanges) => void;
   onMove: (tier: PackageTierRecord, direction: -1 | 1) => void;
   onDelete: (tier: PackageTierRecord) => void;
 }) {
@@ -412,6 +462,7 @@ function TierPanel({
             isFirst={index === 0}
             isLast={index === tiers.length - 1}
             onRename={onRename}
+            onSaveHotels={onSaveHotels}
             onMove={onMove}
             onDelete={onDelete}
           />
@@ -432,6 +483,7 @@ function TierRow({
   isFirst,
   isLast,
   onRename,
+  onSaveHotels,
   onMove,
   onDelete,
 }: {
@@ -440,6 +492,7 @@ function TierRow({
   isFirst: boolean;
   isLast: boolean;
   onRename: (tier: PackageTierRecord, name: string) => void;
+  onSaveHotels: (tier: PackageTierRecord, changes: TierHotelChanges) => void;
   onMove: (tier: PackageTierRecord, direction: -1 | 1) => void;
   onDelete: (tier: PackageTierRecord) => void;
 }) {
@@ -504,7 +557,156 @@ function TierRow({
         {usageCount
           ? `· priced on ${usageCount} package${usageCount > 1 ? "s" : ""}`
           : "· not used yet"}
+        {tier.is_recommended ? (
+          <span className="ml-2 rounded-full bg-[#D4AF37] px-2 py-0.5 font-semibold text-[#06131D]">
+            Recommended
+          </span>
+        ) : null}
       </p>
+
+      {/* Absent until migration 028 adds the columns. */}
+      {"makkah_distance" in tier && (
+        <TierHotelFields tier={tier} onSave={onSaveHotels} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Where a tier's hotels are — the city page's "why upgrade" comparison is
+ * built from these. Collapsed by default so the list stays scannable.
+ */
+function TierHotelFields({
+  tier,
+  onSave,
+}: {
+  tier: PackageTierRecord;
+  onSave: (tier: PackageTierRecord, changes: TierHotelChanges) => void;
+}) {
+  const saved: TierHotelChanges = {
+    makkah_distance: tier.makkah_distance ?? "",
+    madinah_distance: tier.madinah_distance ?? "",
+    hotel_stars: tier.hotel_stars ?? 0,
+    highlights: tier.highlights ?? [],
+    is_recommended: tier.is_recommended ?? false,
+  };
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(saved);
+  const [highlightsText, setHighlightsText] = useState(
+    saved.highlights.join("\n"),
+  );
+  const savedKey = JSON.stringify(saved);
+  useEffect(() => {
+    const next = JSON.parse(savedKey) as TierHotelChanges;
+    setForm(next);
+    setHighlightsText(next.highlights.join("\n"));
+  }, [savedKey]);
+
+  const highlights = highlightsText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+  const next = { ...form, highlights };
+  const isDirty = JSON.stringify(next) !== savedKey;
+  const summary = [
+    saved.makkah_distance && `Makkah ${saved.makkah_distance}`,
+    saved.madinah_distance && `Madinah ${saved.madinah_distance}`,
+    saved.hotel_stars ? `${saved.hotel_stars}-star` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const inputClass =
+    "block w-full rounded-lg border border-stone-200 bg-white px-3 py-2 font-body text-sm font-normal outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20";
+
+  return (
+    <div className="mt-2 pl-8">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1 font-body text-xs font-semibold text-[#997A15] hover:underline"
+      >
+        {open ? <FiChevronUp /> : <FiChevronDown />}
+        Hotels{summary ? `: ${summary}` : " — add distances"}
+      </button>
+
+      {open && (
+        <div className="mt-3 grid gap-3 rounded-lg border border-stone-200 bg-white p-3 sm:grid-cols-3">
+          <label className="space-y-1 font-body text-xs font-semibold text-[#06131D]">
+            Distance to Haram, Makkah
+            <input
+              value={form.makkah_distance}
+              onChange={(event) =>
+                setForm({ ...form, makkah_distance: event.target.value })
+              }
+              placeholder="e.g. 300 m"
+              maxLength={40}
+              className={inputClass}
+            />
+          </label>
+          <label className="space-y-1 font-body text-xs font-semibold text-[#06131D]">
+            Distance to Masjid an-Nabawi
+            <input
+              value={form.madinah_distance}
+              onChange={(event) =>
+                setForm({ ...form, madinah_distance: event.target.value })
+              }
+              placeholder="e.g. 100 m"
+              maxLength={40}
+              className={inputClass}
+            />
+          </label>
+          <label className="space-y-1 font-body text-xs font-semibold text-[#06131D]">
+            Hotel stars
+            <select
+              value={form.hotel_stars}
+              onChange={(event) =>
+                setForm({ ...form, hotel_stars: Number(event.target.value) })
+              }
+              className={inputClass}
+            >
+              <option value={0}>Don&apos;t show</option>
+              {[1, 2, 3, 4, 5].map((stars) => (
+                <option key={stars} value={stars}>
+                  {stars} star
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 font-body text-xs font-semibold text-[#06131D] sm:col-span-3">
+            Selling points (one per line, up to 8)
+            <textarea
+              value={highlightsText}
+              onChange={(event) => setHighlightsText(event.target.value)}
+              rows={3}
+              placeholder={"Walk to every prayer in the Haram\nBreakfast buffet included"}
+              className={inputClass}
+            />
+          </label>
+          <label className="flex items-center gap-2 font-body text-xs font-semibold text-[#06131D] sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={form.is_recommended}
+              onChange={(event) =>
+                setForm({ ...form, is_recommended: event.target.checked })
+              }
+              className="h-4 w-4 accent-[#D4AF37]"
+            />
+            Recommend this tier on the city pages
+          </label>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              disabled={!isDirty}
+              onClick={() => onSave(tier, next)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#D4AF37] px-3 font-body text-xs font-bold text-[#06131D] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <FiSave /> Save hotels
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

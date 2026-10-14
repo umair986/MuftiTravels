@@ -14,6 +14,7 @@ import {
 import {
   pruneDetails,
   schemaForCategory,
+  stayNights,
   type PackageDetails,
 } from "@/lib/categoryFields";
 import CategoryDetailsFields from "./CategoryDetailsFields";
@@ -22,9 +23,12 @@ import Image from "next/image";
 import { revalidatePackages } from "@/lib/revalidate";
 import {
   DEPARTURE_CITIES,
+  formatDepartureDates,
   formatMonth,
+  formatPeriod,
   fromMonthInput,
-  isMonthExpired,
+  isPackageExpired,
+  packageEndMonth,
   toMonthInput,
 } from "@/lib/departures";
 import { useToast } from "../components/ui/toast/useToast";
@@ -67,7 +71,6 @@ type FormState = {
   /** Category-specific fields; see lib/categoryFields.ts. */
   details: PackageDetails;
   category: string;
-  sortOrder: string;
   rating: string;
   reviews: string;
   isPublished: boolean;
@@ -75,6 +78,21 @@ type FormState = {
   departureCity: string;
   /** Migration 026: `YYYY-MM` as the month input holds it, or "" for none. */
   validMonth: string;
+  /**
+   * Migration 028: the last month the rates cover, `YYYY-MM`, or "" when they
+   * cover only validMonth.
+   */
+  validUntilMonth: string;
+  /** Migration 028: flight dates, `YYYY-MM-DD`, kept sorted. */
+  departureDates: string[];
+  airline: string;
+  flightRouting: "" | "direct" | "via";
+  flightVia: string;
+  /**
+   * Migration 027: the price the card leads with, as cardPriceValue(tier,
+   * sharing), or "" for the lowest. One string so a single select holds it.
+   */
+  cardPrice: string;
 };
 
 const emptyForm: FormState = {
@@ -89,13 +107,25 @@ const emptyForm: FormState = {
   cardTags: [],
   details: {},
   category: "",
-  sortOrder: "0",
   rating: "5",
   reviews: "0",
   isPublished: true,
   departureCity: "",
   validMonth: "",
+  validUntilMonth: "",
+  departureDates: [],
+  airline: "",
+  flightRouting: "",
+  flightVia: "",
+  cardPrice: "",
 };
+
+/** Joins tier key and sharing label; neither can contain a line break. */
+const CARD_PRICE_SEPARATOR = "\n";
+
+function cardPriceValue(tier: string, sharing: string) {
+  return `${tier}${CARD_PRICE_SEPARATOR}${sharing}`;
+}
 
 function pricesToRows(prices: CmsPackageRecord["prices"]): PriceRow[] {
   return Object.entries(prices).flatMap(([tier, sharingPrices], tierIndex) =>
@@ -184,13 +214,24 @@ export default function ManagedPackageEditor({
             cardTags: packageRecord.card_tags ?? [],
             details: packageRecord.details ?? {},
             category: packageRecord.category,
-            sortOrder: String(packageRecord.sort_order ?? 0),
             rating: String(packageRecord.rating ?? 5),
             reviews: String(packageRecord.reviews ?? 0),
             prices: pricesToRows(packageRecord.prices),
             isPublished: packageRecord.is_published,
             departureCity: packageRecord.departure_city ?? "",
             validMonth: toMonthInput(packageRecord.valid_month),
+            validUntilMonth: toMonthInput(packageRecord.valid_until_month),
+            departureDates: [...(packageRecord.departure_dates ?? [])].sort(),
+            airline: packageRecord.airline ?? "",
+            flightRouting: packageRecord.flight_routing ?? "",
+            flightVia: packageRecord.flight_via ?? "",
+            cardPrice:
+              packageRecord.card_price_tier && packageRecord.card_price_sharing
+                ? cardPriceValue(
+                    packageRecord.card_price_tier,
+                    packageRecord.card_price_sharing,
+                  )
+                : "",
           };
           setForm(loaded);
           setSavedForm(loaded);
@@ -386,15 +427,16 @@ export default function ManagedPackageEditor({
         prices: nextPrices,
         card_tags: form.cardTags,
         category: form.category,
-        sort_order: Number(form.sortOrder) || 0,
         rating: Math.min(5, Math.max(1, Number(form.rating) || 5)),
         reviews: Math.max(0, Number(form.reviews) || 0),
-        // Only categories that declare fields write `details`, so a site that
-        // has not run migration 007 yet can still save its Umrah packages.
-        ...(schemaForCategory(record.category)
+        // Every category now has detail fields (the Makkah/Madinah nights),
+        // pruned against the category being SAVED, so switching a package
+        // from Ramzan to Umrah drops the Ramadan-only values. Written only
+        // when the row has the column (migration 007).
+        ...("details" in record
           ? {
               details: pruneDetails(
-                schemaForCategory(record.category),
+                schemaForCategory(form.category || record.category),
                 form.details,
               ),
             }
@@ -407,6 +449,31 @@ export default function ManagedPackageEditor({
               departure_city: form.departureCity,
               valid_month: fromMonthInput(form.validMonth),
             }
+          : {}),
+        // Likewise migration 028. An end month that is blank, or not after
+        // the start, saves as null — "just the one month".
+        ...("valid_until_month" in record
+          ? (() => {
+              const start = fromMonthInput(form.validMonth);
+              const end = fromMonthInput(form.validUntilMonth);
+              return {
+                valid_until_month: start && end && end > start ? end : null,
+                departure_dates: form.departureDates,
+                airline: form.airline.trim(),
+                flight_routing: form.flightRouting,
+                flight_via:
+                  form.flightRouting === "via" ? form.flightVia.trim() : "",
+              };
+            })()
+          : {}),
+        // Likewise migration 027.
+        ...("card_price_tier" in record
+          ? (() => {
+              const [tier = "", sharing = ""] = form.cardPrice
+                ? form.cardPrice.split(CARD_PRICE_SEPARATOR)
+                : [];
+              return { card_price_tier: tier, card_price_sharing: sharing };
+            })()
           : {}),
       })
       .eq("id", record.id)
@@ -438,8 +505,14 @@ export default function ManagedPackageEditor({
     );
   }
 
-  // Hajj and Ramzan declare extra fields; every other category renders none.
+  // Every category gets the Makkah/Madinah nights; Hajj and Ramzan add more.
   const categorySchema = schemaForCategory(form.category || record?.category);
+  const nights = stayNights(form.details);
+  const totalNights = Number(form.durationNights) || 0;
+  const nightsMismatch =
+    (nights.makkah > 0 || nights.madinah > 0) &&
+    totalNights > 0 &&
+    nights.makkah + nights.madinah !== totalNights;
 
   return (
     <div>
@@ -531,38 +604,16 @@ export default function ManagedPackageEditor({
               ]}
               onChange={(value) => updateField("departureCity", value)}
             />
-            <label className="space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
-              Priced for (month)
-              <input
-                type="month"
-                value={form.validMonth}
-                onChange={(event) =>
-                  updateField("validMonth", event.target.value)
-                }
-                className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
-              />
-              <span
-                className={`block text-xs font-normal ${
-                  isMonthExpired(fromMonthInput(form.validMonth))
-                    ? "font-semibold text-red-700"
-                    : "text-[#526168]"
-                }`}
-              >
-                {!form.validMonth
-                  ? "No month — never expires. Right for Hajj and Ramadan."
-                  : isMonthExpired(fromMonthInput(form.validMonth))
-                    ? `${formatMonth(fromMonthInput(form.validMonth))} is over — this package is hidden from the website.`
-                    : `Shown on the website until the end of ${formatMonth(fromMonthInput(form.validMonth))}.`}
-              </span>
-            </label>
+            <PeriodFields
+              validMonth={form.validMonth}
+              validUntilMonth={form.validUntilMonth}
+              hasUntil={"valid_until_month" in record}
+              onChange={(changes) =>
+                setForm((current) => ({ ...current, ...changes }))
+              }
+            />
           </>
         ) : null}
-        <EditorField
-          label="Display order (lower shows first)"
-          type="number"
-          value={form.sortOrder}
-          onChange={(value) => updateField("sortOrder", value)}
-        />
         <EditorField
           label="Star rating (1-5)"
           type="number"
@@ -590,6 +641,27 @@ export default function ManagedPackageEditor({
             className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-3 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
           />
         </label>
+        {record && "departure_dates" in record && (
+          <FlightFields
+            dates={form.departureDates}
+            airline={form.airline}
+            routing={form.flightRouting}
+            via={form.flightVia}
+            onChange={(changes) =>
+              setForm((current) => ({ ...current, ...changes }))
+            }
+          />
+        )}
+        {nightsMismatch && (
+          <p
+            role="status"
+            className="rounded-lg bg-amber-50 p-3 font-body text-xs text-amber-800 sm:col-span-2"
+          >
+            Makkah ({nights.makkah}) + Madinah ({nights.madinah}) nights is{" "}
+            {nights.makkah + nights.madinah}, but the package is{" "}
+            {totalNights} nights. Check one of them before saving.
+          </p>
+        )}
         {categorySchema && (
           <CategoryDetailsFields
             schema={categorySchema}
@@ -667,6 +739,14 @@ export default function ManagedPackageEditor({
               </p>
             )}
           </div>
+          {record && "card_price_tier" in record && (
+            <CardPricePicker
+              rows={form.prices}
+              tiers={tiers}
+              value={form.cardPrice}
+              onChange={(value) => updateField("cardPrice", value)}
+            />
+          )}
         </section>
         <label className="space-y-1.5 font-body text-sm font-semibold text-[#06131D] sm:col-span-2">
           Features (one per line)
@@ -754,11 +834,13 @@ function EditorField({
   value,
   onChange,
   type = "text",
+  help,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  help?: string;
 }) {
   return (
     <label className="space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
@@ -770,6 +852,9 @@ function EditorField({
         required
         className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-3 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
       />
+      {help && (
+        <span className="block text-xs font-normal text-[#526168]">{help}</span>
+      )}
     </label>
   );
 }
@@ -817,6 +902,287 @@ function EditorOptionSelect({
         </span>
       )}
     </label>
+  );
+}
+
+/**
+ * Which price the package card shows. The choices are the priced rows above,
+ * as currently edited; a pick whose row was removed is shown as such and the
+ * site falls back to the lowest (cardPrice() in lib/packages.ts).
+ */
+function CardPricePicker({
+  rows,
+  tiers,
+  value,
+  onChange,
+}: {
+  rows: PriceRow[];
+  tiers: PackageTierRecord[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const priced = rows.filter((row) => row.sharing && Number(row.amount) > 0);
+  const lowest = priced.reduce<PriceRow | undefined>(
+    (best, row) =>
+      !best || Number(row.amount) < Number(best.amount) ? row : best,
+    undefined,
+  );
+  const label = (row: PriceRow) =>
+    `${tiers.find((tier) => tier.key === row.tier)?.name ?? row.tier} · ${row.sharing} — ₹${Number(row.amount).toLocaleString("en-IN")}`;
+  const isOrphaned =
+    Boolean(value) &&
+    !priced.some((row) => cardPriceValue(row.tier, row.sharing) === value);
+
+  return (
+    <label className="mt-4 block space-y-1.5 border-t border-stone-200 pt-4 font-body text-sm font-semibold text-[#06131D]">
+      Price shown on the package card
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={`block h-10 w-full rounded-lg border bg-white px-3 text-sm font-normal outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20 ${
+          isOrphaned ? "border-red-300" : "border-stone-200"
+        }`}
+      >
+        <option value="">
+          Lowest price{lowest ? ` (${label(lowest)})` : ""}
+        </option>
+        {isOrphaned && (
+          <option value={value}>
+            {value.split(CARD_PRICE_SEPARATOR).join(" · ")} (no longer
+            priced)
+          </option>
+        )}
+        {priced.map((row) => (
+          <option key={row.id} value={cardPriceValue(row.tier, row.sharing)}>
+            {label(row)}
+          </option>
+        ))}
+      </select>
+      <span
+        className={`block text-xs font-normal ${isOrphaned ? "text-red-600" : "text-[#526168]"}`}
+      >
+        {isOrphaned
+          ? "That price was removed, so the card shows the lowest price. Pick another one or leave it on Lowest."
+          : "The one price visitors see on the card before they open the package. The package page opens on the same one."}
+      </span>
+    </label>
+  );
+}
+
+/**
+ * The months these rates cover. One month (November), or a run of months
+ * whose rates were fixed together (November–December) — then there is no
+ * separate November package, and this one stays on the site through December.
+ * The "to" month appears only once migration 028 has added the column.
+ */
+function PeriodFields({
+  validMonth,
+  validUntilMonth,
+  hasUntil,
+  onChange,
+}: {
+  validMonth: string;
+  validUntilMonth: string;
+  hasUntil: boolean;
+  onChange: (changes: { validMonth?: string; validUntilMonth?: string }) => void;
+}) {
+  const period = {
+    valid_month: fromMonthInput(validMonth),
+    valid_until_month: hasUntil ? fromMonthInput(validUntilMonth) : null,
+  };
+  const expired = isPackageExpired(period);
+  const label = formatPeriod(period);
+  const endsBeforeStart =
+    Boolean(validMonth && validUntilMonth) && validUntilMonth < validMonth;
+  const inputClass =
+    "block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20";
+
+  return (
+    <div className="space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
+      Rates valid for
+      <div className="grid grid-cols-2 gap-2">
+        <label className="space-y-1 text-xs font-semibold text-[#526168]">
+          From
+          <input
+            type="month"
+            value={validMonth}
+            onChange={(event) => onChange({ validMonth: event.target.value })}
+            className={inputClass}
+          />
+        </label>
+        {hasUntil && (
+          <label className="space-y-1 text-xs font-semibold text-[#526168]">
+            To (optional)
+            <input
+              type="month"
+              value={validUntilMonth}
+              min={validMonth || undefined}
+              disabled={!validMonth}
+              onChange={(event) =>
+                onChange({ validUntilMonth: event.target.value })
+              }
+              className={`${inputClass} disabled:bg-stone-100`}
+            />
+          </label>
+        )}
+      </div>
+      <span
+        className={`block text-xs font-normal ${
+          expired || endsBeforeStart
+            ? "font-semibold text-red-700"
+            : "text-[#526168]"
+        }`}
+      >
+        {!validMonth
+          ? "No month — never expires. Right for Hajj and Ramadan."
+          : endsBeforeStart
+            ? "The “to” month is before the “from” month, so only the first month will be saved."
+            : expired
+              ? `${label} is over — this package is hidden from the website.`
+              : `${label} rates. Shown on the website until the end of ${formatMonth(packageEndMonth(period))}.`}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Flight dates and airline for this package's departure city. Every field is
+ * optional and an empty one prints nothing on the site — in particular a
+ * blank routing never reads as "direct".
+ */
+function FlightFields({
+  dates,
+  airline,
+  routing,
+  via,
+  onChange,
+}: {
+  dates: string[];
+  airline: string;
+  routing: "" | "direct" | "via";
+  via: string;
+  onChange: (changes: {
+    departureDates?: string[];
+    airline?: string;
+    flightRouting?: "" | "direct" | "via";
+    flightVia?: string;
+  }) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const summary = formatDepartureDates(dates);
+
+  function addDate() {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(draft)) return;
+    onChange({ departureDates: [...new Set([...dates, draft])].sort() });
+    setDraft("");
+  }
+
+  return (
+    <section className="rounded-xl border border-[#06131D]/10 bg-[#FAF8F5] p-4 sm:col-span-2">
+      <h4 className="font-display text-2xl font-semibold text-[#06131D]">
+        Flights
+      </h4>
+      <p className="mt-1 font-body text-xs text-[#526168]">
+        Shown on the package card and above this period&apos;s packages on the
+        city page. Leave anything blank that is not confirmed yet.
+      </p>
+
+      <div className="mt-4 space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
+        Departure dates
+        <div className="flex gap-2">
+          <input
+            type="date"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addDate();
+              }
+            }}
+            className="h-10 flex-1 rounded-lg border border-stone-200 bg-white px-3 font-normal outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+          />
+          <button
+            type="button"
+            onClick={addDate}
+            disabled={!draft}
+            className="rounded-lg bg-[#D4AF37] px-3 font-body text-xs font-bold text-[#06131D] hover:bg-[#F3E5AB] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Add date
+          </button>
+        </div>
+        {dates.length ? (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {dates.map((date) => (
+              <span
+                key={date}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#D4AF37]/40 bg-white px-3 py-1 text-xs font-semibold text-[#06131D]"
+              >
+                {formatDepartureDates([date])} {date.slice(0, 4)}
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChange({
+                      departureDates: dates.filter((item) => item !== date),
+                    })
+                  }
+                  aria-label={`Remove ${date}`}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <span className="block text-xs font-normal text-[#526168]">
+          {summary
+            ? `On the site: ${summary}`
+            : "No dates yet — the site will not mention flight dates."}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <label className="space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
+          Airline
+          <input
+            value={airline}
+            onChange={(event) => onChange({ airline: event.target.value })}
+            placeholder="e.g. Saudia"
+            maxLength={80}
+            className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-normal outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+          />
+        </label>
+        <label className="space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
+          Direct or via
+          <select
+            value={routing}
+            onChange={(event) =>
+              onChange({
+                flightRouting: event.target.value as "" | "direct" | "via",
+              })
+            }
+            className="block h-[46px] w-full rounded-lg border border-stone-200 bg-white px-3 font-normal outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+          >
+            <option value="">Don&apos;t say</option>
+            <option value="direct">Direct</option>
+            <option value="via">Via a stop</option>
+          </select>
+        </label>
+        {routing === "via" && (
+          <label className="space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
+            Via
+            <input
+              value={via}
+              onChange={(event) => onChange({ flightVia: event.target.value })}
+              placeholder="e.g. Muscat"
+              maxLength={80}
+              className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-normal outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+            />
+          </label>
+        )}
+      </div>
+    </section>
   );
 }
 

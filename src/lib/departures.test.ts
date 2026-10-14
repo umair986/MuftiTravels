@@ -14,13 +14,19 @@ import {
   cityName,
   compareNewestMonthFirst,
   currentIstMonth,
+  formatDepartureDates,
   formatMonth,
+  formatPeriod,
   fromMonthInput,
   isCityKey,
   isMonthExpired,
+  isPackageExpired,
   nextMonth,
+  nextPeriod,
+  packageEndMonth,
   packageCity,
   renameForMonth,
+  renameForPeriod,
   toMonthInput,
 } from "./departures";
 
@@ -94,12 +100,12 @@ describe("month inputs", () => {
 });
 
 describe("compareNewestMonthFirst", () => {
-  it("puts the newest month first and undated packages last", () => {
+  it("puts the newest month first, cheapest within it, unpriced and undated last", () => {
     const sorted = [
-      { name: "undated", valid_month: null, sort_order: 0 },
-      { name: "oct", valid_month: "2026-10-01", sort_order: 0 },
-      { name: "nov-b", valid_month: "2026-11-01", sort_order: 2 },
-      { name: "nov-a", valid_month: "2026-11-01", sort_order: 1 },
+      { name: "undated", valid_month: null, starting_price: 50000 },
+      { name: "oct", valid_month: "2026-10-01", starting_price: 90000 },
+      { name: "nov-b", valid_month: "2026-11-01", starting_price: 0 },
+      { name: "nov-a", valid_month: "2026-11-01", starting_price: 120000 },
     ]
       .sort(compareNewestMonthFirst)
       .map((item) => item.name);
@@ -161,5 +167,130 @@ describe("packageCity", () => {
   it("matches whole words only", () => {
     // "mumbaikar" is not Mumbai.
     assert.equal(packageCity({ slug: "mumbaikar-special" }), "");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Periods (migration 028): rates fixed for a run of months                   */
+/* -------------------------------------------------------------------------- */
+
+describe("isPackageExpired", () => {
+  const novDec = { valid_month: "2026-11-01", valid_until_month: "2026-12-01" };
+
+  it("keeps November–December rates on the site through December", () => {
+    // 15 Dec IST — November is over, December is not.
+    assert.equal(isPackageExpired(novDec, new Date("2026-12-15T06:00:00Z")), false);
+  });
+
+  it("expires them at midnight IST on 1 January", () => {
+    assert.equal(isPackageExpired(novDec, new Date("2026-12-31T18:29:00Z")), false);
+    assert.equal(isPackageExpired(novDec, new Date("2026-12-31T18:30:00Z")), true);
+  });
+
+  it("reads a row from before 028 (no end column) as its one month", () => {
+    assert.equal(
+      isPackageExpired({ valid_month: "2026-11-01" }, new Date("2026-12-01T06:00:00Z")),
+      true,
+    );
+  });
+
+  it("ignores an end before the start rather than expiring early", () => {
+    const backwards = { valid_month: "2026-11-01", valid_until_month: "2026-10-01" };
+    assert.equal(packageEndMonth(backwards), "2026-11-01");
+  });
+
+  it("never expires an undated package, whatever its end says", () => {
+    assert.equal(isPackageExpired({ valid_month: null, valid_until_month: "2020-01-01" }), false);
+  });
+});
+
+describe("formatPeriod", () => {
+  it("names one month, a run within a year, and a run across New Year", () => {
+    assert.equal(formatPeriod({ valid_month: "2026-11-01" }), "November 2026");
+    assert.equal(
+      formatPeriod({ valid_month: "2026-11-01", valid_until_month: "2026-12-01" }),
+      "November–December 2026",
+    );
+    assert.equal(
+      formatPeriod({ valid_month: "2026-12-01", valid_until_month: "2027-01-01" }),
+      "December 2026–January 2027",
+    );
+  });
+
+  it("reads an end equal to the start as one month", () => {
+    assert.equal(
+      formatPeriod({ valid_month: "2026-11-01", valid_until_month: "2026-11-01" }),
+      "November 2026",
+    );
+  });
+});
+
+describe("nextPeriod", () => {
+  const october = "2026-10-01";
+
+  it("follows November–December with January–February", () => {
+    assert.deepEqual(
+      nextPeriod({ valid_month: "2026-11-01", valid_until_month: "2026-12-01" }, october),
+      { valid_month: "2027-01-01", valid_until_month: "2027-02-01" },
+    );
+  });
+
+  it("follows one month with the next one month", () => {
+    assert.deepEqual(nextPeriod({ valid_month: "2026-11-01" }, october), {
+      valid_month: "2026-12-01",
+      valid_until_month: null,
+    });
+  });
+
+  it("starts this month, same length, when the original is long over", () => {
+    assert.deepEqual(
+      nextPeriod({ valid_month: "2026-03-01", valid_until_month: "2026-04-01" }, october),
+      { valid_month: "2026-10-01", valid_until_month: "2026-11-01" },
+    );
+  });
+});
+
+describe("renameForPeriod", () => {
+  it("swaps a whole run of months in the name", () => {
+    assert.equal(
+      renameForPeriod(
+        "15 Days Umrah from Mumbai — November–December 2026",
+        { valid_month: "2026-11-01", valid_until_month: "2026-12-01" },
+        { valid_month: "2027-01-01", valid_until_month: "2027-02-01" },
+      ),
+      "15 Days Umrah from Mumbai — January–February 2027",
+    );
+  });
+});
+
+describe("compareNewestMonthFirst with runs", () => {
+  it("keeps a November package and a November–December package apart", () => {
+    const sorted = [
+      { name: "nov-dec", valid_month: "2026-11-01", valid_until_month: "2026-12-01", starting_price: 0 },
+      { name: "nov-a", valid_month: "2026-11-01", starting_price: 0 },
+      { name: "nov-dec-2", valid_month: "2026-11-01", valid_until_month: "2026-12-01", starting_price: 0 },
+      { name: "nov-b", valid_month: "2026-11-01", starting_price: 0 },
+    ]
+      .sort(compareNewestMonthFirst)
+      .map((item) => item.name);
+    assert.deepEqual(sorted, ["nov-a", "nov-b", "nov-dec", "nov-dec-2"]);
+  });
+});
+
+describe("formatDepartureDates", () => {
+  it("groups by month, sorts, and drops duplicates and junk", () => {
+    assert.equal(
+      formatDepartureDates(["2026-12-03", "2026-11-19", "2026-11-05", "2026-11-05", "soon"]),
+      "5, 19 Nov · 3 Dec",
+    );
+  });
+
+  it("does not merge the same month in two different years", () => {
+    assert.equal(formatDepartureDates(["2026-11-05", "2027-11-04"]), "5 Nov · 4 Nov");
+  });
+
+  it("is empty for none", () => {
+    assert.equal(formatDepartureDates(undefined), "");
+    assert.equal(formatDepartureDates([]), "");
   });
 });

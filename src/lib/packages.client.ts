@@ -18,7 +18,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isMonthExpired } from "./departures";
+import { isPackageExpired } from "./departures";
 import { rupeesToPaise } from "./money";
 import { tierName, type PackageTierRecord } from "./taxonomy";
 
@@ -79,7 +79,6 @@ export async function fetchQuotablePackages(
     .select("*")
     .eq("is_published", true)
     .order("category", { ascending: true })
-    .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 
   if (error || !data) return [];
@@ -88,7 +87,7 @@ export async function fetchQuotablePackages(
   // them); a quotation must not be priced off last month's rates.
   const now = new Date();
   return data
-    .filter((row) => !isMonthExpired(row.valid_month as string | null, now))
+    .filter((row) => !isPackageExpired(row, now))
     .map((row) => ({
       slug: (row.slug as string) ?? "",
       name: (row.name as string) ?? "",

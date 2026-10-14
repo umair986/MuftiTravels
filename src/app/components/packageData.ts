@@ -39,4 +39,11 @@ export interface PackageData {
   card_tags?: string[];
   slug: string;
   prices: TierPriceMap;
+  /** The cell the card shows, so the detail page opens on the same price. */
+  defaultPrice?: { tier: string; sharing: string };
+  durationDays?: number;
+  durationNights?: number;
+  /** From the package's details; 0 when the admin has not filled it in. */
+  makkahNights?: number;
+  madinahNights?: number;
 }

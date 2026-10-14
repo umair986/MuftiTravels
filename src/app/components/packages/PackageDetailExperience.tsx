@@ -40,6 +40,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { tierName } from "@/lib/taxonomy";
 import PackageTagBadges from "@/app/components/PackageTagBadges";
+import TierHotels from "./TierHotels";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
 import { useToast } from "@/app/components/ui/toast/useToast";
 
@@ -343,17 +344,19 @@ function PriceSelector({
   pkg,
   onEnquire,
   tierRegistry,
+  tier,
+  setTier,
 }: {
   pkg: PackageData;
   onEnquire: () => void;
   tierRegistry: PackageTierRecord[];
+  /** Shared with the "Where you'll stay" tabs, so the two never disagree. */
+  tier: PackageTier;
+  setTier: (tier: PackageTier) => void;
 }) {
   const availableTiers = useMemo(
     () => Object.keys(pkg.prices) as PackageTier[],
     [pkg.prices],
-  );
-  const [tier, setTier] = useState<PackageTier>(
-    availableTiers.includes("Silver") ? "Silver" : availableTiers[0],
   );
   // Derive sharing types from the package data itself.
   const dynamicSharingTypes: SharingType[] = useMemo(() => {
@@ -369,7 +372,7 @@ function PriceSelector({
   }, [pkg.prices]);
 
   const [sharing, setSharing] = useState<SharingType>(
-    dynamicSharingTypes[0] ?? "Quad",
+    pkg.defaultPrice?.sharing ?? dynamicSharingTypes[0] ?? "Quad",
   );
   useEffect(() => {
     if (!pkg.prices[tier]?.[sharing])
@@ -479,6 +482,12 @@ export default function PackageDetailExperience({
 }) {
   const [activeTab, setActiveTab] = useState("Overview");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  // The price box and the hotel tabs share one tier. Opens on the price the
+  // package's card showed (its pick, or the lowest).
+  const [tier, setTier] = useState<PackageTier>(
+    (pkg.defaultPrice?.tier as PackageTier | undefined) ??
+      (Object.keys(pkg.prices)[0] as PackageTier),
+  );
   useEffect(() => {
     document.body.style.overflow = isFormOpen ? "hidden" : "";
     return () => {
@@ -567,9 +576,29 @@ export default function PackageDetailExperience({
                     Your sacred itinerary
                   </h2>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-stone-600">
-                  <FiCalendar className="text-[#B2891E]" />
-                  15 days of guided worship
+                {/* The package's real length and city split. This was a
+                    hard-coded "15 days", wrong for every other length. */}
+                <div className="flex flex-col gap-1.5 text-sm text-stone-600 sm:items-end">
+                  {pkg.durationDays ? (
+                    <span className="flex items-center gap-2">
+                      <FiCalendar className="text-[#B2891E]" />
+                      {pkg.durationDays} days
+                      {pkg.durationNights
+                        ? ` / ${pkg.durationNights} nights`
+                        : ""}
+                    </span>
+                  ) : null}
+                  {pkg.makkahNights || pkg.madinahNights ? (
+                    <span className="flex items-center gap-2 font-semibold text-[#06131D]">
+                      <FaKaaba className="text-[#B2891E]" />
+                      {[
+                        pkg.makkahNights && `${pkg.makkahNights}N Makkah`,
+                        pkg.madinahNights && `${pkg.madinahNights}N Madinah`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  ) : null}
                 </div>
               </div>
               <div
@@ -650,8 +679,20 @@ export default function PackageDetailExperience({
                   )}
                 </motion.div>
               </AnimatePresence>
+              <TierHotels
+                prices={pkg.prices}
+                registry={tiers}
+                selected={tier}
+                onSelect={(next) => setTier(next as PackageTier)}
+              />
             </article>
-            <PriceSelector tierRegistry={tiers} pkg={pkg} onEnquire={() => setIsFormOpen(true)} />
+            <PriceSelector
+              tierRegistry={tiers}
+              pkg={pkg}
+              tier={tier}
+              setTier={setTier}
+              onEnquire={() => setIsFormOpen(true)}
+            />
           </div>
         </section>
       </main>
