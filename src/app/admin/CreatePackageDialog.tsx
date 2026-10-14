@@ -11,6 +11,7 @@ import {
   schemaForCategory,
 } from "@/lib/categoryFields";
 import { categorySlug } from "@/lib/categories";
+import MonthPicker from "./MonthPicker";
 import {
   DEPARTURE_CITIES,
   MONTHLY_CATEGORY,
@@ -253,11 +254,10 @@ export default function CreatePackageDialog({
             </label>
             <label className="block space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
               Priced for
-              <input
-                type="month"
+              <MonthPicker
                 value={month}
-                onChange={(event) => setMonth(event.target.value)}
-                className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+                onChange={setMonth}
+                placeholder="No month — never expires"
               />
             </label>
             <p className="font-body text-xs font-normal text-[#526168] sm:col-span-2">

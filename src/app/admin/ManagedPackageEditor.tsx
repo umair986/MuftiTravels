@@ -18,6 +18,7 @@ import {
   type PackageDetails,
 } from "@/lib/categoryFields";
 import CategoryDetailsFields from "./CategoryDetailsFields";
+import MonthPicker from "./MonthPicker";
 import { PACKAGE_CATEGORIES } from "@/lib/categoryFields";
 import Image from "next/image";
 import { revalidatePackages } from "@/lib/revalidate";
@@ -994,8 +995,6 @@ function PeriodFields({
   const label = formatPeriod(period);
   const endsBeforeStart =
     Boolean(validMonth && validUntilMonth) && validUntilMonth < validMonth;
-  const inputClass =
-    "block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-normal outline-none transition focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20";
 
   return (
     <div className="space-y-1.5 font-body text-sm font-semibold text-[#06131D]">
@@ -1003,25 +1002,21 @@ function PeriodFields({
       <div className="grid grid-cols-2 gap-2">
         <label className="space-y-1 text-xs font-semibold text-[#526168]">
           From
-          <input
-            type="month"
+          <MonthPicker
             value={validMonth}
-            onChange={(event) => onChange({ validMonth: event.target.value })}
-            className={inputClass}
+            onChange={(next) => onChange({ validMonth: next })}
+            placeholder="Never expires"
           />
         </label>
         {hasUntil && (
           <label className="space-y-1 text-xs font-semibold text-[#526168]">
             To (optional)
-            <input
-              type="month"
+            <MonthPicker
               value={validUntilMonth}
               min={validMonth || undefined}
               disabled={!validMonth}
-              onChange={(event) =>
-                onChange({ validUntilMonth: event.target.value })
-              }
-              className={`${inputClass} disabled:bg-stone-100`}
+              onChange={(next) => onChange({ validUntilMonth: next })}
+              placeholder="Same month"
             />
           </label>
         )}
