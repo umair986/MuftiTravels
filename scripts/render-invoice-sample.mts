@@ -11,6 +11,7 @@
  *   2-receipt-R1-part.pdf        first payment's receipt, a balance still due
  *   3-receipt-R2-settles.pdf     second payment's receipt, no dues
  *   4-invoice-paid-final.pdf     the same bill once settled — both receipts, PAID
+ *   5-invoice-flights.pdf        the pending bill with flights (migration 031)
  *
  *   npm run sample:pdf -- <outDir>
  *
@@ -19,7 +20,7 @@
  * at 400 KB — a sample built from the raw file would weigh 2.4 MB and tell you
  * nothing true about what a real invoice weighs.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import sharp from "sharp";
 import { resolve } from "node:path";
 import { Font, renderToBuffer } from "@react-pdf/renderer";
@@ -71,12 +72,16 @@ const business: BusinessProfileRecord = {
   upi_id: "muftitravels@hdfcbank",
   // Downscaled the way the settings form makes an admin do (400 KB cap), so
   // the sample weighs what a real invoice weighs rather than 2.4 MB.
-  logo_data_uri: `data:image/png;base64,${(
-    await sharp(readFileSync(resolve("public/Logo.png")))
-      .resize({ width: 330 })
-      .png({ compressionLevel: 9 })
-      .toBuffer()
-  ).toString("base64")}`,
+  // Without a logo file the samples still render, with the name in its place,
+  // as render-quotation-sample.mts already does.
+  logo_data_uri: existsSync(resolve("public/Logo.png"))
+    ? `data:image/png;base64,${(
+        await sharp(readFileSync(resolve("public/Logo.png")))
+          .resize({ width: 330 })
+          .png({ compressionLevel: 9 })
+          .toBuffer()
+      ).toString("base64")}`
+    : "",
   signature_data_uri: "",
   invoice_prefix: "MT",
   default_tax_mode: "cgst_sgst",
@@ -199,8 +204,16 @@ const secondPayment: InvoicePayment = {
   paid_before_paise: 16000000,
 };
 
+const FLIGHTS = [
+  { airline: "Saudi Airline", flight_no: "SV 771", from: "BOM", to: "JED", date: "2026-12-26", departs: "11:00", arrives: "14:15" },
+  { airline: "Saudi Airline", flight_no: "SV 770", from: "JED", to: "BOM", date: "2027-01-09", departs: "02:10", arrives: "09:25" },
+];
+
+const BAGGAGE = { checkin_kg: 20, checkin_pieces: 2, cabin_kg: 7, cabin_pieces: 1 };
+
 const invoices = [
   { file: "1-invoice-pending.pdf", paidInFull: false, payments: [] },
+  { file: "5-invoice-flights.pdf", paidInFull: false, payments: [], flights: FLIGHTS, baggage: BAGGAGE },
   {
     file: "4-invoice-paid-final.pdf",
     paidInFull: true,
@@ -211,7 +224,12 @@ const invoices = [
 for (const sample of invoices) {
   const buffer = await renderToBuffer(
     InvoiceDocument({
-      invoice: { ...invoice, paid_in_full: sample.paidInFull },
+      invoice: {
+        ...invoice,
+        paid_in_full: sample.paidInFull,
+        flights: "flights" in sample ? sample.flights : [],
+        baggage: "baggage" in sample ? sample.baggage : {},
+      },
       items,
       business,
       policies,

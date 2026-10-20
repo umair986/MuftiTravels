@@ -22,6 +22,13 @@ import { computeLineTotal, type TaxMode } from "./finance";
 import { formatRupees } from "./money";
 import type { InvoicePolicyList } from "./siteContent";
 import type { InvoiceRecord } from "./invoices";
+import {
+  cleanBaggage,
+  cleanFlights,
+  hasBaggage,
+  type Baggage,
+  type FlightLeg,
+} from "./flights";
 
 /* -------------------------------------------------------------------------- */
 /* Vocabulary                                                                 */
@@ -198,6 +205,15 @@ export type QuotationRecord = {
 
   accommodation: QuotationAccommodation[];
 
+  /**
+   * The flights, as the airline or agent gave them. Migration 031; empty is the
+   * normal state of a quotation and prints nothing. Optional on the type
+   * because a row read before 031 is applied does not carry the key at all.
+   */
+  flights?: FlightLeg[];
+  /** The allowance for the booking, once, not per leg. Same window as `flights`. */
+  baggage?: Baggage;
+
   source_enquiry_id: string | null;
   source_meta_lead_id: string | null;
   trip_id: string | null;
@@ -205,6 +221,13 @@ export type QuotationRecord = {
   subtotal_paise: number;
   discount_mode: DiscountMode;
   discount_percent_bp: number;
+  /**
+   * The per-person concession, as a RATE (migration 031). Its total, rate x
+   * pax, is already inside discount_paise — this column exists so the PDF can
+   * say "₹2,000 x 8" rather than a bare figure. See resolveTotalDiscount.
+   * Optional for the same pre-031 window as `flights`.
+   */
+  discount_per_person_paise?: number;
   discount_paise: number;
   taxable_paise: number;
   tax_mode: TaxMode;
@@ -314,6 +337,74 @@ export function resolveQuoteDiscount(
   }
 
   return Math.min(Math.max(raw, 0), subtotal);
+}
+
+/**
+ * The whole discount on a quotation: a per-person concession ON TOP OF the
+ * whole-quote one. Migration 031.
+ *
+ * "₹2,000 off per person" is how the concession is usually offered at the
+ * counter, and for eight travellers it is ₹16,000 — which is what the admin was
+ * otherwise working out on a calculator and typing into the flat-amount box,
+ * losing the "per person" the customer was actually promised.
+ *
+ * The two are independent and ADD. The percentage is taken on the subtotal,
+ * not on what remains after the per-person part, so each figure on the PDF is
+ * exactly what it says and the customer can check both on their phone. The sum
+ * is clamped to the subtotal, the same rule resolveQuoteDiscount applies, and
+ * the per-person part is what survives the clamp first — it was the more
+ * specific promise.
+ *
+ * `pax` is the head count the per-person FIGURE divides by — adults and
+ * children, never infants (see paxFromBreakdown). A discount per person is a
+ * discount per priced bed, so it multiplies by the same number.
+ *
+ * Only the total is stored as discount_paise; the rate is stored beside it so
+ * the PDF can print "₹2,000 x 8" — see splitStoredDiscount.
+ */
+export function resolveTotalDiscount(
+  subtotalPaise: number,
+  quoteDiscountPaise: number,
+  perPersonRatePaise: number,
+  pax: number | null,
+): { perPersonTotalPaise: number; totalPaise: number } {
+  const subtotal = Math.max(Math.trunc(subtotalPaise), 0);
+  const heads = pax && Number.isFinite(pax) && pax > 0 ? Math.trunc(pax) : 0;
+  const rate = Math.max(Math.trunc(perPersonRatePaise), 0);
+
+  const perPersonTotalPaise = Math.min(rate * heads, subtotal);
+  const quote = Math.max(Math.trunc(quoteDiscountPaise), 0);
+  return {
+    perPersonTotalPaise,
+    totalPaise: Math.min(perPersonTotalPaise + quote, subtotal),
+  };
+}
+
+/**
+ * A stored discount, split back into the two lines the PDF prints.
+ *
+ * Reads only stored columns, so a sent quotation's document is reproducible
+ * from its row: the per-person part is rate x pax, capped by what was actually
+ * stored, and whatever remains is the whole-quote discount. A row from before
+ * migration 031 has no rate (undefined, or 0 once applied), so the whole
+ * discount stays one line, as it always printed.
+ */
+export function splitStoredDiscount(quotation: {
+  discount_paise: number;
+  discount_per_person_paise?: number | null;
+  pax: number | null;
+}): { perPersonRatePaise: number; perPersonTotalPaise: number; restPaise: number } {
+  const stored = Math.max(Math.trunc(quotation.discount_paise ?? 0), 0);
+  const rate = Math.max(Math.trunc(quotation.discount_per_person_paise ?? 0), 0);
+  const heads =
+    quotation.pax && quotation.pax > 0 ? Math.trunc(quotation.pax) : 0;
+
+  const perPersonTotalPaise = Math.min(rate * heads, stored);
+  return {
+    perPersonRatePaise: perPersonTotalPaise > 0 ? rate : 0,
+    perPersonTotalPaise,
+    restPaise: stored - perPersonTotalPaise,
+  };
 }
 
 /**
@@ -842,6 +933,15 @@ export async function createInvoiceFromQuotation(
       tax_rate_bp: quotation.tax_rate_bp,
 
       notes: quotation.notes,
+
+      // The flights travel with the deal; only sent when there are some, so a
+      // conversion still works in the window before migration 031 is applied.
+      ...(cleanFlights(quotation.flights).length
+        ? { flights: cleanFlights(quotation.flights) }
+        : {}),
+      ...(hasBaggage(cleanBaggage(quotation.baggage))
+        ? { baggage: cleanBaggage(quotation.baggage) }
+        : {}),
     })
     .select("id")
     .single();

@@ -28,6 +28,8 @@ import {
   quotationDisplayStatus,
   quotationFileName,
   quotationPdfPath,
+  resolveTotalDiscount,
+  splitStoredDiscount,
   resolveQuoteDiscount,
   totalTravellers,
   travellerSummary,
@@ -119,6 +121,62 @@ describe("resolveQuoteDiscount", () => {
         totals.roundOffPaise,
     );
     assert.equal(totals.taxablePaise, 0);
+  });
+});
+
+describe("resolveTotalDiscount", () => {
+  it("multiplies the per-person rate by pax — ₹2,000 for 8 is ₹16,000", () => {
+    const result = resolveTotalDiscount(rupeesToPaise(800000), 0, rupeesToPaise(2000), 8);
+    assert.equal(result.perPersonTotalPaise, rupeesToPaise(16000));
+    assert.equal(result.totalPaise, rupeesToPaise(16000));
+  });
+
+  it("adds to the whole-quote discount rather than replacing it", () => {
+    // 5% of ₹8,00,000 is ₹40,000, plus ₹2,000 x 8.
+    const quote = resolveQuoteDiscount(rupeesToPaise(800000), "percent", 500, 0);
+    const result = resolveTotalDiscount(rupeesToPaise(800000), quote, rupeesToPaise(2000), 8);
+    assert.equal(result.totalPaise, rupeesToPaise(56000));
+  });
+
+  it("is nothing per person without a head count", () => {
+    const result = resolveTotalDiscount(rupeesToPaise(100000), rupeesToPaise(500), rupeesToPaise(2000), null);
+    assert.equal(result.perPersonTotalPaise, 0);
+    assert.equal(result.totalPaise, rupeesToPaise(500));
+  });
+
+  it("clamps the sum to the bill, per-person part first", () => {
+    const result = resolveTotalDiscount(rupeesToPaise(10000), rupeesToPaise(5000), rupeesToPaise(2000), 4);
+    assert.equal(result.perPersonTotalPaise, rupeesToPaise(8000));
+    assert.equal(result.totalPaise, rupeesToPaise(10000));
+  });
+});
+
+describe("splitStoredDiscount", () => {
+  it("recovers the two printed lines from stored columns", () => {
+    const split = splitStoredDiscount({
+      discount_paise: rupeesToPaise(56000),
+      discount_per_person_paise: rupeesToPaise(2000),
+      pax: 8,
+    });
+    assert.equal(split.perPersonRatePaise, rupeesToPaise(2000));
+    assert.equal(split.perPersonTotalPaise, rupeesToPaise(16000));
+    assert.equal(split.restPaise, rupeesToPaise(40000));
+  });
+
+  it("keeps a pre-031 row as one line", () => {
+    const split = splitStoredDiscount({ discount_paise: rupeesToPaise(5000), pax: 8 });
+    assert.equal(split.perPersonTotalPaise, 0);
+    assert.equal(split.restPaise, rupeesToPaise(5000));
+  });
+
+  it("never prints more per person than was stored", () => {
+    const split = splitStoredDiscount({
+      discount_paise: rupeesToPaise(10000),
+      discount_per_person_paise: rupeesToPaise(2000),
+      pax: 8,
+    });
+    assert.equal(split.perPersonTotalPaise, rupeesToPaise(10000));
+    assert.equal(split.restPaise, 0);
   });
 });
 

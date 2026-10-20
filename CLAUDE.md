@@ -12,20 +12,21 @@ npx tsc --noEmit       # Typecheck (not wired to a script)
 
 npm test               # Node's built-in runner over src/lib/*.test.ts
 npm run test:pdf       # Renders the real InvoiceDocument and asserts 15 properties of the output
-npm run sample:pdf -- <outDir>   # Writes 4 sample invoice/receipt PDFs to look at by eye
-npm run sample:quotation -- <outDir>  # Writes 3 sample quotation PDFs to look at by eye
+npm run sample:pdf -- <outDir>   # Writes 5 sample invoice/receipt PDFs to look at by eye
+npm run sample:quotation -- <outDir>  # Writes 4 sample quotation PDFs to look at by eye
 ```
 
 `npm test` globs `src/lib/*.test.ts`, so a single file is `npx tsx --test src/lib/finance.test.ts`
 and a single case is `npx tsx --test --test-name-pattern "computeInvoiceTotals" src/lib/finance.test.ts`.
 
-There are six test files: `finance.test.ts`, because money arithmetic is where a bug is both
+There are seven test files: `finance.test.ts`, because money arithmetic is where a bug is both
 customer-facing and legally relevant, `guides.test.ts`, which checks the guide copy parser and
 that every guide cites sources, `quotations.test.ts`, which covers the quotation helpers —
 discount, per-person, expiry, the description parser, and how costing lines follow the traveller
 count — `packages.client.test.ts`, which covers what the quotation's package picker copies and
 which characters survive into a PDF, `departures.test.ts`, which pins when a monthly package expires (midnight IST), and
-`packages.test.ts`, which pins the one price a package card shows (`cardPrice`, migration 027).
+`packages.test.ts`, which pins the one price a package card shows (`cardPrice`, migration 027), and
+`flights.test.ts`, which pins how a pasted airline block becomes flight legs, dates and baggage (migration 031).
 Don't read the absence of tests elsewhere as an invitation to skip them where they'd earn their
 keep.
 
@@ -60,7 +61,7 @@ audits *the migration files in this repo*, not the live database.
 
 ### Supabase migrations are the source of truth
 
-`supabase/migrations/NNN_name.sql`, applied in order, currently up to `030`. House style, and
+`supabase/migrations/NNN_name.sql`, applied in order, currently up to `031`. House style, and
 follow it:
 
 - Heavily commented — the comment explains *why*, including options rejected.
@@ -126,8 +127,8 @@ Two traps documented at length in that file and in `scripts/render-invoice-check
 
 ### Quotations
 
-`docs/quotations.md` is the design record — twelve numbered decisions, same style as the finance
-doc. Migrations `024_quotations.sql` and `025_quotation_trip_details.sql`. A quotation is the
+`docs/quotations.md` is the design record — fourteen numbered decisions, same style as the finance
+doc. Migrations `024_quotations.sql`, `025_quotation_trip_details.sql` and `031` (flights, per-person discount). A quotation is the
 priced offer that goes out *before* an invoice exists, and it deliberately inverts four of the
 invoice rules:
 

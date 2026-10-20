@@ -5,6 +5,14 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Image, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { BusinessProfileRecord } from "../invoices";
+import {
+  baggageLines,
+  cleanBaggage,
+  cleanFlights,
+  flightRoute,
+  flightTimes,
+  formatLegDate,
+} from "../flights";
 import { PDF_FONT_FAMILY, registerPdfFonts } from "./fonts";
 
 /**
@@ -277,6 +285,102 @@ export function PdfFooter({
           `Page ${pageNumber} of ${totalPages}`
         }
       />
+    </View>
+  );
+}
+
+/**
+ * The flights, as one compact panel. Shared by the quotation and the invoice
+ * because a customer holds both, and the same flight printed two ways reads as
+ * two different bookings. Migration 031.
+ *
+ * Baggage prints once, as a last line under the legs, because the ticket
+ * states one allowance for the booking.
+ *
+ * Returns null when there is nothing to say — the normal case before tickets
+ * are confirmed — so neither document grows an empty box. Every style here is the
+ * body size or `tiny`, deliberately: render-quotation-check.mts locates the
+ * totals by their 11.5pt and 10.5pt runs and counts 8pt runs for the content
+ * lists, and a new size in this panel would muddy all three.
+ *
+ * `wrap={false}`: a leg split across a page break is a flight number on one
+ * page and its time on the next.
+ */
+export function FlightsPanel({
+  flights,
+  baggage,
+  style,
+}: {
+  flights: unknown;
+  baggage?: unknown;
+  style?: { marginTop?: number; marginBottom?: number };
+}) {
+  const legs = cleanFlights(flights);
+  const allowance = baggageLines(cleanBaggage(baggage));
+  if (!legs.length && !allowance.length) return null;
+
+  // One carrier for every leg is the usual case, and printing it on each row
+  // would cost a column the route and times need.
+  const carriers = [...new Set(legs.map((leg) => leg.airline).filter(Boolean))];
+  const sharedCarrier = carriers.length === 1 ? carriers[0] : "";
+
+  return (
+    <View
+      style={[
+        baseStyles.panel,
+        // Not flex: 1 — see the accommodation panel in QuotationDocument.tsx.
+        { flexGrow: 0, flexShrink: 0, flexBasis: "auto" },
+        style ?? {},
+      ]}
+      wrap={false}
+    >
+      <Text style={baseStyles.panelHeading}>
+        {sharedCarrier ? `FLIGHTS · ${sharedCarrier.toUpperCase()}` : "FLIGHTS"}
+      </Text>
+      {legs.map((leg, index) => (
+        <View
+          key={`${leg.flight_no}-${index}`}
+          style={[
+            baseStyles.row,
+            index > 0
+              ? {
+                  borderTopWidth: 1,
+                  borderTopColor: "#EFEAE2",
+                  paddingTop: 2,
+                  marginTop: 2,
+                }
+              : {},
+          ]}
+        >
+          <Text style={{ width: 70, fontWeight: 600 }}>
+            {leg.flight_no || "—"}
+          </Text>
+          <Text style={{ width: 90 }}>{flightRoute(leg) || "—"}</Text>
+          <Text style={{ width: 70 }}>{formatLegDate(leg.date)}</Text>
+          <Text style={{ width: 90 }}>{flightTimes(leg)}</Text>
+          <Text style={[baseStyles.tiny, { flex: 1, textAlign: "right" }]}>
+            {sharedCarrier ? "" : leg.airline}
+          </Text>
+        </View>
+      ))}
+      {allowance.length ? (
+        <View
+          style={[
+            baseStyles.row,
+            legs.length
+              ? {
+                  borderTopWidth: 1,
+                  borderTopColor: "#EFEAE2",
+                  paddingTop: 2,
+                  marginTop: 2,
+                }
+              : {},
+          ]}
+        >
+          <Text style={{ width: 70, color: MUTED }}>Baggage</Text>
+          <Text style={{ flex: 1 }}>{allowance.join("  ·  ")}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }

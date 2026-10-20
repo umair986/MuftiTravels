@@ -9,6 +9,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Baggage, FlightLeg } from "./flights";
 import type {
   InvoiceStatus,
   PaymentMethod,
@@ -73,6 +74,15 @@ export type InvoiceRecord = {
   amount_in_words: string;
 
   notes: string;
+
+  /**
+   * The flights this bill is for, copied from the quotation or typed (migration
+   * 031). Frozen at issue with the rest of the document's content. Optional on
+   * the type: a row read before 031 is applied has no such key.
+   */
+  flights?: FlightLeg[];
+  /** The baggage allowance, frozen with the flights. Same pre-031 window. */
+  baggage?: Baggage;
 
   /* `terms` is gone from this type on purpose. The column still exists and
      `select *` still returns it — migration 022 keeps it, because issued

@@ -56,8 +56,16 @@ import {
   type SiteContentList,
 } from "@/lib/siteContent";
 import { invoiceFileName, renderInvoicePdf } from "@/lib/pdf/renderInvoice";
+import {
+  cleanBaggage,
+  cleanFlights,
+  EMPTY_BAGGAGE,
+  type Baggage,
+  type FlightLeg,
+} from "@/lib/flights";
 import { useToast } from "../../../components/ui/toast/useToast";
 import AdminShell from "../../AdminShell";
+import FlightsEditor from "../../FlightsEditor";
 import LinePresetPicker from "../LinePresetPicker";
 import PaymentsPanel from "./PaymentsPanel";
 
@@ -111,6 +119,8 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
   const [taxMode, setTaxMode] = useState<TaxMode>("none");
   const [taxRatePercent, setTaxRatePercent] = useState("0");
   const [notes, setNotes] = useState("");
+  const [flights, setFlights] = useState<FlightLeg[]>([]);
+  const [baggage, setBaggage] = useState<Baggage>(EMPTY_BAGGAGE);
   const [showPolicies, setShowPolicies] = useState(true);
   const [isRebuildingPdf, setIsRebuildingPdf] = useState(false);
   const [contentLists, setContentLists] = useState<SiteContentList[]>([]);
@@ -127,6 +137,12 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
 
   const isDraft = invoice?.status === "draft";
   const isIssued = invoice?.status === "issued";
+  /**
+   * Whether the row has migration 031's `flights`. Until it is applied by
+   * hand, PostgREST rejects a write naming the column, so the block is hidden
+   * and never sent — saving keeps working as it did.
+   */
+  const has031 = Boolean(invoice && "flights" in invoice);
 
   /* -------------------------------------------------------------- loading */
 
@@ -217,6 +233,8 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     setTaxMode(record.tax_mode);
     setTaxRatePercent(String(record.tax_rate_bp / 100));
     setNotes(record.notes);
+    setFlights(cleanFlights(record.flights));
+    setBaggage(cleanBaggage(record.baggage));
     // Defaults on, including for rows that predate migration 021.
     setShowPolicies(record.show_policies !== false);
 
@@ -351,6 +369,10 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       total_paise: totals.totalPaise,
       amount_in_words: paiseToWords(totals.totalPaise),
       notes: notes.trim(),
+      // Frozen at issue by guard_issued_invoice() (migration 031).
+      ...(has031
+        ? { flights: cleanFlights(flights), baggage: cleanBaggage(baggage) }
+        : {}),
       // Read by issue_invoice() to decide whether to take a snapshot at all.
       // The snapshot itself is never written from here.
       show_policies: showPolicies,
@@ -374,6 +396,9 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       taxMode,
       taxRateBp,
       notes,
+      flights,
+      baggage,
+      has031,
       showPolicies,
       tripId,
     ],
@@ -1269,6 +1294,25 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
               </button>
             )}
           </section>
+
+          {/* ----------------------------------------------- flights ------- */}
+          {has031 && (
+            <section className="rounded-2xl border border-stone-200 bg-white p-6">
+              <FlightsEditor
+                flights={flights}
+                baggage={baggage}
+                disabled={readOnly}
+                onChange={(next) => {
+                  setFlights(next);
+                  touch();
+                }}
+                onBaggageChange={(next) => {
+                  setBaggage(next);
+                  touch();
+                }}
+              />
+            </section>
+          )}
 
           {/* ------------------------------------------------- notes ------- */}
           {/* The Terms textarea that used to sit beside this is gone. It held

@@ -56,6 +56,8 @@ import {
   quotationFileName,
   quotationPdfPath,
   resolveQuoteDiscount,
+  resolveTotalDiscount,
+  splitStoredDiscount,
   whatsappQuoteUrl,
   type DiscountMode,
   type EditableQuoteItem,
@@ -69,12 +71,20 @@ import {
 } from "@/lib/packages.client";
 import { fetchTiers, type PackageTierRecord } from "@/lib/taxonomy";
 import {
+  cleanBaggage,
+  cleanFlights,
+  EMPTY_BAGGAGE,
+  type Baggage,
+  type FlightLeg,
+} from "@/lib/flights";
+import {
   invoicePolicyLists,
   type SiteContentList,
 } from "@/lib/siteContent";
 import { useToast } from "../../../components/ui/toast/useToast";
 import AdminLoginForm from "../../AdminLoginForm";
 import AdminShell from "../../AdminShell";
+import FlightsEditor from "../../FlightsEditor";
 import PackagePicker, { type PickedLine } from "../PackagePicker";
 
 /**
@@ -212,6 +222,10 @@ export default function QuotationEditor({
   /* Where they are staying. */
   const [stays, setStays] = useState<QuotationAccommodation[]>([]);
 
+  /* How they are getting there. Migration 031; often unknown at this stage. */
+  const [flights, setFlights] = useState<FlightLeg[]>([]);
+  const [baggage, setBaggage] = useState<Baggage>(EMPTY_BAGGAGE);
+
   /* The costing. */
   const [items, setItems] = useState<EditableQuoteItem[]>([blankQuoteItem()]);
   /* The last non-empty head count, so clearing a field to retype it does not
@@ -220,6 +234,8 @@ export default function QuotationEditor({
   const [discountMode, setDiscountMode] = useState<DiscountMode>("none");
   const [discountPercent, setDiscountPercent] = useState("");
   const [discountAmount, setDiscountAmount] = useState("");
+  /* Per person, on top of the discount above. Migration 031. */
+  const [discountPerPerson, setDiscountPerPerson] = useState("");
   const [taxMode, setTaxMode] = useState<TaxMode>("none");
   const [taxRatePercent, setTaxRatePercent] = useState("0");
 
@@ -332,6 +348,8 @@ export default function QuotationEditor({
     setInfants(record.infants ? String(record.infants) : "");
 
     setStays(record.accommodation ?? []);
+    setFlights(cleanFlights(record.flights));
+    setBaggage(cleanBaggage(record.baggage));
 
     setItems(
       lines.length
@@ -349,9 +367,17 @@ export default function QuotationEditor({
     setDiscountPercent(
       record.discount_percent_bp ? String(record.discount_percent_bp / 100) : "",
     );
+    // discount_paise is the per-person part plus the flat amount, so the flat
+    // box gets back only what is left once the per-person part is taken out.
+    const storedDiscount = splitStoredDiscount(record);
     setDiscountAmount(
       record.discount_mode === "amount"
-        ? paiseToInputValue(record.discount_paise)
+        ? paiseToInputValue(storedDiscount.restPaise)
+        : "",
+    );
+    setDiscountPerPerson(
+      record.discount_per_person_paise
+        ? paiseToInputValue(record.discount_per_person_paise)
         : "",
     );
     setTaxMode(record.tax_mode);
@@ -397,10 +423,28 @@ export default function QuotationEditor({
     [parsedItems],
   );
 
+  const travellerCounts = {
+    adults: Number(adults) || 0,
+    children_with_bed: Number(childrenWithBed) || 0,
+    children_without_bed: Number(childrenWithoutBed) || 0,
+  };
+  // The breakdown when there is one. The lines are the fallback for a quotation
+  // made before migration 025, or one nobody has filled the travellers in on.
+  const paxCount = paxFromBreakdown(travellerCounts) ?? defaultPax(parsedItems);
+
+  /**
+   * Whether the row has migration 031's columns. Until it is applied by hand,
+   * PostgREST rejects a write naming them, so the per-person discount and the
+   * flights are neither shown nor sent — and saving keeps working as before.
+   */
+  const has031 = Boolean(quotation && "flights" in quotation);
+
   const discountPercentBp = Math.round((Number(discountPercent) || 0) * 100);
   const discountAmountPaise = parsePaise(discountAmount) ?? 0;
+  const discountPerPersonPaise = has031 ? (parsePaise(discountPerPerson) ?? 0) : 0;
 
-  const discountPaise = useMemo(
+  /** The whole-quote part alone: the percentage or flat amount. */
+  const quoteDiscountPaise = useMemo(
     () =>
       resolveQuoteDiscount(
         subtotalPaise,
@@ -410,6 +454,19 @@ export default function QuotationEditor({
       ),
     [subtotalPaise, discountMode, discountPercentBp, discountAmountPaise],
   );
+
+  /** Per person x pax, plus the above, clamped to the subtotal. */
+  const combinedDiscount = useMemo(
+    () =>
+      resolveTotalDiscount(
+        subtotalPaise,
+        quoteDiscountPaise,
+        discountPerPersonPaise,
+        paxCount,
+      ),
+    [subtotalPaise, quoteDiscountPaise, discountPerPersonPaise, paxCount],
+  );
+  const discountPaise = combinedDiscount.totalPaise;
 
   const taxRateBp = Math.round((Number(taxRatePercent) || 0) * 100);
 
@@ -424,14 +481,6 @@ export default function QuotationEditor({
     [parsedItems, discountPaise, taxMode, taxRateBp],
   );
 
-  const travellerCounts = {
-    adults: Number(adults) || 0,
-    children_with_bed: Number(childrenWithBed) || 0,
-    children_without_bed: Number(childrenWithoutBed) || 0,
-  };
-  // The breakdown when there is one. The lines are the fallback for a quotation
-  // made before migration 025, or one nobody has filled the travellers in on.
-  const paxCount = paxFromBreakdown(travellerCounts) ?? defaultPax(parsedItems);
   const perPerson = perPersonPaise(totals.totalPaise, paxCount);
 
   function changeTraveller(
@@ -563,6 +612,16 @@ export default function QuotationEditor({
       discount_mode: discountMode,
       discount_percent_bp: discountMode === "percent" ? discountPercentBp : 0,
       discount_paise: totals.discountPaise,
+      // Migration 031's columns, only once it is applied — see has031.
+      ...(has031
+        ? {
+            // The rate as typed, even while pax is blank and it comes to
+            // nothing: it is what the customer was promised per head.
+            discount_per_person_paise: discountPerPersonPaise,
+            flights: cleanFlights(flights),
+            baggage: cleanBaggage(baggage),
+          }
+        : {}),
       taxable_paise: totals.taxablePaise,
       tax_mode: taxMode,
       tax_rate_bp: taxMode === "none" ? 0 : taxRateBp,
@@ -609,6 +668,10 @@ export default function QuotationEditor({
       childrenWithoutBed,
       infants,
       stays,
+      has031,
+      discountPerPersonPaise,
+      flights,
+      baggage,
     ],
   );
 
@@ -1564,6 +1627,24 @@ export default function QuotationEditor({
               <FiPlus /> Add a hotel
             </button>
           </div>
+
+          {/* --------------------------------------------------- flights --- */}
+          {has031 && (
+            <div className="mt-6 border-t border-stone-100 pt-5">
+              <FlightsEditor
+                flights={flights}
+                baggage={baggage}
+                onChange={(next) => {
+                  setFlights(next);
+                  touch();
+                }}
+                onBaggageChange={(next) => {
+                  setBaggage(next);
+                  touch();
+                }}
+              />
+            </div>
+          )}
         </section>
 
         {/* ---------------------------------------------------- the price --- */}
@@ -1759,8 +1840,8 @@ export default function QuotationEditor({
                   {/* The admin says "five percent"; the customer reads a rupee
                       figure. Both are shown so neither is a surprise. */}
                   <span className="mt-1 block font-body text-xs text-[#526168]">
-                    {discountPaise > 0
-                      ? `${formatRupees(discountPaise, { trimZeroPaise: true })} off`
+                    {quoteDiscountPaise > 0
+                      ? `${formatRupees(quoteDiscountPaise, { trimZeroPaise: true })} off`
                       : "Nothing off yet"}
                   </span>
                 </label>
@@ -1787,6 +1868,30 @@ export default function QuotationEditor({
                 </label>
               )}
 
+              {/* Per person, ON TOP OF whatever is chosen above — "five
+                  percent, and two thousand a head". See resolveTotalDiscount. */}
+              {has031 && (
+                <label className="block sm:col-span-2">
+                  <span className={LABEL}>Discount per person (₹)</span>
+                  <input
+                    inputMode="decimal"
+                    value={discountPerPerson}
+                    onChange={(event) => {
+                      setDiscountPerPerson(event.target.value);
+                      touch();
+                    }}
+                    placeholder="2000"
+                    className={FIELD}
+                  />
+                  <span className="mt-1 block font-body text-xs text-[#526168]">
+                    {discountPerPersonPaise > 0
+                      ? paxCount
+                        ? `${formatRupees(discountPerPersonPaise, { trimZeroPaise: true })} × ${paxCount} pax = ${formatRupees(combinedDiscount.perPersonTotalPaise, { trimZeroPaise: true })} off`
+                        : "Add the travellers above — this multiplies by the pax count."
+                      : "Optional. Multiplied by the pax count, infants excluded."}
+                  </span>
+                </label>
+              )}
 
               {business?.default_tax_mode !== "none" && (
                 <>
@@ -1864,7 +1969,23 @@ export default function QuotationEditor({
                   <dt className="text-[#526168]">Subtotal</dt>
                   <dd>{formatRupees(totals.subtotalPaise)}</dd>
                 </div>
-                {totals.discountPaise > 0 && (
+                {/* Two lines, as the PDF prints them: the per-person part
+                    and the whole-quote part, which together are
+                    totals.discountPaise. */}
+                {combinedDiscount.perPersonTotalPaise > 0 && paxCount && (
+                  <div className="flex justify-between">
+                    <dt className="text-[#526168]">
+                      Discount (
+                      {formatRupees(discountPerPersonPaise, {
+                        trimZeroPaise: true,
+                      })}{" "}
+                      × {paxCount})
+                    </dt>
+                    <dd>- {formatRupees(combinedDiscount.perPersonTotalPaise)}</dd>
+                  </div>
+                )}
+                {totals.discountPaise - combinedDiscount.perPersonTotalPaise >
+                  0 && (
                   <div className="flex justify-between">
                     <dt className="text-[#526168]">
                       Discount
@@ -1872,7 +1993,13 @@ export default function QuotationEditor({
                         ? ` (${formatTaxRate(discountPercentBp)})`
                         : ""}
                     </dt>
-                    <dd>- {formatRupees(totals.discountPaise)}</dd>
+                    <dd>
+                      -{" "}
+                      {formatRupees(
+                        totals.discountPaise -
+                          combinedDiscount.perPersonTotalPaise,
+                      )}
+                    </dd>
                   </div>
                 )}
                 {taxMode !== "none" && taxRateBp > 0 && (

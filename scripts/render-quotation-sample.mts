@@ -9,6 +9,7 @@
  *   1-quotation-plain.pdf      one line, no trip details — the pre-025 shape
  *   2-quotation-full.pdf       every block filled, nested itinerary, two hotels
  *   3-quotation-terms.pdf      the same with the policy annexure behind it
+ *   4-quotation-flights.pdf    one line, flights pasted, ₹2,000 off per person
  *
  *   npm run sample:quotation -- <outDir>
  *
@@ -255,6 +256,36 @@ const fullItems = lines([
 
 const policies = invoicePolicyLists(undefined);
 
+/* Migration 031: the flights as the agent sends them, and "₹2,000 off per
+   person" on top of the 5% build() already applies. */
+const FLIGHTS: Partial<QuotationRecord> = {
+  flights: [
+    { airline: "Saudi Airline", flight_no: "SV 771", from: "BOM", to: "JED", date: "2026-12-26", departs: "11:00", arrives: "14:15" },
+    { airline: "Saudi Airline", flight_no: "SV 770", from: "JED", to: "BOM", date: "2027-01-09", departs: "02:10", arrives: "09:25" },
+  ],
+  baggage: { checkin_kg: 20, checkin_pieces: 2, cabin_kg: 7, cabin_pieces: 1 },
+};
+
+function withPerPersonDiscount(quotation: QuotationRecord, ratePaise: number): QuotationRecord {
+  const perPersonTotal = ratePaise * (quotation.pax ?? 0);
+  const discount = Math.min(quotation.discount_paise + perPersonTotal, quotation.subtotal_paise);
+  const totals = computeInvoiceTotals({
+    items: [{ quantity: 1, unitPricePaise: quotation.subtotal_paise }],
+    discountPaise: discount,
+    taxMode: "none",
+    taxRateBp: 0,
+  });
+  return {
+    ...quotation,
+    discount_per_person_paise: ratePaise,
+    discount_paise: totals.discountPaise,
+    taxable_paise: totals.taxablePaise,
+    round_off_paise: totals.roundOffPaise,
+    total_paise: totals.totalPaise,
+    amount_in_words: paiseToWords(totals.totalPaise),
+  };
+}
+
 const samples = [
   {
     file: "1-quotation-plain.pdf",
@@ -266,6 +297,12 @@ const samples = [
     file: "2-quotation-full.pdf",
     quotation: build(fullItems, FULL_TRIP),
     items: fullItems,
+    policies: [],
+  },
+  {
+    file: "4-quotation-flights.pdf",
+    quotation: withPerPersonDiscount(build(plainItems, FLIGHTS), 200000),
+    items: plainItems,
     policies: [],
   },
   {

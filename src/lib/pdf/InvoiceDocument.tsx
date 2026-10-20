@@ -17,6 +17,7 @@ import { stateNameForCode } from "../invoices";
 import type { InvoicePolicyList } from "../siteContent";
 import {
   BusinessBlock,
+  FlightsPanel,
   GOLD,
   INK,
   MUTED,
@@ -321,6 +322,16 @@ export default function InvoiceDocument({
             ) : null}
           </View>
         </View>
+
+        {/* -------------------------------------------------- flights ----- */}
+        {/* Migration 031. What the customer is paying to fly on; nothing when
+            the bill has no flights, so a visa fee or a pre-031 row prints as
+            it always did. */}
+        <FlightsPanel
+          flights={invoice.flights}
+          baggage={invoice.baggage}
+          style={{ marginTop: 8 }}
+        />
 
         {/* ----------------------------------------------------- items ----- */}
         <View style={{ marginTop: 12 }}>

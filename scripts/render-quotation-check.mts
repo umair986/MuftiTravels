@@ -902,6 +902,98 @@ for (const testCase of cases) {
 }
 
 /* ---------------------------------------------------------------------------
+ * Migration 031's blocks: optional, and present when filled.
+ *
+ * Same shape as the 025 case above. A quotation with no flights and no
+ * per-person discount must draw exactly what a row WITHOUT those columns draws
+ * — that is the window between a deploy and the migration being applied by
+ * hand — and filling them in must add lines without pushing a one-line quote
+ * onto another page. The discount must print as two lines, "₹2,000 x 8" and
+ * the remainder, not one merged figure the customer cannot check.
+ *
+ * The fixture drops the inclusions and exclusions. With the full lists this
+ * one-line quote is already within a panel's height of the page foot, and the
+ * flights push the lists — only the lists — onto page two, which is the same
+ * thing 025's trip blocks do and is fine. What must NOT happen is the flights
+ * costing a page on a quote that otherwise had room.
+ * ------------------------------------------------------------------------- */
+{
+  const base = build({
+    name: "x",
+    lines: 1,
+    pax: 8,
+    taxMode: "none",
+    discountMode: "none",
+  });
+  const render = (quotation: unknown) =>
+    renderToBuffer(
+      QuotationDocument({
+        quotation: quotation as never,
+        items: base.items,
+        business,
+        policies: [],
+      }) as never,
+    );
+
+  const empty = {
+    ...base.quotation,
+    inclusions: [],
+    exclusions: [],
+    flights: [],
+    discount_per_person_paise: 0,
+  };
+  const legacy = { ...empty } as Record<string, unknown>;
+  delete legacy.flights;
+  delete legacy.discount_per_person_paise;
+
+  const withFlights = {
+    ...empty,
+    flights: [
+      { airline: "Saudi Airline", flight_no: "SV 771", from: "BOM", to: "JED", date: "2026-12-26", departs: "11:00", arrives: "14:15" },
+      { airline: "Saudi Airline", flight_no: "SV 770", from: "JED", to: "BOM", date: "2027-01-09", departs: "02:10", arrives: "09:25" },
+    ],
+    baggage: { checkin_kg: 20, checkin_pieces: 2, cabin_kg: 7, cabin_pieces: 1 },
+  };
+
+  // ₹16,000 per person (2,000 x 8) plus a ₹5,000 flat amount, stored as one
+  // discount_paise, against the same total with no rate: one line more.
+  const discountPaise = 1600000 + 500000;
+  const priced = (rate: number) => ({
+    ...empty,
+    discount_mode: "amount",
+    discount_paise: discountPaise,
+    discount_per_person_paise: rate,
+    taxable_paise: base.quotation.subtotal_paise - discountPaise,
+    total_paise: base.quotation.subtotal_paise - discountPaise,
+  });
+
+  const [emptyBuffer, legacyBuffer, flightsBuffer, splitBuffer, mergedBuffer] =
+    await Promise.all([
+      render(empty),
+      render(legacy),
+      render(withFlights),
+      render(priced(200000)),
+      render(priced(0)),
+    ]);
+
+  const a = drawnLines(emptyBuffer).length;
+  const b = drawnLines(legacyBuffer).length;
+  const c = drawnLines(flightsBuffer).length;
+  const split = drawnLines(splitBuffer).length;
+  const merged = drawnLines(mergedBuffer).length;
+  const pagesBefore = pageCount(emptyBuffer);
+  const pagesAfter = pageCount(flightsBuffer);
+
+  report(
+    "031 blocks optional",
+    // Not `merged + 1`: one more line in the totals moves every line beneath
+    // it, and drawnLines counts positions, not statements.
+    a === b && c > a && pagesAfter === pagesBefore && split > merged,
+    `defaults=${a} missingColumns=${b} flights=${c} pages=${pagesBefore}/${pagesAfter} discountLines=${split}/${merged}`,
+  );
+}
+
+/* ---------------------------------------------------------------------------
  * Every character these documents hard-code has a glyph in Noto Sans.
  *
  * The bug this catches already shipped. The per-person band was written as

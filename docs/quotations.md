@@ -602,6 +602,79 @@ away rather than a thing already paid for.
 
 ---
 
+## Decision 13 — A per-person discount adds to the whole-quote one
+
+*Migration `031_flights_and_per_person_discount.sql`.*
+
+"₹2,000 off per person" is how a concession is usually offered at the counter. For eight
+travellers it is ₹16,000, which the admin was working out on a calculator and typing into the
+flat-amount box — storing the right total and losing the promise the customer was given.
+
+`discount_per_person_paise` stores the **rate**. The total discount is still the single
+`discount_paise` that `computeInvoiceTotals` subtracts before tax: rate × `pax`, plus the
+percentage or flat amount, clamped to the subtotal (`resolveTotalDiscount`). The percentage is
+taken on the subtotal, not on what remains after the per-person part, so each line on the PDF is
+exactly what it says. `pax` excludes infants, as it does for the per-person figure: a discount per
+person is a discount per priced bed.
+
+The PDF prints two lines — `Discount (₹2,000 × 8)` and the remainder — recovered from stored
+columns alone by `splitStoredDiscount`, so a sent quotation's document is reproducible from its row.
+
+- **Rejected: a fourth `discount_mode`.** The request is per-person *along with* the other
+  discount; a mode is one-or-the-other by construction.
+- **Rejected: storing the per-person total.** It is derivable from the rate and `pax`, and two
+  stored figures that can disagree are how the PDF and the database come to quote different
+  discounts.
+- **Invoices do not get one.** A quotation converts into an invoice's single discount as the
+  resolved total — the customer accepted a number, and the invoice states that number.
+
+`quotations_discount_shape` is widened so mode `none` may carry a non-zero `discount_paise` only
+when a per-person rate explains it.
+
+## Decision 14 — Flights are a snapshot, on both documents, and usually absent
+
+*Same migration.* `flights` is `jsonb` on `quotations` and `invoices`: an array of legs
+(`airline`, `flight_no`, `from`, `to`, `date`, `departs`, `arrives`), all text. Beside it, `baggage`
+is a `jsonb` object — `checkin_kg`, `checkin_pieces`, `cabin_kg`, `cabin_pieces` — once per
+document, because a ticket states one allowance for the booking. Pure helpers live in
+`src/lib/flights.ts`, shared by both documents and importing nothing from the catalogue.
+
+They arrive pasted from the airline or an agent —
+
+```
+Saudi Airline
+SV 771  BOM-JED 26Dec 11:00 - 14:15
+SV 770 JED - BOM 09Jan 2:10 - 09:25
+Check in Baggage 20Kg x 2pc . Cabin Bag  07Kg x 1pc
+```
+
+— so the editor's **Paste from airline** reads that into editable fields (`parseFlightPaste`), and a
+paste it cannot read changes nothing. The baggage line is read as the allowance, not taken for an
+airline name. Airline is per leg because a return on another carrier is a real booking.
+
+**The date is picked on a calendar** (`DatePicker`, as everywhere else) and stored as YYYY-MM-DD.
+"26Dec" has no year, so the paste reader supplies the first one on or after the leg before it
+(today, for the first leg) — `inferLegDate`. That is what puts a "09Jan" return after a December
+outbound in the following year. The editor shows the inferred date in the calendar to be checked.
+A date the reader cannot make sense of is kept as the text it was, flagged in the editor, and
+printed as typed rather than dropped — which is why `date` is not validated as a date in SQL.
+
+Baggage is stored as numbers rather than the agent's sentence, so every document prints it one way:
+"Check-in 20 kg × 2 pc · Cabin 7 kg × 1 pc", each half only when stated.
+
+Often there are no flights yet — "tickets to follow". Empty is the default, and `FlightsPanel` in
+`src/lib/pdf/shared.tsx` returns nothing for it, so both documents print exactly what they printed
+before.
+
+On a quotation the legs and baggage stay editable after sending, like everything else (Decision 6).
+On an invoice both are added to `guard_issued_invoice()`'s frozen set: a rescheduled flight after issue is
+a cancel-and-reissue, because the paid-in-full copy is rebuilt from the row and must not quietly
+carry different flights from the one the customer first received. `createInvoiceFromQuotation`
+copies them across.
+
+Both editors detect the pre-031 window (`"flights" in row`) and neither show nor send the new
+columns until the migration is applied, so saving keeps working in between.
+
 ---
 
 ## Schema

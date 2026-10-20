@@ -7,6 +7,7 @@ import {
   durationLabel,
   parseDescriptionLines,
   perPersonPaise,
+  splitStoredDiscount,
   totalTravellers,
   travellerSummary,
   type QuotationItemRecord,
@@ -15,6 +16,7 @@ import {
 import type { InvoicePolicyList } from "../siteContent";
 import {
   BusinessBlock,
+  FlightsPanel,
   GOLD,
   INK,
   MUTED,
@@ -349,6 +351,10 @@ export default function QuotationDocument({
 
   const perPerson = perPersonPaise(quotation.total_paise, quotation.pax);
 
+  // Per-person concession and whole-quote discount, recovered from stored
+  // columns only (migration 031). Pre-031 rows come back as one line.
+  const discount = splitStoredDiscount(quotation);
+
   const inclusions = (quotation.inclusions ?? []).filter((line) => line.trim());
   const exclusions = (quotation.exclusions ?? []).filter((line) => line.trim());
 
@@ -565,6 +571,14 @@ export default function QuotationDocument({
           </View>
         ) : null}
 
+        {/* -------------------------------------------------- flights ------ */}
+        {/* Migration 031. Prints nothing until tickets are confirmed. */}
+        <FlightsPanel
+          flights={quotation.flights}
+          baggage={quotation.baggage}
+          style={{ marginTop: 8 }}
+        />
+
         {/* ----------------------------------------------------- items ----- */}
         <View style={styles.table}>
           <View style={styles.tableHead} fixed>
@@ -667,7 +681,18 @@ export default function QuotationDocument({
               <Text>{money(quotation.subtotal_paise)}</Text>
             </View>
 
-            {quotation.discount_paise > 0 ? (
+            {/* "₹2,000 × 8": the per-head promise, stated as it was made.
+                The customer checks this line on their phone. */}
+            {discount.perPersonTotalPaise > 0 ? (
+              <View style={styles.totalLine}>
+                <Text style={styles.totalLabel}>
+                  Discount ({money(discount.perPersonRatePaise)} × {quotation.pax})
+                </Text>
+                <Text>- {money(discount.perPersonTotalPaise)}</Text>
+              </View>
+            ) : null}
+
+            {discount.restPaise > 0 ? (
               <View style={styles.totalLine}>
                 {/* The percentage is the concession that was negotiated. A bare
                     rupee figure throws away the reason it was given. */}
@@ -678,7 +703,7 @@ export default function QuotationDocument({
                     ? ` (${formatTaxRate(quotation.discount_percent_bp)})`
                     : ""}
                 </Text>
-                <Text>- {money(quotation.discount_paise)}</Text>
+                <Text>- {money(discount.restPaise)}</Text>
               </View>
             ) : null}
 
