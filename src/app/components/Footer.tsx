@@ -134,18 +134,10 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/#why-us"
+                  href="/guides/how-to-perform-umrah-step-by-step"
                   className="hover:text-[#D4AF37] transition-colors"
                 >
-                  Why Mufti Travels
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/#journey"
-                  className="hover:text-[#D4AF37] transition-colors"
-                >
-                  Spiritual Blueprint
+                  How to Perform Umrah
                 </Link>
               </li>
               <li>

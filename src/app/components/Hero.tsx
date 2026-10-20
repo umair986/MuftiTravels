@@ -1,134 +1,21 @@
-"use client";
-
-import React, { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import {
-  FiArrowRight,
-  FiShield,
-  FiStar,
-  FiMapPin,
-  FiCalendar,
-  FiCompass,
-} from "react-icons/fi";
+import { FiArrowRight, FiShield, FiStar, FiCompass } from "react-icons/fi";
 import { FaWhatsapp, FaKaaba } from "react-icons/fa";
-import CustomDropdown, { DropdownOption } from "./ui/CustomDropdown";
-import { useRouter } from "next/navigation";
 import { PILGRIMS_SERVED, yearsInService } from "@/lib/business";
 
-const cityOptions: DropdownOption[] = [
-  {
-    value: "Mumbai",
-    label: "Mumbai",
-    badge: "Direct Flights",
-    sublabel: "Chhatrapati Shivaji Intl (BOM)",
-  },
-  {
-    value: "Delhi",
-    label: "Delhi",
-    badge: "Direct Flights",
-    sublabel: "Indira Gandhi Intl (DEL)",
-  },
-  {
-    value: "Lucknow",
-    label: "Lucknow",
-    badge: "Direct Flights",
-    sublabel: "Chaudhary Charan Singh (LKO)",
-  },
-  // No "Direct Flights" badge below until the business confirms one — the same
-  // rule as `direct` in src/lib/cityLanding.ts.
-  {
-    value: "Hyderabad",
-    label: "Hyderabad",
-    sublabel: "Rajiv Gandhi Intl (HYD)",
-  },
-  {
-    value: "Bangalore",
-    label: "Bangalore",
-    sublabel: "Kempegowda Intl (BLR)",
-  },
-  {
-    value: "Ahmedabad",
-    label: "Ahmedabad",
-    sublabel: "Sardar Vallabhbhai Patel Intl (AMD)",
-  },
-  {
-    value: "All India",
-    label: "All India",
-    badge: "Connecting",
-    sublabel: "Any other city, via a connection",
-  },
-];
-
-const categoryOptions: DropdownOption[] = [
-  {
-    value: "Umrah Fixed Group",
-    label: "15 Days Fixed Group",
-    badge: "All Inclusive",
-    sublabel: "Flights + 5★ Hotels + Buffet Meals",
-  },
-  {
-    value: "Umrah Land Package",
-    label: "Land Package (Hotel Only)",
-    badge: "Flexible",
-    sublabel: "14 to 30 Days stays in Haramain",
-  },
-  {
-    value: "Ziyarat",
-    label: "Umrah + Ziyarat Combos",
-    badge: "Popular",
-    sublabel: "Turkey / Dubai / Jerusalem Al-Aqsa",
-  },
-];
-
-const seasonOptions: DropdownOption[] = [
-  {
-    value: "Upcoming",
-    label: "Next Available Departures",
-    badge: "Immediate",
-    sublabel: "Fastest visa processing",
-  },
-  {
-    value: "Ramadan Special",
-    label: "Ramadan Special",
-    badge: "Early Bird",
-    sublabel: "First 15 / Last 15 Days & Laylatul Qadr",
-  },
-  {
-    value: "Shawwal",
-    label: "Shawwal / Post-Eid",
-    badge: "Pleasant",
-    sublabel: "Peaceful atmosphere after Ramadan",
-  },
-  {
-    value: "Custom",
-    label: "Custom Family Dates",
-    badge: "VIP",
-    sublabel: "Choose your own private schedule",
-  },
-];
-
+/**
+ * One job: get the visitor to a price. The primary button scrolls to the
+ * departure-city cards directly below rather than leaving the page, and the
+ * second offers WhatsApp for anyone who would rather ask than browse.
+ *
+ * A three-field search form used to sit at the base of the hero. It was
+ * removed: its city field duplicated the city cards one scroll down, its
+ * category and season fields filtered on choices the monthly catalogue does
+ * not really offer, and on a phone it pushed the hero past one screen.
+ */
 export default function Hero() {
-  const router = useRouter();
-  const [selectedCity, setSelectedCity] = useState("Mumbai");
-  const [selectedType, setSelectedType] = useState("Umrah Fixed Group");
-  const [selectedMonth, setSelectedMonth] = useState("Upcoming");
-
-  const handleQuickSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Carry the selections through instead of discarding them. The catalog
-    // filters on city and category, and echoes the season back so nothing the
-    // visitor chose disappears without explanation.
-    const params = new URLSearchParams({
-      city: selectedCity,
-      category: selectedType,
-      season: selectedMonth,
-    });
-    router.push(`/packages?${params.toString()}`);
-  };
-
   return (
-    <section className="relative min-h-[92vh] flex flex-col justify-between bg-[#06131D] z-30">
+    <section className="relative lg:min-h-[80vh] flex flex-col justify-between bg-[#06131D] z-30">
       {/* Background Image with Cinematic Sacred Overlay - overflow contained inside this layer */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <Image
@@ -146,7 +33,7 @@ export default function Hero() {
       </div>
 
       {/* Main Hero Body */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12 flex-1 flex flex-col justify-center items-center text-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-14 sm:pt-16 sm:pb-16 flex-1 flex flex-col justify-center items-center text-center">
         {/* Sacred Bismillah Calligraphy Pill */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-[#D4AF37]/30 backdrop-blur-md mb-6 animate-float">
           <FaKaaba className="text-[#D4AF37] w-3.5 h-3.5" />
@@ -169,20 +56,20 @@ export default function Hero() {
 
         {/* Editorial Subtitle */}
         <p className="text-base sm:text-lg md:text-xl text-stone-300 font-normal max-w-2xl mx-auto leading-relaxed mb-8 sm:mb-10 font-body">
-          Expertly curated Hajj, Umrah & Ziyarat packages. Experience luxury 5★
-          hotels at the steps of the Haram, scholar-led spiritual guidance,
-          direct flights, and 24/7 dedicated ground Khadim support.
+          Monthly Umrah packages from Mumbai and across India — hotels near the
+          Haram, scholar-led guidance, and our own team with you in Makkah &
+          Madinah.
         </p>
 
         {/* Dual Primary CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md sm:max-w-none mb-12">
-          <Link
-            href="/packages"
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-md sm:max-w-none mb-10 sm:mb-12">
+          <a
+            href="#packages"
             className="w-full sm:w-auto px-8 py-3.5 rounded-full font-bold text-sm sm:text-base text-[#06131D] gold-gradient-bg hover:brightness-110 shadow-xl shadow-[#D4AF37]/20 transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer"
           >
-            <span>Explore Packages</span>
+            <span>See This Month&apos;s Packages</span>
             <FiArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
+          </a>
 
           <a
             href="https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20consult%20for%20an%20Umrah%20package."
@@ -191,7 +78,7 @@ export default function Hero() {
             className="w-full sm:w-auto px-7 py-3.5 rounded-full font-semibold text-sm sm:text-base text-white bg-white/10 hover:bg-white/15 border border-[#D4AF37]/40 backdrop-blur-md transition-all duration-300 flex items-center justify-center gap-2.5"
           >
             <FaWhatsapp className="w-5 h-5 text-emerald-400" />
-            <span>Instant WhatsApp Concierge</span>
+            <span>WhatsApp for Today&apos;s Price</span>
           </a>
         </div>
 
@@ -255,61 +142,6 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Embedded Luxury Custom Pilgrimage Finder Bar at the base of Hero */}
-      <div className="relative z-40 max-w-5xl mx-auto px-4 sm:px-6 w-full -mb-8 sm:-mb-10">
-        <form
-          onSubmit={handleQuickSearch}
-          className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 border border-[#EBE5DC] flex flex-col md:flex-row items-center gap-4 text-left"
-        >
-          {/* Custom Departure City Dropdown */}
-          <div className="flex-1 w-full border-b md:border-b-0 md:border-r border-stone-200 pb-3 md:pb-0 md:pr-4">
-            <CustomDropdown
-              label="Departure City"
-              icon={<FiMapPin />}
-              options={cityOptions}
-              value={selectedCity}
-              onChange={setSelectedCity}
-            />
-          </div>
-
-          {/* Custom Package Category Dropdown */}
-          <div className="flex-1 w-full border-b md:border-b-0 md:border-r border-stone-200 pb-3 md:pb-0 md:pr-4">
-            <CustomDropdown
-              label="Package Category"
-              icon={<FaKaaba />}
-              options={categoryOptions}
-              value={selectedType}
-              onChange={setSelectedType}
-            />
-          </div>
-
-          {/* Custom Travel Season Dropdown with right alignment */}
-          <div className="flex-1 w-full border-b md:border-b-0 md:border-r border-stone-200 pb-3 md:pb-0 md:pr-4">
-            <CustomDropdown
-              label="Travel Season"
-              icon={<FiCalendar />}
-              options={seasonOptions}
-              value={selectedMonth}
-              onChange={setSelectedMonth}
-              align="right"
-            />
-          </div>
-
-          {/* Search Trigger Button */}
-          <div className="w-full md:w-auto flex-shrink-0">
-            <button
-              type="submit"
-              className="w-full md:w-auto px-7 py-3.5 rounded-xl font-bold text-sm text-[#06131D] gold-gradient-bg hover:brightness-105 shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
-            >
-              <span>View Packages</span>
-              <FiArrowRight />
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Decorative Bottom Shadow Spacer */}
-      <div className="h-12 bg-transparent" />
     </section>
   );
 }

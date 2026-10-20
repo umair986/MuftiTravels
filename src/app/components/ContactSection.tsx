@@ -54,6 +54,15 @@ export default function ContactSection() {
                   <p className="font-semibold text-white">
                     A/57 Madni Complex, Bandra East, Mumbai - 400051, Maharashtra, India
                   </p>
+                  {/* Phones get this link in place of the embedded map below. */}
+                  <a
+                    href="https://www.google.com/maps/search/?api=1&query=A%2F57+Madni+Complex%2C+Bandra+East%2C+Mumbai+400051"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-[#D4AF37] sm:hidden"
+                  >
+                    Get directions &rarr;
+                  </a>
                 </div>
               </div>
 
@@ -100,8 +109,9 @@ export default function ContactSection() {
               </div>
             </div>
 
-            {/* Embedded Google Maps */}
-            <div className="h-56 rounded-2xl overflow-hidden border border-[#D4AF37]/30 shadow-inner relative">
+            {/* Embedded Google Maps — tablet and up; on a phone it was a
+                screen of scrolling for what one tap on "Get directions" does. */}
+            <div className="hidden sm:block h-56 rounded-2xl overflow-hidden border border-[#D4AF37]/30 shadow-inner relative">
               <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d942.797227481456!2d72.84293416954392!3d19.05543006650086!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7c923b0543ed1%3A0x7fba5dc35363fd9a!2sNational%20Girl&#39;s%20High%20School%20%26%20Junior%20College!5e0!3m2!1sen!2sin!4v1749732890489!5m2!1sen!2sin"
                 width="100%"

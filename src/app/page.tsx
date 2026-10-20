@@ -3,9 +3,7 @@ import { getHomeCollections } from "@/lib/gallery.server";
 import { organizationSchema, websiteSchema } from "@/lib/seo";
 import JsonLd from "./components/JsonLd";
 import Hero from "./components/Hero";
-import About from "./components/About";
 import WhyChooseUs from "./components/WhyChooseUs";
-import JourneyTimeline from "./components/JourneyTimeline";
 import DepartureCities from "./components/DepartureCities";
 import AffiliatedPartners from "./components/AffiliatedPartners";
 import Testimonials from "./components/Testimonials";
@@ -23,34 +21,32 @@ export default async function Home() {
     <main className="min-h-screen bg-[#FAF8F5]">
       <JsonLd data={organizationSchema()} />
       <JsonLd data={websiteSchema()} />
-      {/* 1. Atmospheric Sacred Hero */}
+      {/* Order follows the sale: offer, prices, reasons to trust, proof,
+          contact. The 5-stage Umrah timeline used to sit before the prices;
+          that teaching lives at /guides/how-to-perform-umrah-step-by-step. */}
+
+      {/* 1. Hero — headline and one way to the prices */}
       <Hero />
 
-      {/* 2. Airline & Hospitality Accreditation Marquee */}
-      <AffiliatedPartners />
-
-      {/* 3. About Mufti Travels (Khadim al-Hujjaj narrative) */}
-      <About />
-
-      {/* 4. The 5 Blessed Stages of Umrah (Signature Timeline Blueprint) */}
-      <JourneyTimeline />
-
-      {/* 5. Departure cities — this month's packages, Mumbai featured */}
+      {/* 2. Departure cities — this month's packages, Mumbai featured */}
       <DepartureCities packages={packages} />
 
-      {/* 6. Why Choose Us (Bento Grid Architecture) */}
+      {/* 3. Why Mufti Travels (About + Why Choose Us, merged) */}
       <WhyChooseUs />
 
-      {/* 7. Pilgrim Reflections & Testimonials */}
+      {/* 4. Airline partners */}
+      <AffiliatedPartners />
+
+      {/* 5. Pilgrim Reflections & Testimonials */}
       <Testimonials />
 
-      {/* 8. Sacred Moments & Holy Sites Gallery */}
+      {/* 6. Sacred Moments & Holy Sites Gallery */}
       <GallerySection collections={galleryCollections} />
 
-      {/* 9. Consultation & Contact Experience */}
+      {/* 7. Consultation & Contact Experience */}
       <ContactSection />
 
-      {/* 10. Luxury Obsidian Footer */}
+      {/* 8. Luxury Obsidian Footer */}
       <Footer />
     </main>
   );

@@ -1,196 +1,155 @@
-"use client";
+import Image from "next/image";
+import {
+  FaHandsHelping,
+  FaKaaba,
+  FaUserGraduate,
+  FaUtensils,
+  FaWhatsapp,
+} from "react-icons/fa";
+import { FiArrowRight } from "react-icons/fi";
+import { FOUNDED_YEAR, PILGRIMS_SERVED } from "@/lib/business";
 
-import { motion } from "framer-motion";
-import { FaKaaba, FaUtensils, FaUserGraduate, FaShieldAlt, FaHandsHelping } from "react-icons/fa";
-import { FiCheck, FiArrowRight } from "react-icons/fi";
+/**
+ * The home page's one trust section, placed after the packages: by the time a
+ * visitor reaches it they have seen a price, and this is the reason to book.
+ *
+ * It replaced two sections, "About" and a bento-grid "Why Choose Us", that
+ * between them and the hero badges made the same four claims three times —
+ * hotels near the Haram, scholar guidance, ground support, pilgrims served —
+ * and on a phone ran to roughly five screens. Each claim is now made once,
+ * in a sentence. The section keeps the `about` id because the header's
+ * "About Us" link and the footer point at it.
+ */
 
-const WhyChooseUs = () => {
+const REASONS = [
+  {
+    icon: <FaKaaba />,
+    title: "Hotels close to the Haram",
+    desc: "4★ and 5★ hotels in the Clock Tower and Markaziah areas, so elders and families walk to prayer instead of waiting for shuttles.",
+  },
+  {
+    icon: <FaUserGraduate />,
+    title: "Scholar-led guidance",
+    desc: "Experienced Muftis travel with our groups to guide every rite of Umrah and lead the Ziyarat.",
+  },
+  {
+    icon: <FaUtensils />,
+    title: "Hygienic Indian meals",
+    desc: "Three fresh buffet meals a day from Indian chefs — familiar food, pure halal.",
+  },
+  {
+    icon: <FaHandsHelping />,
+    title: "24/7 Khadim support",
+    desc: "Our Arabic & Urdu-speaking team in Makkah & Madinah handles transfers, check-ins, Rawdah permits and medical needs.",
+  },
+];
+
+const STATS = [
+  { value: PILGRIMS_SERVED, label: "Happy Pilgrims" },
+  { value: "100%", label: "Visa Success Rate" },
+  { value: "4.9 / 5★", label: "Google Rating" },
+];
+
+export default function WhyChooseUs() {
   return (
-    <section className="py-20 bg-[#FAF8F5] relative overflow-hidden" id="why-us">
-      {/* Background Subtle Pattern */}
-      <div className="absolute inset-0 islamic-pattern opacity-40 pointer-events-none" />
+    <section
+      className="relative overflow-hidden bg-[#06131D] py-16 text-white sm:py-20"
+      id="about"
+    >
+      <div className="islamic-pattern-dark pointer-events-none absolute inset-0 opacity-20" />
+      <div className="pointer-events-none absolute -right-24 top-0 h-72 w-72 rounded-full bg-[#D4AF37]/10 blur-3xl" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#946E19] text-xs font-semibold uppercase tracking-wider mb-3">
-            <FaKaaba className="w-3.5 h-3.5" />
-            <span>The Mufti Travels Standard</span>
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto mb-10 max-w-3xl text-center sm:mb-14">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-[#F3E5AB]">
+            <FaKaaba className="h-3.5 w-3.5" />
+            <span>Khadim al-Hujjaj &bull; Since {FOUNDED_YEAR}</span>
           </div>
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-[#06131D] tracking-tight mb-4">
-            Why Discerning Pilgrims Choose{" "}
+          <h2 className="mb-4 font-display text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+            Why pilgrims travel with{" "}
             <span className="gold-gradient-text italic">Mufti Travels</span>
           </h2>
-          <p className="text-stone-600 font-body text-base sm:text-lg leading-relaxed">
-            We don&apos;t treat this as a commercial tour. To us, every traveler is a guest of Allah (Duyoof ar-Rahman), deserving of absolute reverence and world-class care.
+          <p className="font-body text-base leading-relaxed text-stone-300 sm:text-lg">
+            Every traveller is a guest of Allah, and we look after them that
+            way — from the visa in India to the last Tawaf.
           </p>
         </div>
 
-        {/* Bento Grid Architecture */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          
-          {/* Bento Card 1: Featured Major Card (Span 2 cols on desktop) */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="md:col-span-2 lg:col-span-2 bg-[#06131D] text-white rounded-3xl p-6 sm:p-8 border border-[#D4AF37]/30 shadow-xl flex flex-col justify-between relative overflow-hidden group"
-          >
-            <div className="absolute top-0 right-0 w-48 h-48 bg-[#D4AF37]/10 rounded-full blur-2xl pointer-events-none" />
-
-            <div>
-              <div className="w-12 h-12 rounded-2xl gold-gradient-bg flex items-center justify-center text-[#06131D] mb-6 shadow-lg shadow-[#D4AF37]/20">
-                <FaKaaba className="w-6 h-6" />
-              </div>
-              <span className="text-xs uppercase tracking-widest text-[#F3E5AB] font-semibold">
-                Uncompromising Proximity
-              </span>
-              <h3 className="font-display text-2xl sm:text-3xl font-bold text-white mt-1 mb-3">
-                Hotels Right at the Steps of the Haram
-              </h3>
-              <p className="text-stone-300 font-body text-sm sm:text-base leading-relaxed mb-6">
-                Say goodbye to crowded shuttle buses and 2-kilometer walks in the desert heat. Our premium packages feature renowned 5-star properties in Clock Tower (Makkah) and Markaziah (Madinah) located just 50 to 150 meters from the courtyard.
+        <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-12 lg:gap-8">
+          <div className="relative h-64 overflow-hidden rounded-3xl border-2 border-[#D4AF37]/30 shadow-2xl sm:h-80 lg:col-span-5 lg:h-auto">
+            <Image
+              src="/about.jpg"
+              alt="Pilgrims at Masjid Al-Haram with Mufti Travels"
+              fill
+              sizes="(min-width: 1024px) 40vw, 100vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#06131D]/90 via-transparent to-transparent" />
+            <div className="absolute bottom-5 left-5 right-5">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#F3E5AB]">
+                Our Sacred Promise
+              </p>
+              <p className="mt-0.5 font-serif text-base italic sm:text-lg">
+                &ldquo;You focus solely on your Ibadah & prayers; we take care
+                of every worldly detail.&rdquo;
               </p>
             </div>
+          </div>
 
-            <div className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs text-stone-300">
-              <span className="flex items-center gap-1.5 font-medium">
-                <FiCheck className="text-emerald-400" /> Walking Distance (0-3 mins)
-              </span>
-              <span className="flex items-center gap-1.5 font-medium">
-                <FiCheck className="text-emerald-400" /> Ideal for Elderly & Families
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Bento Card 2: Scholar-Led Guidance */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-sm hover:border-[#D4AF37]/40 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-[#06131D] text-[#D4AF37] flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
-                <FaUserGraduate className="w-5 h-5" />
-              </div>
-              <span className="text-xs uppercase tracking-wider text-stone-400 font-semibold">
-                Authentic Sunnah
-              </span>
-              <h3 className="font-serif text-xl font-bold text-[#06131D] mt-1 mb-2">
-                Scholar-Led Guidance
-              </h3>
-              <p className="text-stone-600 font-body text-sm leading-relaxed">
-                Experienced Muftis accompany our groups to clarify all Fiqh of Umrah, answer queries, and lead insightful historical talks at Ziyarat sites.
-              </p>
+          <div className="flex flex-col lg:col-span-7">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {REASONS.map((reason) => (
+                <div
+                  key={reason.title}
+                  className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 transition-colors hover:border-[#D4AF37]/40"
+                >
+                  <div className="gold-gradient-bg flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-[#06131D]">
+                    {reason.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-display text-xl font-bold text-white">
+                      {reason.title}
+                    </h3>
+                    <p className="mt-1 font-body text-sm leading-relaxed text-stone-300">
+                      {reason.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-stone-100 flex items-center gap-2 text-xs font-semibold text-[#946E19]">
-              <span>Step-by-step Mutawwif</span>
-              <FiCheck />
-            </div>
-          </motion.div>
-
-          {/* Bento Card 3: Indian Buffet Catering */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-sm hover:border-[#D4AF37]/40 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
-                <FaUtensils className="w-5 h-5" />
-              </div>
-              <span className="text-xs uppercase tracking-wider text-stone-400 font-semibold">
-                Comfort Food
-              </span>
-              <h3 className="font-serif text-xl font-bold text-[#06131D] mt-1 mb-2">
-                Hygienic Indian Meals
-              </h3>
-              <p className="text-stone-600 font-body text-sm leading-relaxed">
-                Enjoy 3 fresh daily meals (Breakfast, Lunch & Dinner) prepared by authentic Indian chefs — offering balanced, tasty, and familiar nourishment.
-              </p>
+            <div className="mt-6 grid grid-cols-3 gap-4 border-t border-white/10 pt-6 text-center">
+              {STATS.map((stat) => (
+                <div key={stat.label}>
+                  <p className="font-display text-2xl font-bold text-[#F3E5AB] sm:text-3xl">
+                    {stat.value}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-stone-400 sm:text-xs">
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-stone-100 flex items-center gap-2 text-xs font-semibold text-[#946E19]">
-              <span>Buffet Style &bull; Pure Halal</span>
-              <FiCheck />
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row lg:mt-auto lg:pt-8">
+              <a
+                href="#packages"
+                className="gold-gradient-bg flex items-center justify-center gap-2 rounded-full px-7 py-3.5 font-body text-sm font-bold text-[#06131D] shadow-lg transition hover:brightness-110"
+              >
+                See This Month&apos;s Packages <FiArrowRight />
+              </a>
+              <a
+                href="https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20consult%20for%20an%20Umrah%20package."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2.5 rounded-full border border-[#D4AF37]/40 bg-white/10 px-7 py-3.5 font-body text-sm font-semibold text-white transition hover:bg-white/15"
+              >
+                <FaWhatsapp className="h-5 w-5 text-emerald-400" /> Ask Our Team
+              </a>
             </div>
-          </motion.div>
-
-          {/* Bento Card 4: Verified Visas & Insurance */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-sm hover:border-[#D4AF37]/40 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mb-6 group-hover:scale-105 transition-transform">
-                <FaShieldAlt className="w-5 h-5" />
-              </div>
-              <span className="text-xs uppercase tracking-wider text-stone-400 font-semibold">
-                Official Authorization
-              </span>
-              <h3 className="font-serif text-xl font-bold text-[#06131D] mt-1 mb-2">
-                Visa & Insurance Verified
-              </h3>
-              <p className="text-stone-600 font-body text-sm leading-relaxed">
-                Direct integration with official visa processing ensures fast Umrah visa stamping and mandatory medical health coverage.
-              </p>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-stone-100 flex items-center gap-2 text-xs font-semibold text-emerald-600">
-              <span>100% Visa Approval Track</span>
-              <FiCheck />
-            </div>
-          </motion.div>
-
-          {/* Bento Card 5: 24/7 Dedicated Ground Khadims (Span 2 cols on desktop) */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="md:col-span-2 lg:col-span-3 bg-gradient-to-r from-[#0D2A3A] to-[#06131D] text-white rounded-3xl p-6 sm:p-8 border border-[#D4AF37]/30 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] flex-shrink-0">
-                <FaHandsHelping className="w-6 h-6" />
-              </div>
-              <div>
-                <span className="text-xs uppercase tracking-widest text-[#F3E5AB] font-semibold">
-                  Personalized Khidmah
-                </span>
-                <h3 className="font-display text-xl sm:text-2xl font-bold text-white mt-1 mb-1">
-                  24/7 On-Ground Khadim Support in Saudi Arabia
-                </h3>
-                <p className="text-stone-300 font-body text-sm leading-relaxed max-w-2xl">
-                  You are never alone. Our resident Arabic & Urdu-speaking team handles airport transfers, hotel check-ins, medical needs, and wheelchair assistance.
-                </p>
-              </div>
-            </div>
-
-            <a
-              href="#contact"
-              className="px-6 py-3 rounded-full font-bold text-xs sm:text-sm text-[#06131D] gold-gradient-bg hover:brightness-110 shadow-md flex-shrink-0 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
-            >
-              <span>Consult Our Team</span>
-              <FiArrowRight />
-            </a>
-          </motion.div>
-
+          </div>
         </div>
-
       </div>
     </section>
   );
-};
-
-export default WhyChooseUs;
+}
