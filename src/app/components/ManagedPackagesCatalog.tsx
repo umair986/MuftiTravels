@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { FiArrowRight, FiCalendar, FiClock, FiMapPin } from "react-icons/fi";
 import { FaKaaba, FaPlaneDeparture } from "react-icons/fa";
 import { stayNights } from "@/lib/categoryFields";
@@ -115,13 +115,15 @@ function ManagedPackageCard({
   tiers: PackageTierRecord[];
   tags: PackageTagRecord[];
 }) {
-  const router = useRouter();
   // The admin's chosen price, or the lowest one in the table — see cardPrice().
   // Undefined when nothing is priced yet — a Hajj season still being costed,
   // for instance — and the card says "On request" rather than a confident "₹0".
   const shown = cardPrice(record);
   const shownTierName = shown ? tierName(shown.tier, tiers) : undefined;
-  const slug = categorySlug(record.category);
+  // A real <a href>, not a button calling router.push: Google's crawler
+  // follows links, not clicks, and a button left every package page reachable
+  // only through the sitemap (SEO audit, 20 Oct 2026).
+  const href = `/packages/${categorySlug(record.category)}/${record.slug}`;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm transition-all duration-300 hover:border-[#D4AF37]/50 hover:shadow-2xl">
@@ -156,7 +158,7 @@ function ManagedPackageCard({
             {record.category}
           </p>
           <h3 className="mt-2 line-clamp-2 font-card-title text-xl font-semibold leading-snug text-[#06131D] sm:text-[1.4rem] transition-colors group-hover:text-[#946E19]">
-            {record.name}
+            <Link href={href}>{record.name}</Link>
           </h3>
           <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-stone-600">
             {record.description}
@@ -180,16 +182,14 @@ function ManagedPackageCard({
               )}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() =>
-              router.push(`/packages/${slug}/${record.slug}`)
-            }
+          <Link
+            href={href}
+            aria-label={`Book Now: ${record.name}`}
             className="flex items-center gap-1.5 rounded-xl gold-gradient-bg px-4 py-2.5 text-xs font-bold text-[#06131D] shadow-md transition-all hover:brightness-110 sm:text-sm"
           >
             <span>Book Now</span>
             <FiArrowRight />
-          </button>
+          </Link>
         </div>
       </div>
     </article>
