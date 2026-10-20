@@ -16,12 +16,15 @@ export default function PackageTagBadges({
   tagKeys,
   registry,
   className = "",
+  limit,
 }: {
   tagKeys: string[] | undefined;
   registry: PackageTagRecord[];
   className?: string;
+  /** Show only the first few, in the registry's order. */
+  limit?: number;
 }) {
-  const tags = resolveTags(tagKeys, registry);
+  const tags = resolveTags(tagKeys, registry).slice(0, limit);
   if (!tags.length) return null;
 
   return (

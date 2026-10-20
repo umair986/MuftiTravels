@@ -358,12 +358,79 @@ function InfoList({
   );
 }
 
+/** Every sharing type any tier is priced for, in first-seen order. */
+function sharingTypesOf(prices: PackageData["prices"]): SharingType[] {
+  const seen = new Set<string>();
+  for (const tierPrices of Object.values(prices)) {
+    if (tierPrices) {
+      for (const key of Object.keys(tierPrices)) {
+        seen.add(key);
+      }
+    }
+  }
+  return Array.from(seen);
+}
+
+/**
+ * Phones only. The price box comes after the whole itinerary there, three
+ * screens down, so this bar keeps the selected price and a way to enquire in
+ * reach from the first scroll. Tapping the price jumps to the box to change
+ * the tier or sharing. Hidden from `lg`, where the box itself is sticky.
+ */
+function MobilePriceBar({
+  price,
+  label,
+  onEnquire,
+}: {
+  price: number | undefined;
+  label: string;
+  onEnquire: () => void;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#D4AF37]/30 bg-[#06131D]/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_30px_-12px_rgba(0,0,0,0.5)] backdrop-blur lg:hidden">
+      <div className="mx-auto flex max-w-xl items-center gap-3">
+        <a href="#price" className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium text-stone-400">
+            {label}
+          </p>
+          <p className="font-display text-2xl font-bold leading-tight text-white">
+            {price ? `₹${price.toLocaleString("en-IN")}` : "On request"}
+            {price ? (
+              <span className="ml-1 font-body text-xs font-normal text-stone-400">
+                /person
+              </span>
+            ) : null}
+          </p>
+        </a>
+        <a
+          href="https://wa.me/919323063712"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="WhatsApp us about this package"
+          className="grid h-12 w-12 flex-shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+        >
+          <FaWhatsapp className="h-5 w-5" />
+        </a>
+        <button
+          type="button"
+          onClick={onEnquire}
+          className="gold-gradient-bg flex h-12 flex-shrink-0 items-center gap-1.5 rounded-full px-5 text-sm font-bold text-[#06131D]"
+        >
+          Enquire <FiArrowRight />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function PriceSelector({
   pkg,
   onEnquire,
   tierRegistry,
   tier,
   setTier,
+  sharing,
+  setSharing,
 }: {
   pkg: PackageData;
   onEnquire: () => void;
@@ -371,26 +438,18 @@ function PriceSelector({
   /** Shared with the "Where you'll stay" tabs, so the two never disagree. */
   tier: PackageTier;
   setTier: (tier: PackageTier) => void;
+  /** Lifted for the phone's sticky price bar, which shows the same price. */
+  sharing: SharingType;
+  setSharing: (sharing: SharingType) => void;
 }) {
   const availableTiers = useMemo(
     () => Object.keys(pkg.prices) as PackageTier[],
     [pkg.prices],
   );
   // Derive sharing types from the package data itself.
-  const dynamicSharingTypes: SharingType[] = useMemo(() => {
-    const seen = new Set<string>();
-    for (const tierPrices of Object.values(pkg.prices)) {
-      if (tierPrices) {
-        for (const key of Object.keys(tierPrices)) {
-          seen.add(key);
-        }
-      }
-    }
-    return Array.from(seen);
-  }, [pkg.prices]);
-
-  const [sharing, setSharing] = useState<SharingType>(
-    pkg.defaultPrice?.sharing ?? dynamicSharingTypes[0] ?? "Quad",
+  const dynamicSharingTypes = useMemo(
+    () => sharingTypesOf(pkg.prices),
+    [pkg.prices],
   );
   useEffect(() => {
     if (!pkg.prices[tier]?.[sharing])
@@ -399,10 +458,13 @@ function PriceSelector({
           (type) => pkg.prices[tier]?.[type] !== undefined,
         ) ?? dynamicSharingTypes[0] ?? "Quad",
       );
-  }, [pkg.prices, sharing, tier, dynamicSharingTypes]);
+  }, [pkg.prices, sharing, setSharing, tier, dynamicSharingTypes]);
   const price = pkg.prices[tier]?.[sharing];
   return (
-    <aside className="sticky top-24 overflow-hidden rounded-2xl border border-[#D4AF37]/25 bg-[#06131D] shadow-2xl">
+    <aside
+      id="price"
+      className="sticky top-24 scroll-mt-24 overflow-hidden rounded-2xl border border-[#D4AF37]/25 bg-[#06131D] shadow-2xl"
+    >
       <div className="islamic-pattern-dark border-b border-[#D4AF37]/20 px-6 py-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-[#F3E5AB]">
           Tailor your stay
@@ -506,6 +568,10 @@ export default function PackageDetailExperience({
     (pkg.defaultPrice?.tier as PackageTier | undefined) ??
       (Object.keys(pkg.prices)[0] as PackageTier),
   );
+  const [sharing, setSharing] = useState<SharingType>(
+    pkg.defaultPrice?.sharing ?? sharingTypesOf(pkg.prices)[0] ?? "Quad",
+  );
+  const shownPrice = pkg.prices[tier]?.[sharing];
   useEffect(() => {
     document.body.style.overflow = isFormOpen ? "hidden" : "";
     return () => {
@@ -531,7 +597,7 @@ export default function PackageDetailExperience({
           />
         )}
       </AnimatePresence>
-      <main className="bg-[#FAF8F5]">
+      <main className="bg-[#FAF8F5] pb-20 lg:pb-0">
         <section className="relative isolate min-h-[25rem] overflow-hidden bg-[#06131D]">
           <Image
             src={pkg.image}
@@ -567,13 +633,24 @@ export default function PackageDetailExperience({
               {pkg.name}
             </h1>
             <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-stone-300">
-              <span className="flex items-center gap-1.5 text-[#F3E5AB]">
-                {Array.from({ length: pkg.rating }).map((_, index) => (
-                  <FaStar key={index} className="h-3.5 w-3.5 text-[#D4AF37]" />
-                ))}
-                <span className="ml-1 text-stone-200">{pkg.rating}.0</span>
-              </span>
-              <span>{pkg.reviews} pilgrim reviews</span>
+              {/* A 5.0 beside "0 pilgrim reviews" reads as invented, so the
+                  rating only shows once there are reviews behind it. */}
+              {pkg.reviews > 0 ? (
+                <>
+                  <span className="flex items-center gap-1.5 text-[#F3E5AB]">
+                    {Array.from({ length: pkg.rating }).map((_, index) => (
+                      <FaStar
+                        key={index}
+                        className="h-3.5 w-3.5 text-[#D4AF37]"
+                      />
+                    ))}
+                    <span className="ml-1 text-stone-200">
+                      {pkg.rating}.0
+                    </span>
+                  </span>
+                  <span>{pkg.reviews} pilgrim reviews</span>
+                </>
+              ) : null}
               <span className="inline-flex items-center gap-1.5">
                 <FiShield className="text-emerald-400" />
                 Government-authorized service
@@ -583,7 +660,9 @@ export default function PackageDetailExperience({
         </section>
         <section className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
           <div className="absolute inset-0 islamic-pattern opacity-30" />
-          <div className="relative grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_23rem]">
+          {/* grid-cols-1 on phones: an implicit column sizes to its widest
+              child, and the scrolling tab bar pushed the card off-screen. */}
+          <div className="relative grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_23rem]">
             <article className="rounded-2xl border border-stone-200 bg-white p-5 shadow-[0_12px_35px_-18px_rgba(6,19,29,0.25)] sm:p-8">
               <div className="mb-7 flex flex-col justify-between gap-4 border-b border-stone-200 pb-6 sm:flex-row sm:items-end">
                 <div>
@@ -709,12 +788,21 @@ export default function PackageDetailExperience({
               pkg={pkg}
               tier={tier}
               setTier={setTier}
+              sharing={sharing}
+              setSharing={setSharing}
               onEnquire={() => setIsFormOpen(true)}
             />
           </div>
         </section>
       </main>
       <Footer />
+      {!isFormOpen && (
+        <MobilePriceBar
+          price={shownPrice}
+          label={`${tierName(tier, tiers)} · ${sharing}`}
+          onEnquire={() => setIsFormOpen(true)}
+        />
+      )}
     </>
   );
 }

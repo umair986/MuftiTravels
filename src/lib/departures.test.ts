@@ -289,6 +289,13 @@ describe("formatDepartureDates", () => {
     assert.equal(formatDepartureDates(["2026-11-05", "2027-11-04"]), "5 Nov · 4 Nov");
   });
 
+  it("shows the earliest `limit` dates and counts the rest", () => {
+    const dates = ["2026-12-07", "2026-11-02", "2026-11-04", "2026-11-09", "2026-11-11", "2026-12-02"];
+    assert.equal(formatDepartureDates(dates, { limit: 4 }), "2, 4, 9, 11 Nov + 2 more");
+    assert.equal(formatDepartureDates(dates, { limit: 6 }), "2, 4, 9, 11 Nov · 2, 7 Dec");
+    assert.equal(formatDepartureDates(dates, { limit: 0 }), "2, 4, 9, 11 Nov · 2, 7 Dec");
+  });
+
   it("is empty for none", () => {
     assert.equal(formatDepartureDates(undefined), "");
     assert.equal(formatDepartureDates([]), "");

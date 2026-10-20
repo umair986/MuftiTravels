@@ -326,11 +326,19 @@ export function renameForPeriod(
  * Flight departure dates, as a pilgrim reads them: "5, 19 Nov · 3 Dec".
  * Dates are `YYYY-MM-DD` (a Postgres `date[]`); invalid ones are dropped,
  * the rest sorted, and the year left off — the period heading carries it.
+ *
+ * `limit` keeps a package card short on a phone, where a dozen dates wrapped
+ * to four lines: "2, 4, 9, 11 Nov + 8 more". The package page shows them all.
  */
-export function formatDepartureDates(dates: readonly string[] | null | undefined): string {
-  const valid = [...new Set(dates ?? [])]
+export function formatDepartureDates(
+  dates: readonly string[] | null | undefined,
+  { limit }: { limit?: number } = {},
+): string {
+  const all = [...new Set(dates ?? [])]
     .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value))
     .sort();
+  const valid = limit && limit > 0 ? all.slice(0, limit) : all;
+  const hidden = all.length - valid.length;
   const byMonth: { key: string; label: string; days: number[] }[] = [];
   for (const value of valid) {
     const label = MONTH_NAMES[Number(value.slice(5, 7)) - 1]?.slice(0, 3);
@@ -341,9 +349,10 @@ export function formatDepartureDates(dates: readonly string[] | null | undefined
     if (last && last.key === key) last.days.push(day);
     else byMonth.push({ key, label, days: [day] });
   }
-  return byMonth
+  const text = byMonth
     .map((group) => `${group.days.join(", ")} ${group.label}`)
     .join(" · ");
+  return hidden > 0 ? `${text} + ${hidden} more` : text;
 }
 
 function toMonthValue(year: number, monthIndex: number): string {

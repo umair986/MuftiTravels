@@ -29,8 +29,10 @@ export default function ContactSection() {
         {/* 2-Column Contact Container */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* Left Column: Office Details & Embedded Map */}
-          <div className="lg:col-span-6 bg-[#06131D] text-white rounded-3xl p-6 sm:p-8 border border-[#D4AF37]/30 shadow-2xl space-y-6">
+          {/* Left Column: Office Details & Embedded Map. Second on phones:
+              the form is what turns a visitor into a lead, and the office
+              details repeat in the footer just below. */}
+          <div className="order-2 lg:order-1 lg:col-span-6 bg-[#06131D] text-white rounded-3xl p-6 sm:p-8 border border-[#D4AF37]/30 shadow-2xl space-y-6">
             <div>
               <span className="text-xs uppercase tracking-widest text-[#F3E5AB] font-semibold">
                 Headquarters
@@ -125,7 +127,7 @@ export default function ContactSection() {
           </div>
 
           {/* Right Column: Contact Form */}
-          <div className="lg:col-span-6 bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-xl">
+          <div className="order-1 lg:order-2 lg:col-span-6 bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-xl">
             <ContactForm />
           </div>
 

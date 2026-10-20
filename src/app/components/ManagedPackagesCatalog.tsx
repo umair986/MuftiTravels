@@ -83,7 +83,7 @@ function FlightLine({ record }: { record: CmsPackageRecord }) {
           : "Connecting"
         : "";
   const carrier = [airline, routing].filter(Boolean).join(" · ");
-  const dates = formatDepartureDates(record.departure_dates);
+  const dates = formatDepartureDates(record.departure_dates, { limit: 4 });
   if (!carrier && !dates) return null;
 
   return (
@@ -135,14 +135,15 @@ function ManagedPackageCard({
           className="object-cover transition-transform duration-700 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#06131D]/80 via-transparent to-transparent" />
+        {/* At most two tags, and no tier badge: the tier is already named
+            beside the price, and four badges across a phone-width photo
+            read as noise ("Budget · Mumbai Special · Budget · Popular"). */}
         <PackageTagBadges
           tagKeys={record.card_tags}
           registry={tags}
-          className="absolute right-3 top-3 justify-end"
+          limit={2}
+          className="absolute left-3 right-3 top-3"
         />
-        <span className="absolute left-3 top-3 rounded-full bg-amber-700/90 px-3 py-1 text-xs font-bold text-white">
-          {shownTierName || "Package"}
-        </span>
         <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full border border-[#D4AF37]/30 bg-[#06131D]/85 px-3 py-1 text-xs font-medium text-[#F3E5AB]">
           <FiMapPin className="h-3.5 w-3.5 text-[#D4AF37]" />
           <span>{record.destinations}</span>
