@@ -27,9 +27,14 @@ export async function generateMetadata({
   const collection = await getGalleryCollection(slug);
   if (!collection) return { title: "Collection Not Found" };
 
+  // An admin caption is often a few words ("Anwar Diyafah Hotel in Makkah"),
+  // and the old fallback printed "0 photos" for an empty collection; both read
+  // as thin in a search result.
+  const caption = collection.description?.trim();
   const description =
-    collection.description ||
-    `${collection.photos.length} photos from ${collection.title}.`;
+    caption && caption.length >= 70
+      ? caption
+      : `${caption || collection.title}: photos from Mufti Travels pilgrim groups, by place and by journey.`;
   const coverUrl = collection.cover_image_url?.startsWith("http")
     ? collection.cover_image_url
     : `${SITE_URL}${collection.cover_image_url || "/og-image.jpg"}`;
@@ -38,6 +43,9 @@ export async function generateMetadata({
     title: collection.title,
     description,
     alternates: { canonical: `/gallery/${collection.slug}` },
+    // A collection with no photos yet is an empty page; keep it out of the
+    // index until the admin fills it. The sitemap skips it for the same reason.
+    ...(collection.photos.length ? {} : { robots: { index: false } }),
     openGraph: {
       title: `${collection.title} | Mufti Travels Gallery`,
       description,

@@ -59,7 +59,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
   const guidesIndexModified = GUIDES.map((guide) => guide.reviewed).sort().at(-1);
 
-  const galleryUrls = galleryCollections.map((collection) => ({
+  // Empty collections are noindex (gallery/[slug]/page.tsx); listing them
+  // here would contradict that.
+  const galleryUrls = galleryCollections
+    .filter((collection) => collection.photo_count > 0)
+    .map((collection) => ({
     url: `${siteUrl}/gallery/${collection.slug}`,
     lastModified: new Date(collection.updated_at ?? Date.now()),
     changeFrequency: "monthly" as const,

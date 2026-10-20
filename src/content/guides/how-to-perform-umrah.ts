@@ -35,7 +35,7 @@ export const howToPerformUmrah: Guide = {
   title: "How to Perform Umrah: A Step-by-Step Guide",
   metaTitle: "How to Perform Umrah: Step-by-Step Guide",
   description:
-    "The four rites of Umrah — Ihram, Tawaf, Sa'i and cutting the hair — explained step by step, with the miqat rules for pilgrims flying from India, the Sunnah acts, and practical tips for Makkah, based on Saudi Arabia's official Nusuk platform.",
+    "The four rites of Umrah — Ihram, Tawaf, Sa'i and cutting the hair — step by step, with the miqat rules for pilgrims flying from India.",
   eyebrow: "Umrah guide · Rituals",
   published: "2026-09-17",
   reviewed: "2026-09-17",

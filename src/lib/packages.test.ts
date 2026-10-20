@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cardPrice } from "./packages";
+import { cardPrice, packageMetaDescription } from "./packages";
 
 // Keys in the order Postgres returns jsonb: by length, so "Quad" before
 // "Double" whatever their prices — the order the old card logic trusted.
@@ -46,4 +46,40 @@ test("cardPrice: nothing priced is undefined, never zero", () => {
     cardPrice({ prices: { silver: { Quad: 0 } } as never }),
     undefined,
   );
+});
+
+test("packageMetaDescription: stay and price, with the closing line when it fits", () => {
+  assert.equal(
+    packageMetaDescription({
+      name: "15 Days Umrah Mumbai",
+      duration_days: 15,
+      details: { makkah_nights: 7, madinah_nights: 7 },
+      prices,
+      currency: "INR",
+    }),
+    "15 Days Umrah Mumbai: 7 nights Makkah + 7 nights Madinah, from ₹90,000 per person. Arranged by Mufti Travels, Mumbai.",
+  );
+});
+
+test("packageMetaDescription: unpriced and without nights falls back to days and no price", () => {
+  assert.equal(
+    packageMetaDescription({
+      name: "Shorter Hajj Package",
+      duration_days: 21,
+      prices: {} as never,
+      currency: "INR",
+    }),
+    "Shorter Hajj Package: 21 days. Arranged by Mufti Travels, Mumbai.",
+  );
+});
+
+test("packageMetaDescription: never exceeds 160 characters", () => {
+  const description = packageMetaDescription({
+    name: "A".repeat(200),
+    duration_days: 15,
+    details: { makkah_nights: 7, madinah_nights: 7 },
+    prices,
+    currency: "INR",
+  });
+  assert.ok(description.length <= 160, `${description.length} characters`);
 });

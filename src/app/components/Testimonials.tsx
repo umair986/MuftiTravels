@@ -90,7 +90,7 @@ const TestimonialCard = ({
           className="rounded-full object-cover mr-3.5 border-2 border-[#D4AF37]/40"
         />
         <div>
-          <h4 className="font-serif font-bold text-[#06131D] text-base">{name}</h4>
+          <h3 className="font-serif font-bold text-[#06131D] text-base">{name}</h3>
           <p className="text-xs text-stone-500 flex items-center gap-1">
             <FiMapPin className="text-[#D4AF37] w-3 h-3" />
             <span>{city}</span>

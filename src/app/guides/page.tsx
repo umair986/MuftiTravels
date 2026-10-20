@@ -18,7 +18,7 @@ import { breadcrumbSchema } from "@/lib/seo";
 export const metadata: Metadata = {
   title: "Hajj & Umrah Guides for Pilgrims from India",
   description:
-    "Practical guides for Indian pilgrims planning Umrah and Hajj — documents, visas, vaccinations and preparation, checked against official Indian and Saudi sources.",
+    "Practical guides for Indian pilgrims planning Umrah and Hajj — documents, visas and vaccinations, checked against official Indian and Saudi sources.",
   alternates: { canonical: "/guides" },
   openGraph: {
     title: "Hajj & Umrah Guides | Mufti Travels",

@@ -66,7 +66,7 @@ export const CATEGORY_LANDING: Record<CategoryType, CategoryLanding> = {
   },
 
   "Umrah Land Package": {
-    metaTitle: "Umrah Land Packages — Hotel, Visa & Transport",
+    metaTitle: "Umrah Land Packages: Hotel, Visa, Transport",
     metaDescription:
       "Umrah land packages without flights: Saudi visa, Makkah and Madinah hotels, transfers and ground support. For pilgrims booking their own airfare.",
     eyebrow: "Ground arrangements only",

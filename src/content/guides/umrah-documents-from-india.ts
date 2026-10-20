@@ -29,7 +29,7 @@ export const umrahDocumentsFromIndia: Guide = {
   title: "Umrah from India: Passport, Visa and Immigration Documents",
   metaTitle: "Umrah Documents from India: 2026 Checklist",
   description:
-    "What an Indian pilgrim needs for Umrah in 2026 — passport validity, the Saudi Umrah visa and Nusuk permits, the meningitis vaccine, ECR passports, PAN and airport immigration — checked against official Indian and Saudi sources.",
+    "What an Indian pilgrim needs for Umrah in 2026: passport, Saudi visa and Nusuk permits, meningitis vaccine, ECR and PAN, checked against official sources.",
   eyebrow: "Umrah guide · Documents",
   published: "2026-09-17",
   reviewed: "2026-09-17",

@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { CATEGORY_BY_SLUG } from "@/lib/categories";
-import { cmsPackageToPackageData } from "@/lib/packages";
+import {
+  cmsPackageToPackageData,
+  packageMetaDescription,
+} from "@/lib/packages";
 import { CITY_LANDING } from "@/lib/cityLanding";
 import {
   getPublicCatalog,
@@ -46,15 +49,22 @@ export async function generateMetadata({
   params: Promise<PackageRouteParams>;
 }): Promise<Metadata> {
   const routeParams = await params;
-  const { categoryName, pkg } = await getPackage(routeParams);
+  const { categoryName, pkg, record } = await getPackage(routeParams);
 
-  if (!categoryName || !pkg) {
+  if (!categoryName || !pkg || !record) {
     return { title: "Package Not Found" };
   }
 
+  // The layout's "%s | Mufti Travels" template adds 16 characters; a long
+  // package name drops it rather than have Google cut the name itself.
+  const title =
+    pkg.name.length + " | Mufti Travels".length > 60
+      ? { absolute: pkg.name }
+      : pkg.name;
+
   return {
-    title: pkg.name,
-    description: `${pkg.name} by Mufti Travels. Explore accommodation, transport, visa assistance and guided pilgrimage services included in this ${categoryName.toLowerCase()} package.`,
+    title,
+    description: packageMetaDescription(record),
     alternates: {
       canonical: `/packages/${routeParams.category}/${routeParams.slug}`,
     },

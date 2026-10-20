@@ -95,6 +95,45 @@ export function cardPrice(
   return lowest;
 }
 
+const META_DESCRIPTION_MAX = 160;
+
+/**
+ * The search-result snippet for a package page: what a pilgrim compares two
+ * results on — the stay and the price — rather than a sentence that differs
+ * between packages only by name. Google cuts a description at about 160
+ * characters, so the closing line is dropped before the facts are.
+ *
+ * Prices here are catalogue rupees, formatted the way the package card shows
+ * them; nothing in this string is paise.
+ */
+export function packageMetaDescription(
+  record: Pick<
+    CmsPackageRecord,
+    "name" | "duration_days" | "details" | "prices" | "currency"
+  > &
+    Partial<Pick<CmsPackageRecord, "card_price_tier" | "card_price_sharing">>,
+): string {
+  const { makkah, madinah } = stayNights(record.details);
+  const nights = (count: number, city: string) =>
+    count ? `${count} night${count === 1 ? "" : "s"} ${city}` : "";
+  const stay =
+    [nights(makkah, "Makkah"), nights(madinah, "Madinah")]
+      .filter(Boolean)
+      .join(" + ") || `${record.duration_days} days`;
+
+  const price = cardPrice(record);
+  const symbol = record.currency === "INR" ? "₹" : `${record.currency} `;
+  const from = price
+    ? `, from ${symbol}${price.amount.toLocaleString("en-IN")} per person`
+    : "";
+
+  const facts = `${record.name}: ${stay}${from}.`;
+  const full = `${facts} Arranged by Mufti Travels, Mumbai.`;
+  if (full.length <= META_DESCRIPTION_MAX) return full;
+  if (facts.length <= META_DESCRIPTION_MAX) return facts;
+  return `${facts.slice(0, META_DESCRIPTION_MAX - 1).trimEnd()}…`;
+}
+
 export function cmsPackageToPackageData(record: CmsPackageRecord): PackageData {
   return {
     name: record.name,
