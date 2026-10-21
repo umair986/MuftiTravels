@@ -240,8 +240,13 @@ export function MetaLine({
  */
 export function SignaturePanel({
   business,
+  note,
 }: {
   business: BusinessProfileRecord;
+  /** A tiny line under "Authorised signatory". Inside the panel, not below
+      it, so it costs no height beside the bank details and the invoice stays
+      one page. */
+  note?: string;
 }) {
   return (
     <View
@@ -262,6 +267,11 @@ export function SignaturePanel({
         <View style={{ height: 34 }} />
       )}
       <Text style={baseStyles.tiny}>Authorised signatory</Text>
+      {note ? (
+        <Text style={[baseStyles.tiny, { textAlign: "right", marginTop: 2 }]}>
+          {note}
+        </Text>
+      ) : null}
     </View>
   );
 }

@@ -280,6 +280,12 @@ export default function InvoiceDocument({
               {invoice.due_date ? (
                 <MetaLine label="Due" value={formatPdfDate(invoice.due_date)} />
               ) : null}
+              {invoice.travel_date ? (
+                <MetaLine
+                  label="Travel date"
+                  value={formatPdfDate(invoice.travel_date)}
+                />
+              ) : null}
               {isTaxInvoice && customerState ? (
                 <MetaLine
                   label="Place of supply"
@@ -537,7 +543,10 @@ export default function InvoiceDocument({
             <View style={{ flex: 1 }} />
           )}
 
-          <SignaturePanel business={business} />
+          <SignaturePanel
+            business={business}
+            note="This is a system generated invoice."
+          />
         </View>
 
         {invoice.notes ? (

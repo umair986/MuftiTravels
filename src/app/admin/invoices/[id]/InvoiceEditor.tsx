@@ -114,6 +114,7 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
   // Document
   const [issueDate, setIssueDate] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [travelDate, setTravelDate] = useState("");
   const [items, setItems] = useState<EditableItem[]>([blankItem()]);
   const [discount, setDiscount] = useState("");
   const [taxMode, setTaxMode] = useState<TaxMode>("none");
@@ -143,6 +144,8 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
    * and never sent — saving keeps working as it did.
    */
   const has031 = Boolean(invoice && "flights" in invoice);
+  /** Same, for migration 033's `travel_date`. */
+  const has033 = Boolean(invoice && "travel_date" in invoice);
 
   /* -------------------------------------------------------------- loading */
 
@@ -227,6 +230,7 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     setCustomerGstin(record.customer_gstin);
     setIssueDate(record.issue_date ?? todayInput());
     setDueDate(record.due_date ?? "");
+    setTravelDate(record.travel_date ?? "");
     setDiscount(
       record.discount_paise ? paiseToInputValue(record.discount_paise) : "",
     );
@@ -357,6 +361,8 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       customer_gstin: customerGstin.trim(),
       issue_date: issueDate || null,
       due_date: dueDate || null,
+      // Frozen at issue by guard_issued_invoice() (migration 033).
+      ...(has033 ? { travel_date: travelDate || null } : {}),
       subtotal_paise: totals.subtotalPaise,
       discount_paise: totals.discountPaise,
       taxable_paise: totals.taxablePaise,
@@ -392,6 +398,8 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       customerGstin,
       issueDate,
       dueDate,
+      travelDate,
+      has033,
       totals,
       taxMode,
       taxRateBp,
@@ -1431,6 +1439,19 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
                     disabled={readOnly}
                   />
                 </label>
+                {has033 && (
+                  <label className="block">
+                    <span className={LABEL}>Travel date</span>
+                    <DatePicker
+                      value={travelDate}
+                      onChange={(next) => {
+                        setTravelDate(next);
+                        touch();
+                      }}
+                      disabled={readOnly}
+                    />
+                  </label>
+                )}
                 <label className="block">
                   <span className={LABEL}>Discount (₹)</span>
                   <input

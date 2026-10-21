@@ -142,6 +142,7 @@ const invoice: InvoiceRecord = {
   status: "issued",
   issue_date: "2026-09-16",
   due_date: "2026-10-05",
+  travel_date: "2026-12-26",
   customer_name: "Abdul Rahman Shaikh",
   customer_phone: "+91 98200 11223",
   customer_email: "abdul.rahman@example.com",

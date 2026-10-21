@@ -16,7 +16,6 @@ import {
   PAID,
   PdfFooter,
   RULE,
-  SignaturePanel,
   baseStyles,
   formatPdfDate,
 } from "./shared";
@@ -29,6 +28,13 @@ import {
  * what arrived, what is left. No line items, no GST breakdown, no annexure —
  * a customer paying in three instalments gets three of these, and each should
  * read in five seconds on a phone.
+ *
+ * The one term it does repeat is the cancellation policy, because a payment is
+ * the moment the customer is most likely to ask what they get back. It comes
+ * from the invoice's frozen `policy_snapshot`, never the live site lists, so
+ * the receipt states the terms this booking was actually issued under.
+ *
+ * No signature: the receipt says it is system generated instead.
  *
  * Every figure comes from the payment row and the invoice total. "Due before"
  * uses `paid_before_paise`, which the database froze when the payment was
@@ -73,6 +79,18 @@ const styles = {
       lineHeight: 1.45,
       fontWeight: 600,
     },
+    policyBlock: {
+      marginTop: 12,
+      borderWidth: 1,
+      borderColor: RULE,
+      borderRadius: 3,
+      padding: 8,
+    },
+    /* Same bullet row as the invoice annexure: a "• " prefix would hang a
+       wrapped clause's second line under the dot. */
+    bulletRow: { flexDirection: "row", paddingVertical: 1 },
+    bulletDot: { width: 10, color: GOLD },
+    bulletText: { flex: 1, fontSize: 8, lineHeight: 1.4, color: MUTED },
     receivedMeta: {
       fontSize: 8,
       lineHeight: 1.45,
@@ -103,6 +121,15 @@ export default function ReceiptDocument({
 
   const customerState =
     invoice.customer_state || stateNameForCode(invoice.customer_state_code);
+
+  // `show_policies` / `policy_snapshot` are undefined on a row read before
+  // migration 021; that receipt simply prints no policy.
+  const cancellation =
+    invoice.show_policies === false
+      ? undefined
+      : (invoice.policy_snapshot ?? []).find(
+          (list) => /cancel/i.test(list.title) && list.items.length > 0,
+        );
 
   const paymentMeta = [
     paymentMethodLabel(payment.method),
@@ -237,10 +264,22 @@ export default function ReceiptDocument({
           <Text style={{ flex: 1 }}>{paiseToWords(payment.amount_paise)}</Text>
         </View>
 
-        <View style={[styles.row, { marginTop: 12 }]}>
-          <View style={{ flex: 1 }} />
-          <SignaturePanel business={business} />
-        </View>
+        {cancellation ? (
+          <View style={styles.policyBlock} wrap={false}>
+            <Text style={styles.panelHeading}>
+              {cancellation.title.toUpperCase()}
+            </Text>
+            {cancellation.items.map((item, index) => (
+              <View
+                key={`${index}-${item.slice(0, 24)}`}
+                style={styles.bulletRow}
+              >
+                <Text style={styles.bulletDot}>•</Text>
+                <Text style={styles.bulletText}>{item}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         {invoice.status === "cancelled" ? (
           <Text style={{ marginTop: 10, color: "#B3261E" }}>
@@ -250,8 +289,11 @@ export default function ReceiptDocument({
         ) : null}
 
         <Text style={[styles.tiny, { marginTop: 10 }]}>
-          This receipt acknowledges payment only. Items, taxes and terms are
-          on invoice {invoiceNumber}.
+          This receipt acknowledges payment only. Items, taxes and the full
+          terms are on invoice {invoiceNumber}.
+        </Text>
+        <Text style={[styles.tiny, { marginTop: 3, fontWeight: 600 }]}>
+          This is a system generated receipt and does not require a signature.
         </Text>
 
         <PdfFooter

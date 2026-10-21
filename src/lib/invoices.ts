@@ -83,6 +83,11 @@ export type InvoiceRecord = {
   flights?: FlightLeg[];
   /** The baggage allowance, frozen with the flights. Same pre-031 window. */
   baggage?: Baggage;
+  /**
+   * The departure date printed in the header (migration 033). Frozen at issue
+   * like the flights; null prints nothing. Optional: absent before 033.
+   */
+  travel_date?: string | null;
 
   /* `terms` is gone from this type on purpose. The column still exists and
      `select *` still returns it — migration 022 keeps it, because issued

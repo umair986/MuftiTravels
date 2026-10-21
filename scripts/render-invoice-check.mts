@@ -149,6 +149,7 @@ function build(
     status: "issued",
     issue_date: "2026-08-31",
     due_date: "2026-09-14",
+    travel_date: "2026-12-26",
     customer_name: "Abdul Rahman Shaikh",
     customer_phone: "+91 98200 11223",
     customer_email: "abdul.rahman@example.com",
@@ -525,13 +526,20 @@ for (const testCase of cases) {
     logo_data_uri: `data:image/png;base64,${readFileSync(resolve("public/favicon.png")).toString("base64")}`,
   };
 
-  for (const [name, payment, biz] of [
-    ["receipt R1, part", first, business],
-    ["receipt R2, settles", second, business],
-    ["receipt with logo", second, withLogo],
+  // The receipt repeats the cancellation policy from the invoice's frozen
+  // snapshot; every clause must print and the page must still be one.
+  const withPolicies = { ...invoice, policy_snapshot: policies };
+  const cancelClauses =
+    policies.find((list) => /cancel/i.test(list.title))?.items.length ?? 0;
+
+  for (const [name, payment, biz, inv, clauses] of [
+    ["receipt R1, part", first, business, invoice, 0],
+    ["receipt R2, settles", second, business, invoice, 0],
+    ["receipt with logo", second, withLogo, invoice, 0],
+    ["receipt + cancel pol.", second, withLogo, withPolicies, cancelClauses],
   ] as const) {
     const buffer = await renderToBuffer(
-      ReceiptDocument({ invoice, payment, business: biz }) as never,
+      ReceiptDocument({ invoice: inv, payment, business: biz }) as never,
     );
     const pages = pageCount(buffer);
     const glyphs = usesEmbeddedGlyphs(buffer);
@@ -542,12 +550,14 @@ for (const testCase of cases) {
       pages === 1 &&
       glyphs &&
       header.gap >= header.needed &&
-      draws === (biz.logo_data_uri ? 1 : 0);
+      draws === (biz.logo_data_uri ? 1 : 0) &&
+      linesAtSize(buffer, 8) >= clauses;
 
     if (!ok) failures += 1;
     console.log(
       `${ok ? "PASS" : "FAIL"}  ${name.padEnd(22)} ` +
         `pages=${pages} bytes=${String(buffer.length).padStart(6)} ` +
+        `clauseRuns=${linesAtSize(buffer, 8)}/${clauses} ` +
         `embeddedGlyphs=${glyphs} imageDraws=${draws} ` +
         `header=${header.gap.toFixed(1)}/${header.needed.toFixed(1)}pt`,
     );

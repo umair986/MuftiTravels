@@ -908,43 +908,53 @@ export async function createInvoiceFromQuotation(
   quotation: QuotationRecord,
   items: QuotationItemRecord[],
 ): Promise<{ id: string | null; error: string | null }> {
-  const { data, error } = await supabase
-    .from("invoices")
-    .insert({
-      customer_name: quotation.customer_name,
-      customer_phone: quotation.customer_phone,
-      customer_email: quotation.customer_email,
-      customer_address: quotation.customer_address,
-      customer_state: quotation.customer_state,
-      customer_state_code: quotation.customer_state_code,
-      customer_gstin: quotation.customer_gstin,
+  const draft = {
+    customer_name: quotation.customer_name,
+    customer_phone: quotation.customer_phone,
+    customer_email: quotation.customer_email,
+    customer_address: quotation.customer_address,
+    customer_state: quotation.customer_state,
+    customer_state_code: quotation.customer_state_code,
+    customer_gstin: quotation.customer_gstin,
 
-      source_enquiry_id: quotation.source_enquiry_id,
-      source_meta_lead_id: quotation.source_meta_lead_id,
-      source_quotation_id: quotation.id,
-      trip_id: quotation.trip_id,
+    source_enquiry_id: quotation.source_enquiry_id,
+    source_meta_lead_id: quotation.source_meta_lead_id,
+    source_quotation_id: quotation.id,
+    trip_id: quotation.trip_id,
 
-      // The money is carried over as resolved figures, not recomputed: the
-      // customer accepted these numbers. The invoice editor will recompute on
-      // its first save, and must arrive at the same answer — both documents run
-      // computeInvoiceTotals over the same lines and the same discount.
-      discount_paise: quotation.discount_paise,
-      tax_mode: quotation.tax_mode,
-      tax_rate_bp: quotation.tax_rate_bp,
+    // The money is carried over as resolved figures, not recomputed: the
+    // customer accepted these numbers. The invoice editor will recompute on
+    // its first save, and must arrive at the same answer — both documents run
+    // computeInvoiceTotals over the same lines and the same discount.
+    discount_paise: quotation.discount_paise,
+    tax_mode: quotation.tax_mode,
+    tax_rate_bp: quotation.tax_rate_bp,
 
-      notes: quotation.notes,
+    notes: quotation.notes,
 
-      // The flights travel with the deal; only sent when there are some, so a
-      // conversion still works in the window before migration 031 is applied.
-      ...(cleanFlights(quotation.flights).length
-        ? { flights: cleanFlights(quotation.flights) }
-        : {}),
-      ...(hasBaggage(cleanBaggage(quotation.baggage))
-        ? { baggage: cleanBaggage(quotation.baggage) }
-        : {}),
-    })
-    .select("id")
-    .single();
+    // The flights travel with the deal; only sent when there are some, so a
+    // conversion still works in the window before migration 031 is applied.
+    ...(cleanFlights(quotation.flights).length
+      ? { flights: cleanFlights(quotation.flights) }
+      : {}),
+    ...(hasBaggage(cleanBaggage(quotation.baggage))
+      ? { baggage: cleanBaggage(quotation.baggage) }
+      : {}),
+    // Same rule for the travel date and migration 033.
+    ...(quotation.travel_date ? { travel_date: quotation.travel_date } : {}),
+  };
+  const insert = (row: Record<string, unknown>) =>
+    supabase.from("invoices").insert(row).select("id").single();
+
+  let { data, error } = await insert(draft);
+  // Before 033 is applied PostgREST rejects the unknown column. Most
+  // quotations carry a travel date, so rather than fail the conversion, retry
+  // without it — the admin can type it once the migration is in.
+  if (error && /travel_date/.test(error.message)) {
+    const { travel_date: _dropped, ...withoutTravelDate } = draft;
+    void _dropped;
+    ({ data, error } = await insert(withoutTravelDate));
+  }
 
   if (error || !data) {
     return { id: null, error: error?.message ?? "Unknown error" };
