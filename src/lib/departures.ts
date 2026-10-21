@@ -332,7 +332,7 @@ export function renameForPeriod(
  */
 export function formatDepartureDates(
   dates: readonly string[] | null | undefined,
-  { limit }: { limit?: number } = {},
+  { limit, withYear }: { limit?: number; withYear?: boolean } = {},
 ): string {
   const all = [...new Set(dates ?? [])]
     .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value))
@@ -350,9 +350,34 @@ export function formatDepartureDates(
     else byMonth.push({ key, label, days: [day] });
   }
   const text = byMonth
-    .map((group) => `${group.days.join(", ")} ${group.label}`)
+    .map(
+      (group) =>
+        `${group.days.join(", ")} ${group.label}${withYear ? ` ${group.key.slice(0, 4)}` : ""}`,
+    )
     .join(" · ");
   return hidden > 0 ? `${text} + ${hidden} more` : text;
+}
+
+/**
+ * "Saudia · Direct", "Via Muscat", or "" — the airline and routing a package
+ * states (migration 028). A blank routing says nothing: never "Direct".
+ * Shared by the package card and the package page so they cannot disagree.
+ */
+export function flightCarrier(flight: {
+  airline?: string | null;
+  flight_routing?: string | null;
+  flight_via?: string | null;
+}): string {
+  const via = (flight.flight_via ?? "").trim();
+  const routing =
+    flight.flight_routing === "direct"
+      ? "Direct"
+      : flight.flight_routing === "via"
+        ? via
+          ? `Via ${via}`
+          : "Connecting"
+        : "";
+  return [(flight.airline ?? "").trim(), routing].filter(Boolean).join(" · ");
 }
 
 function toMonthValue(year: number, monthIndex: number): string {

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { FiArrowRight, FiCalendar, FiClock, FiMapPin } from "react-icons/fi";
 import { FaKaaba, FaPlaneDeparture } from "react-icons/fa";
 import { stayNights } from "@/lib/categoryFields";
-import { formatDepartureDates } from "@/lib/departures";
+import { flightCarrier, formatDepartureDates } from "@/lib/departures";
 import { CmsPackageRecord } from "@/lib/packages";
 import { cardPrice } from "@/lib/packages";
 import {
@@ -73,16 +73,7 @@ function StayLine({ record }: { record: CmsPackageRecord }) {
  * never prints "Direct".
  */
 function FlightLine({ record }: { record: CmsPackageRecord }) {
-  const airline = (record.airline ?? "").trim();
-  const routing =
-    record.flight_routing === "direct"
-      ? "Direct"
-      : record.flight_routing === "via"
-        ? record.flight_via?.trim()
-          ? `Via ${record.flight_via.trim()}`
-          : "Connecting"
-        : "";
-  const carrier = [airline, routing].filter(Boolean).join(" · ");
+  const carrier = flightCarrier(record);
   const dates = formatDepartureDates(record.departure_dates, { limit: 4 });
   if (!carrier && !dates) return null;
 

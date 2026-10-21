@@ -48,6 +48,12 @@ export interface PackageData {
   /** From the package's details; 0 when the admin has not filled it in. */
   makkahNights?: number;
   madinahNights?: number;
+  /** Migration 028: "Saudia · Direct", or "" when the package says nothing. */
+  flightCarrier?: string;
+  /** Migration 028: `YYYY-MM-DD`. */
+  departureDates?: string[];
+  /** Migration 026: a DEPARTURE_CITIES key, or "". */
+  departureCity?: string;
   /** Migration 032: this package's hotels per tier, over the tier's own. */
   tierHotels?: PackageTierHotels;
 }

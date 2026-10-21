@@ -14,6 +14,7 @@ import {
   cityName,
   compareNewestMonthFirst,
   currentIstMonth,
+  flightCarrier,
   formatDepartureDates,
   formatMonth,
   formatPeriod,
@@ -296,8 +297,25 @@ describe("formatDepartureDates", () => {
     assert.equal(formatDepartureDates(dates, { limit: 0 }), "2, 4, 9, 11 Nov · 2, 7 Dec");
   });
 
+  it("adds the year when asked, for a page with no period heading", () => {
+    assert.equal(
+      formatDepartureDates(["2027-02-01", "2027-01-30"], { withYear: true }),
+      "30 Jan 2027 · 1 Feb 2027",
+    );
+  });
+
   it("is empty for none", () => {
     assert.equal(formatDepartureDates(undefined), "");
     assert.equal(formatDepartureDates([]), "");
+  });
+});
+
+describe("flightCarrier", () => {
+  it("joins airline and routing, and never assumes direct", () => {
+    assert.equal(flightCarrier({ airline: "Saudia", flight_routing: "direct" }), "Saudia · Direct");
+    assert.equal(flightCarrier({ airline: " Saudia ", flight_routing: "" }), "Saudia");
+    assert.equal(flightCarrier({ flight_routing: "via", flight_via: "Muscat" }), "Via Muscat");
+    assert.equal(flightCarrier({ flight_routing: "via" }), "Connecting");
+    assert.equal(flightCarrier({}), "");
   });
 });

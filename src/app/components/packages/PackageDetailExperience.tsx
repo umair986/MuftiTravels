@@ -8,6 +8,7 @@ import {
   FaKaaba,
   FaPassport,
   FaPlane,
+  FaPlaneDeparture,
   FaStar,
   FaUtensils,
   FaWhatsapp,
@@ -39,6 +40,7 @@ import {
 } from "@/app/components/packageData";
 import { createClient } from "@/lib/supabase/client";
 import { tierName, withPackageHotels } from "@/lib/taxonomy";
+import { cityName, formatDepartureDates } from "@/lib/departures";
 import PackageTagBadges from "@/app/components/PackageTagBadges";
 import TierHotels from "./TierHotels";
 import DatePicker, { localToday } from "@/app/components/ui/pickers/DatePicker";
@@ -548,6 +550,56 @@ function PriceSelector({
   );
 }
 
+/**
+ * The flights the package card shows, in full on the package page: airline
+ * and routing, every departure date with its year, and the city flown from.
+ * Nothing when the package states none of them; a blank routing never reads
+ * as "Direct" (flightCarrier in lib/departures.ts).
+ */
+function FlightDetails({ pkg }: { pkg: PackageData }) {
+  const carrier = pkg.flightCarrier ?? "";
+  const dates = formatDepartureDates(pkg.departureDates, { withYear: true });
+  const city = cityName(pkg.departureCity);
+  if (!carrier && !dates) return null;
+
+  return (
+    <div className="mb-7 grid gap-4 rounded-2xl border border-[#D4AF37]/30 bg-[#FFFCF3] p-4 sm:grid-cols-2 sm:p-5">
+      {carrier || city ? (
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#06131D] text-[#D4AF37]">
+            <FaPlaneDeparture className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#946E19]">
+              Flight{city ? ` from ${city}` : ""}
+            </p>
+            <p className="mt-0.5 text-sm font-semibold text-[#06131D]">
+              {carrier || "Included — airline confirmed on booking"}
+            </p>
+          </div>
+        </div>
+      ) : null}
+      {dates ? (
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#06131D] text-[#D4AF37]">
+            <FiCalendar className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#946E19]">
+              {(pkg.departureDates?.length ?? 0) > 1
+                ? "Departure dates"
+                : "Departure date"}
+            </p>
+            <p className="mt-0.5 text-sm font-semibold text-[#06131D]">
+              {dates}
+            </p>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function PackageDetailExperience({
   pkg,
   categoryName,
@@ -698,6 +750,7 @@ export default function PackageDetailExperience({
                   ) : null}
                 </div>
               </div>
+              <FlightDetails pkg={pkg} />
               <div
                 className="mb-8 flex gap-1 overflow-x-auto border-b border-stone-200"
                 role="tablist"

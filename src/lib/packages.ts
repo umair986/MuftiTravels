@@ -1,6 +1,7 @@
 import { PackageData, TierPriceMap } from "@/app/components/packageData";
 import { stayNights, type PackageDetails } from "@/lib/categoryFields";
 import type { PackageTierHotels } from "@/lib/taxonomy";
+import { flightCarrier } from "@/lib/departures";
 
 export type CmsPackageRecord = {
   id: string;
@@ -158,5 +159,8 @@ export function cmsPackageToPackageData(record: CmsPackageRecord): PackageData {
     makkahNights: stayNights(record.details).makkah,
     madinahNights: stayNights(record.details).madinah,
     tierHotels: record.tier_hotels ?? {},
+    flightCarrier: flightCarrier(record),
+    departureDates: record.departure_dates ?? [],
+    departureCity: record.departure_city ?? "",
   };
 }
