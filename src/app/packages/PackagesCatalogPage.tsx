@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FaKaaba, FaHotel, FaMosque, FaMoon, FaStarAndCrescent } from "react-icons/fa";
 import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
+import PriceChangeNote from "@/app/components/PriceChangeNote";
 import { PackedGroup, PackedGroupGrid } from "@/app/components/PackedGroups";
 import {
   DEPARTURE_CITIES,
@@ -160,6 +161,7 @@ export default function PackagesCatalogPage({
                 </PackedGroup>
               ))}
           </PackedGroupGrid>
+          <PriceChangeNote className="mt-10 max-w-3xl" />
         </div>
       </main>
       <Footer />

@@ -14,6 +14,7 @@ import Footer from "@/app/components/Footer";
 import JsonLd from "@/app/components/JsonLd";
 import { PackedGroup, PackedGroupGrid } from "@/app/components/PackedGroups";
 import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
+import PriceChangeNote from "@/app/components/PriceChangeNote";
 import { CATEGORY_SLUGS } from "@/lib/categories";
 import { CATEGORY_LANDING } from "@/lib/categoryLanding";
 import {
@@ -293,6 +294,9 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
                 </a>
               </div>
             )}
+            {monthGroups.length || otherSections.length ? (
+              <PriceChangeNote className="mt-8 max-w-3xl" />
+            ) : null}
           </div>
         </section>
 

@@ -7,6 +7,7 @@ import { FaWhatsapp } from "react-icons/fa";
 import Footer from "@/app/components/Footer";
 import JsonLd from "@/app/components/JsonLd";
 import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
+import PriceChangeNote from "@/app/components/PriceChangeNote";
 import { CATEGORY_BY_SLUG, CATEGORY_SLUGS, categorySlug } from "@/lib/categories";
 import { CATEGORY_LANDING } from "@/lib/categoryLanding";
 import { getPublicCatalog } from "@/lib/packages.server";
@@ -188,6 +189,9 @@ export default async function CategoryLandingPage({
                 }
               />
             </div>
+            {inCategory.length ? (
+              <PriceChangeNote className="mt-8 max-w-3xl" />
+            ) : null}
           </div>
         </section>
 

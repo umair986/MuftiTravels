@@ -24,6 +24,7 @@ import {
 } from "react-icons/fi";
 
 import Footer from "@/app/components/Footer";
+import PriceChangeNote from "@/app/components/PriceChangeNote";
 import {
   CONTENT_SECTIONS,
   contentOrDefaults,
@@ -529,6 +530,7 @@ function PriceSelector({
             Per pilgrim, based on selected sharing
           </p>
         </div>
+        <PriceChangeNote tone="dark" />
         <button
           type="button"
           onClick={onEnquire}
