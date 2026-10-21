@@ -1,3 +1,33 @@
+export type CityGroup = {
+  /** A DEPARTURE_CITIES key, or "" for packages not tied to a city. */
+  city: CityKey | "";
+  packages: CmsPackageRecord[];
+};
+
+/**
+ * A category page's packages split by departure city: cities in the order the
+ * site lists them (Mumbai first), packages with no city last. Order within a
+ * city is the order given, so the caller's month-then-price sort survives.
+ * A city key not in DEPARTURE_CITIES counts as no city, rather than as a
+ * heading the site has no page for.
+ */
+export function groupByCity(packages: CmsPackageRecord[]): CityGroup[] {
+  const known = new Set<string>(DEPARTURE_CITIES.map((city) => city.key));
+  const cityOf = (item: CmsPackageRecord) => {
+    const key = packageCity(item);
+    return known.has(key) ? key : "";
+  };
+  const groups: CityGroup[] = DEPARTURE_CITIES.map((city) => ({
+    city: city.key,
+    packages: packages.filter((item) => cityOf(item) === city.key),
+  }));
+  groups.push({
+    city: "",
+    packages: packages.filter((item) => cityOf(item) === ""),
+  });
+  return groups.filter((group) => group.packages.length);
+}
+
 /**
  * Which packages belong to a departure city, and how they are ordered.
  *
@@ -11,6 +41,7 @@
 import type { CmsPackageRecord } from "@/lib/packages";
 import { cheapestPrice, type CheapestPrice } from "@/lib/cityLanding";
 import {
+  DEPARTURE_CITIES,
   MONTHLY_CATEGORY,
   compareNewestMonthFirst,
   formatDepartureDates,

@@ -19,7 +19,7 @@ npm run sample:quotation -- <outDir>  # Writes 4 sample quotation PDFs to look a
 `npm test` globs `src/lib/*.test.ts`, so a single file is `npx tsx --test src/lib/finance.test.ts`
 and a single case is `npx tsx --test --test-name-pattern "computeInvoiceTotals" src/lib/finance.test.ts`.
 
-There are nine test files: `finance.test.ts`, because money arithmetic is where a bug is both
+There are ten test files: `finance.test.ts`, because money arithmetic is where a bug is both
 customer-facing and legally relevant, `guides.test.ts`, which checks the guide copy parser and
 that every guide cites sources, `quotations.test.ts`, which covers the quotation helpers —
 discount, per-person, expiry, the description parser, and how costing lines follow the traveller
@@ -29,6 +29,7 @@ which characters survive into a PDF, `departures.test.ts`, which pins when a mon
 `flights.test.ts`, which pins how a pasted airline block becomes flight legs, dates and baggage (migration 031).
 `packageImport.test.ts` pins how a ChatGPT-made flyer JSON is read into the package editor — and
 which doubtful values (a misprinted amount, an unknown tier) are skipped rather than guessed.
+`cityPackages.test.ts` pins how a category page splits its packages by departure city.
 Don't read the absence of tests elsewhere as an invitation to skip them where they'd earn their
 keep.
 

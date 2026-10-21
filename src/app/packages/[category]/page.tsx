@@ -8,7 +8,14 @@ import Footer from "@/app/components/Footer";
 import JsonLd from "@/app/components/JsonLd";
 import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
 import PriceChangeNote from "@/app/components/PriceChangeNote";
-import { CATEGORY_BY_SLUG, CATEGORY_SLUGS, categorySlug } from "@/lib/categories";
+import { PackedGroup, PackedGroupGrid } from "@/app/components/PackedGroups";
+import { groupByCity } from "@/lib/cityPackages";
+import { cityName, cityPath, type CityKey } from "@/lib/departures";
+import {
+  CATEGORY_BY_SLUG,
+  CATEGORY_SLUGS,
+  categorySlug,
+} from "@/lib/categories";
 import { CATEGORY_LANDING } from "@/lib/categoryLanding";
 import { getPublicCatalog } from "@/lib/packages.server";
 import { breadcrumbSchema, faqSchema } from "@/lib/seo";
@@ -76,6 +83,11 @@ export default async function CategoryLandingPage({
     .map((item) => Number(item.starting_price))
     .filter((price) => price > 0)
     .sort((a, b) => a - b)[0];
+
+  // Split by departure city once the category spans two or more — one
+  // heading above every package would only be clutter.
+  const cityGroups = groupByCity(inCategory);
+  const byCity = cityGroups.filter((group) => group.city).length >= 2;
 
   const others = (Object.keys(CATEGORY_SLUGS) as CategoryType[]).filter(
     (item) => item !== name,
@@ -163,32 +175,57 @@ export default async function CategoryLandingPage({
               Available {name} packages
             </h2>
 
-            <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
-              <ManagedPackagesCatalog
-                packages={inCategory}
-                tiers={tiers}
-                tags={tags}
-                fallback={
-                  <div className="col-span-full rounded-2xl border border-dashed border-[#D4AF37]/40 bg-white p-10 text-center">
-                    <p className="font-display text-2xl font-semibold text-[#06131D]">
-                      Dates for this season are being finalised
-                    </p>
-                    <p className="mx-auto mt-2 max-w-xl font-body text-sm text-[#526168]">
-                      Tell us your travel month and group size and we will send
-                      the itinerary and pricing as soon as they are confirmed.
-                    </p>
-                    <a
-                      href={WHATSAPP_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 font-body text-sm font-bold text-white transition hover:bg-[#1EBE5A]"
-                    >
-                      <FaWhatsapp className="h-4 w-4" /> Ask about {name}
-                    </a>
-                  </div>
-                }
-              />
-            </div>
+            {byCity ? (
+              <PackedGroupGrid className="mt-2">
+                {cityGroups.map((group) => (
+                  <PackedGroup
+                    key={group.city || "any"}
+                    count={group.packages.length}
+                    heading={
+                      <CityHeading
+                        city={group.city}
+                        label={CITY_HEADING_LABEL[name]}
+                      />
+                    }
+                  >
+                    <ManagedPackagesCatalog
+                      packages={group.packages}
+                      tiers={tiers}
+                      tags={tags}
+                      fallback={null}
+                    />
+                  </PackedGroup>
+                ))}
+              </PackedGroupGrid>
+            ) : (
+              <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
+                <ManagedPackagesCatalog
+                  packages={inCategory}
+                  tiers={tiers}
+                  tags={tags}
+                  fallback={
+                    <div className="col-span-full rounded-2xl border border-dashed border-[#D4AF37]/40 bg-white p-10 text-center">
+                      <p className="font-display text-2xl font-semibold text-[#06131D]">
+                        Dates for this season are being finalised
+                      </p>
+                      <p className="mx-auto mt-2 max-w-xl font-body text-sm text-[#526168]">
+                        Tell us your travel month and group size and we will
+                        send the itinerary and pricing as soon as they are
+                        confirmed.
+                      </p>
+                      <a
+                        href={WHATSAPP_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 font-body text-sm font-bold text-white transition hover:bg-[#1EBE5A]"
+                      >
+                        <FaWhatsapp className="h-4 w-4" /> Ask about {name}
+                      </a>
+                    </div>
+                  }
+                />
+              </div>
+            )}
             {inCategory.length ? (
               <PriceChangeNote className="mt-8 max-w-3xl" />
             ) : null}
@@ -244,5 +281,45 @@ export default async function CategoryLandingPage({
       </main>
       <Footer />
     </>
+  );
+}
+
+/** "Ramadan Umrah from Mumbai" — what the heading calls this category. */
+const CITY_HEADING_LABEL: Record<CategoryType, string> = {
+  "Umrah Fixed Group": "Umrah fixed group",
+  "Umrah Land Package": "Umrah land packages",
+  Ziyarat: "Umrah + Ziyarat",
+  Hajj: "Hajj",
+  Ramzan: "Ramadan Umrah",
+};
+
+/**
+ * One city's heading on a category page, linking to that city's page — the
+ * permanent address for "from <city>", which is where the visitor (and
+ * Google) should go next. Packages tied to no city get a plain heading.
+ */
+function CityHeading({
+  city,
+  label,
+}: {
+  city: CityKey | "";
+  label: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 pt-6">
+      <h3 className="flex items-center gap-3 font-display text-2xl font-bold text-[#06131D] sm:text-3xl">
+        <span className="h-px w-8 shrink-0 bg-[#D4AF37]" />
+        {city ? `${label} from ${cityName(city)}` : "From any city"}
+      </h3>
+      {city ? (
+        <Link
+          href={cityPath(city)}
+          className="inline-flex items-center gap-1 font-body text-xs font-semibold text-[#997A15] underline-offset-4 hover:underline"
+        >
+          All packages from {cityName(city)}{" "}
+          <FiArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      ) : null}
+    </div>
   );
 }
