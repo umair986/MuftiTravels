@@ -34,6 +34,8 @@ import {
   toMonthInput,
 } from "@/lib/departures";
 import { useToast } from "../components/ui/toast/useToast";
+import type { ImportedPackage } from "@/lib/packageImport";
+import ImportPackageDialog from "./packages/ImportPackageDialog";
 
 const packageSlug = "14-days-umrah-land-package";
 
@@ -140,6 +142,96 @@ function pricesToRows(prices: CmsPackageRecord["prices"]): PriceRow[] {
   );
 }
 
+/** The form in the import's terms, for the preview's "before" column. */
+function formToImported(form: FormState): ImportedPackage {
+  const nights = stayNights(form.details);
+  return {
+    name: form.name,
+    description: form.description,
+    category: form.category,
+    departureCity: form.departureCity,
+    durationDays: Number(form.durationDays) || undefined,
+    durationNights: form.durationNights === "" ? undefined : Number(form.durationNights),
+    destinations: form.destinations,
+    validMonth: form.validMonth,
+    validUntilMonth: form.validUntilMonth,
+    departureDates: form.departureDates,
+    airline: form.airline,
+    flightRouting: form.flightRouting,
+    flightVia: form.flightVia,
+    makkahNights: nights.makkah || undefined,
+    madinahNights: nights.madinah || undefined,
+    prices: form.prices
+      .filter((row) => Number(row.amount) > 0)
+      .map((row) => ({
+        tier: row.tier,
+        sharing: row.sharing,
+        amount: Number(row.amount),
+      })),
+    features: form.features
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  };
+}
+
+/**
+ * Copy an import into the form. Only what the import holds is touched;
+ * imported prices replace the whole table, and a card-price pick whose row is
+ * gone falls back to the lowest. Nothing is saved — see packageImport.ts.
+ */
+function applyImported(form: FormState, data: ImportedPackage): FormState {
+  const next = { ...form };
+  if (data.name !== undefined) next.name = data.name;
+  if (data.description !== undefined) next.description = data.description;
+  if (data.category !== undefined) next.category = data.category;
+  if (data.departureCity !== undefined) next.departureCity = data.departureCity;
+  if (data.durationDays !== undefined) next.durationDays = String(data.durationDays);
+  if (data.durationNights !== undefined)
+    next.durationNights = String(data.durationNights);
+  if (data.destinations !== undefined) next.destinations = data.destinations;
+  if (data.validMonth !== undefined) {
+    next.validMonth = data.validMonth;
+    // A new start month makes the old end month meaningless.
+    next.validUntilMonth = data.validUntilMonth ?? "";
+  } else if (data.validUntilMonth !== undefined) {
+    next.validUntilMonth = data.validUntilMonth;
+  }
+  if (data.departureDates !== undefined) next.departureDates = data.departureDates;
+  if (data.airline !== undefined) next.airline = data.airline;
+  if (data.flightRouting !== undefined) {
+    next.flightRouting = data.flightRouting;
+    next.flightVia = data.flightRouting === "via" ? (data.flightVia ?? "") : "";
+  }
+  if (data.makkahNights !== undefined || data.madinahNights !== undefined) {
+    next.details = {
+      ...form.details,
+      ...(data.makkahNights !== undefined && { makkah_nights: data.makkahNights }),
+      ...(data.madinahNights !== undefined && {
+        madinah_nights: data.madinahNights,
+      }),
+    };
+  }
+  if (data.features !== undefined) next.features = data.features.join("\n");
+  if (data.prices !== undefined) {
+    const start = Math.max(0, ...form.prices.map((row) => row.id)) + 1;
+    next.prices = data.prices.map((row, index) => ({
+      id: start + index,
+      tier: row.tier,
+      sharing: row.sharing,
+      amount: String(row.amount),
+    }));
+    if (
+      !next.prices.some(
+        (row) => cardPriceValue(row.tier, row.sharing) === form.cardPrice,
+      )
+    ) {
+      next.cardPrice = "";
+    }
+  }
+  return next;
+}
+
 function rowsToPrices(rows: PriceRow[]) {
   return rows.reduce<Record<string, Record<string, number>>>((prices, row) => {
     if (!row.amount || Number(row.amount) <= 0) return prices;
@@ -172,6 +264,7 @@ export default function ManagedPackageEditor({
   const router = useRouter();
   /** An in-app link the admin clicked while holding unsaved changes. */
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   // Read through a ref so a caller passing an inline callback does not refetch.
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
@@ -522,10 +615,38 @@ export default function ManagedPackageEditor({
         <p className="font-body text-xs font-semibold uppercase tracking-[0.2em] text-[#997A15]">
           {record?.category || "Package"}
         </p>
-        <span className="break-all font-body text-xs text-[#526168]">
-          Slug: {slug}
-        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="break-all font-body text-xs text-[#526168]">
+            Slug: {slug}
+          </span>
+          {record && (
+            <button
+              type="button"
+              onClick={() => setIsImporting(true)}
+              className="rounded-lg bg-[#D4AF37] px-3 py-2 font-body text-xs font-bold text-[#06131D] hover:bg-[#F3E5AB]"
+            >
+              Import from flyer JSON
+            </button>
+          )}
+        </div>
       </div>
+
+      {isImporting && record && (
+        <ImportPackageDialog
+          tiers={tiers}
+          current={formToImported(form)}
+          hasCityColumns={"departure_city" in record}
+          hasFlightColumns={"departure_dates" in record}
+          onClose={() => setIsImporting(false)}
+          onApply={(data) => {
+            setForm((current) => applyImported(current, data));
+            setIsImporting(false);
+            toast.success("Flyer details copied into the form.", {
+              description: "Check them, then click Save package.",
+            });
+          }}
+        />
+      )}
 
       {error && (
         <p

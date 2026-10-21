@@ -19,7 +19,7 @@ npm run sample:quotation -- <outDir>  # Writes 4 sample quotation PDFs to look a
 `npm test` globs `src/lib/*.test.ts`, so a single file is `npx tsx --test src/lib/finance.test.ts`
 and a single case is `npx tsx --test --test-name-pattern "computeInvoiceTotals" src/lib/finance.test.ts`.
 
-There are seven test files: `finance.test.ts`, because money arithmetic is where a bug is both
+There are nine test files: `finance.test.ts`, because money arithmetic is where a bug is both
 customer-facing and legally relevant, `guides.test.ts`, which checks the guide copy parser and
 that every guide cites sources, `quotations.test.ts`, which covers the quotation helpers —
 discount, per-person, expiry, the description parser, and how costing lines follow the traveller
@@ -27,6 +27,8 @@ count — `packages.client.test.ts`, which covers what the quotation's package p
 which characters survive into a PDF, `departures.test.ts`, which pins when a monthly package expires (midnight IST), and
 `packages.test.ts`, which pins the one price a package card shows (`cardPrice`, migration 027), and
 `flights.test.ts`, which pins how a pasted airline block becomes flight legs, dates and baggage (migration 031).
+`packageImport.test.ts` pins how a ChatGPT-made flyer JSON is read into the package editor — and
+which doubtful values (a misprinted amount, an unknown tier) are skipped rather than guessed.
 Don't read the absence of tests elsewhere as an invitation to skip them where they'd earn their
 keep.
 
@@ -218,6 +220,12 @@ only `[label](url)` and `**bold**`, rendered as React nodes by `src/app/guides/R
   display-order field; `packages.sort_order` still exists but nothing reads or writes it.
 - **Every package has Makkah/Madinah nights** — `STAY_FIELDS` in `src/lib/categoryFields.ts`,
   stored in `details` under `makkah_nights` / `madinah_nights`, read through `stayNights()`.
+
+### Importing a package from a flyer
+
+`docs/package-import.md`. The editor's **Import from flyer JSON** reads JSON that ChatGPT made from
+a supplier flyer (`src/lib/packageImport.ts`) into the form — it never saves, doubtful values become
+warnings, and hotels are only compared against the tier, never written (they are shared tier facts).
 
 ### Public catalogue conventions
 
