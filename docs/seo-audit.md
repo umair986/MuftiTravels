@@ -18,7 +18,8 @@
 | 7. `/about`, `/contact` | Open |
 | 8. Guides / blog | **Started** — `/guides` index + first article, *Umrah from India: Passport, Visa and Immigration Documents* (sources checked 17 Sep 2026). Articles are typed data in `src/content/guides/`, listed in `src/lib/guides.ts` |
 | Sitemap `lastModified` from `updated_at` (§2.6) | **Done** for packages and gallery |
-| Homepage title mentions Mumbai (§2.6) | Open |
+| Homepage title mentions Mumbai (§2.6) | **Done** 21 Oct — "Hajj & Umrah Packages from Mumbai, India" |
+| City pages say "tour" (21 Oct) | **Done** — title and H1 "Umrah Packages & Tours from <city>", Mumbai intro says "tour operator in Mumbai", footer anchors "Umrah packages from <city>" |
 
 **17 Sep — hardcoded packages removed.** Every package on the public site now
 comes from the admin. The old static pages
@@ -27,6 +28,17 @@ comes from the admin. The old static pages
 `/packages/umrah-fixed-group/15-days-regular-umrah-from-{city}`, so links
 already shared keep working and their ranking carries over. The sitemap no
 longer lists the old URLs.
+
+**21 Oct — OpenSEO audit of 20 Oct.** Not in the first 20 results for any
+"umrah package from <city>" query (Mumbai ~4,400 searches/month). Its first
+finding — package cards were buttons with no `href`, leaving 12 package pages
+orphaned — was already fixed on the live site by then (all 7 Mumbai packages
+are `<a href>` links in the HTML). What remains is off-site: outside links to
+the site, the Google Business Profile, Justdial/Facebook/Instagram pointing at
+muftitravels.com (Facebook pointed at muftitravels.nusukindia.com), and
+connecting Search Console. The audit also saw referring domains jump from 35
+(Aug) to 2,047 (Oct), spam score 53 — check Search Console's Manual actions
+before considering a disavow. Hyderabad and Bangalore pages list no packages.
 
 The sections below are the original audit, kept as written.
 

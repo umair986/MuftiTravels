@@ -228,7 +228,7 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
         <section className="px-5 py-14 sm:px-8 lg:px-12">
           <div className="mx-auto max-w-7xl">
             <h2 className="font-display text-3xl font-bold text-[#06131D] sm:text-4xl">
-              Umrah from {copy.city}: flights, hotels and visa
+              Umrah tour packages from {copy.city}: flights, hotels and visa
             </h2>
             {cityUmrah ? (
               <p className="mt-2 max-w-2xl font-body text-sm text-[#526168]">

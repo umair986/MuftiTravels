@@ -116,17 +116,19 @@ function cityPage(input: CityInput): CityLanding {
   return {
     path: cityPath(key),
     city,
-    metaTitle: `Umrah Packages from ${city}`,
+    // "Packages & Tours": people search both "umrah package from mumbai" and
+    // "umrah tour in mumbai", and until Oct 2026 the page never said "tour".
+    metaTitle: `Umrah Packages & Tours from ${city}`,
     metaDescription: (fromPrice) =>
       [
-        `Umrah packages from ${city} with ${direct ? "direct flights" : "flights"}, Saudi visa, hotels near the Haram, meals and guided Ziyarat.`,
+        `Umrah packages and tours from ${city} with ${direct ? "direct flights" : "flights"}, Saudi visa, hotels near the Haram, meals and guided Ziyarat.`,
         fromPrice ? `From ${fromPrice} per person.` : "",
         hasOffice ? "Office in Bandra East." : "",
       ]
         .filter(Boolean)
         .join(" "),
     eyebrow: input.eyebrow,
-    heading: `Umrah Packages from ${city}`,
+    heading: `Umrah Packages & Tours from ${city}`,
     intro: input.intro,
     hasOffice,
     faqs: (trip) => [
@@ -186,7 +188,7 @@ export const CITY_LANDING: Record<CityKey, CityLanding> = {
     hasOffice: true,
     eyebrow: "Departing Mumbai · Office in Bandra East",
     intro: [
-      "Mufti Travels is a Mumbai-based Hajj and Umrah operator. Our fixed-group Umrah departs on a direct flight from Mumbai, and the package covers the Saudi Umrah visa, hotels in Makkah and Madinah, meals, transfers and guided Ziyarat in both cities.",
+      "Mufti Travels is a Hajj and Umrah tour operator in Mumbai. Our fixed-group Umrah tour departs on a direct flight from Mumbai, and every Umrah package from Mumbai covers the Saudi Umrah visa, hotels in Makkah and Madinah, meals, transfers and guided Ziyarat in both cities.",
       "Our office is in Bandra East, so you can sit down with us before you book — go through the hotels, the room sharing and the documents in person, and meet the team who will be looking after your group.",
     ],
   }),

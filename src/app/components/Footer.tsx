@@ -94,7 +94,7 @@ export default function Footer() {
               {DEPARTURE_CITIES.map((city) => (
                 <li key={city.key}>
                   <Link href={cityPath(city.key)} className="hover:text-[#D4AF37] transition-colors">
-                    Umrah from {city.name}
+                    Umrah packages from {city.name}
                   </Link>
                 </li>
               ))}

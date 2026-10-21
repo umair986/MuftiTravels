@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL || "https://muftitravels.com",
   ),
   title: {
-    default: "Mufti Travels | Hajj & Umrah Packages from India",
+    default: "Mufti Travels | Hajj & Umrah Packages from Mumbai, India",
     template: "%s | Mufti Travels",
   },
   description:
@@ -65,7 +65,7 @@ export const metadata: Metadata = {
     icon: "/favicon.png",
   },
   openGraph: {
-    title: "Mufti Travels | Hajj & Umrah Packages from India",
+    title: "Mufti Travels | Hajj & Umrah Packages from Mumbai, India",
     description:
       "Hajj, Umrah and Ziyarat packages with comfortable hotels, guided support and trusted pilgrimage services.",
     siteName: "Mufti Travels",
@@ -84,7 +84,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mufti Travels | Hajj & Umrah Packages from India",
+    title: "Mufti Travels | Hajj & Umrah Packages from Mumbai, India",
     description:
       "Explore trusted Hajj, Umrah and Ziyarat packages from India with Mufti Travels.",
     images: ["/og-image.jpg"],
