@@ -63,7 +63,7 @@ audits *the migration files in this repo*, not the live database.
 
 ### Supabase migrations are the source of truth
 
-`supabase/migrations/NNN_name.sql`, applied in order, currently up to `031`. House style, and
+`supabase/migrations/NNN_name.sql`, applied in order, currently up to `032`. House style, and
 follow it:
 
 - Heavily commented — the comment explains *why*, including options rejected.
@@ -209,10 +209,13 @@ only `[label](url)` and `**bold**`, rendered as React nodes by `src/app/guides/R
   the last one, and expiry is on `coalesce(valid_until_month, valid_month)`. Never test
   `valid_month` alone for expiry — use `isPackageExpired()` / `formatPeriod()`, which pair with
   the select policy.
-- **Hotel distance is a tier fact** (Decision 13): `makkah_distance`, `madinah_distance`, the
-  optional `makkah_hotel` / `madinah_hotel` names (030),
-  `hotel_stars`, `highlights` and `is_recommended` on `package_tiers`, edited in Tags & Tiers and
-  rendered as tier tabs on every package page by `src/app/components/packages/TierHotels.tsx`,
+- **Hotels: the tier is the default, the package may override** (Decision 13, then 032):
+  `makkah_distance`, `madinah_distance`, the optional `makkah_hotel` / `madinah_hotel` names (030),
+  `hotel_stars`, `highlights` and `is_recommended` on `package_tiers`, edited in Tags & Tiers.
+  Migration 032 adds `packages.tier_hotels` (jsonb, per tier key) for the four hotel fields only,
+  because the actual hotel moves with the supplier and month; a blank field falls back to the
+  tier. Resolve through `withPackageHotels()` in `src/lib/taxonomy.ts`, never read either alone.
+  Rendered as tier tabs on every package page by `src/app/components/packages/TierHotels.tsx`,
   which shares its selected tier with the price box. Flight dates and airline are per
   package; a blank `flight_routing` must never print as "Direct".
 - **Order is month, then price — never hand-set.** `compareNewestMonthFirst` sorts every public
@@ -225,7 +228,7 @@ only `[label](url)` and `**bold**`, rendered as React nodes by `src/app/guides/R
 
 `docs/package-import.md`. The editor's **Import from flyer JSON** reads JSON that ChatGPT made from
 a supplier flyer (`src/lib/packageImport.ts`) into the form — it never saves, doubtful values become
-warnings, and hotels are only compared against the tier, never written (they are shared tier facts).
+warnings, and hotels go on the package (`tier_hotels`, 032), never onto the shared tier.
 
 ### Public catalogue conventions
 

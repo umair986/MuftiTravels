@@ -8,8 +8,9 @@ import type { PackageTierRecord } from "@/lib/taxonomy";
  * priced in, each showing how far that tier's hotels are from the Haram and
  * from Masjid an-Nabawi, their stars and selling points.
  *
- * Every fact is admin data from Tags & Tiers (migration 028); this component
- * adds only headings. The selected tab is the same state as the price box's
+ * Every fact is admin data — from Tags & Tiers (migration 028), overridden per
+ * package by the editor's Hotels section (032; the caller passes the registry
+ * through withPackageHotels). This component adds only headings. The selected tab is the same state as the price box's
  * tier, so choosing Gold here prices Gold there, and the other way round.
  *
  * When the open tab is not the recommended tier and the package offers it, a

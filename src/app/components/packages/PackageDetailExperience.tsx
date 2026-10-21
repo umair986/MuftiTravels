@@ -38,7 +38,7 @@ import {
   SharingType,
 } from "@/app/components/packageData";
 import { createClient } from "@/lib/supabase/client";
-import { tierName } from "@/lib/taxonomy";
+import { tierName, withPackageHotels } from "@/lib/taxonomy";
 import PackageTagBadges from "@/app/components/PackageTagBadges";
 import TierHotels from "./TierHotels";
 import DatePicker, { localToday } from "@/app/components/ui/pickers/DatePicker";
@@ -778,7 +778,7 @@ export default function PackageDetailExperience({
               </AnimatePresence>
               <TierHotels
                 prices={pkg.prices}
-                registry={tiers}
+                registry={withPackageHotels(tiers, pkg.tierHotels)}
                 selected={tier}
                 onSelect={(next) => setTier(next as PackageTier)}
               />

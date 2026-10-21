@@ -28,6 +28,68 @@ export type PackageTierRecord = {
   is_recommended?: boolean;
 };
 
+/** The hotel facts a package may set for one of its tiers (migration 032). */
+export const HOTEL_FIELDS = [
+  "makkah_hotel",
+  "makkah_distance",
+  "madinah_hotel",
+  "madinah_distance",
+] as const;
+
+export type HotelField = (typeof HOTEL_FIELDS)[number];
+
+/** Per tier key; a blank or missing field means "use the tier's". */
+export type PackageTierHotels = Record<
+  string,
+  Partial<Record<HotelField, string>>
+>;
+
+/**
+ * The registry as one package sees it: each tier's hotel facts overridden by
+ * whatever the package names for that tier (migration 032). Blank fields
+ * fall back, so a package with no overrides sees the registry unchanged. The
+ * jsonb is read defensively — only strings under the four known keys count.
+ */
+export function withPackageHotels(
+  registry: PackageTierRecord[],
+  overrides: PackageTierHotels | null | undefined,
+): PackageTierRecord[] {
+  if (!overrides || typeof overrides !== "object") return registry;
+  return registry.map((tier) => {
+    const own = overrides[tier.key] ?? overrides[tier.name];
+    if (!own || typeof own !== "object") return tier;
+    const next = { ...tier };
+    for (const field of HOTEL_FIELDS) {
+      const value = own[field];
+      if (typeof value === "string" && value.trim()) next[field] = value.trim();
+    }
+    return next;
+  });
+}
+
+/**
+ * What a package saves to tier_hotels: trimmed, blank fields dropped, and
+ * only for tiers it is still priced in — a hotel for a tier the package no
+ * longer sells would sit in the row unseen.
+ */
+export function cleanTierHotels(
+  hotels: PackageTierHotels,
+  pricedTiers: Iterable<string>,
+): PackageTierHotels {
+  const priced = new Set(pricedTiers);
+  const cleaned: PackageTierHotels = {};
+  for (const [tierKey, own] of Object.entries(hotels)) {
+    if (!priced.has(tierKey) || !own) continue;
+    const kept: Partial<Record<HotelField, string>> = {};
+    for (const field of HOTEL_FIELDS) {
+      const value = own[field]?.trim();
+      if (value) kept[field] = value.slice(0, 120);
+    }
+    if (Object.keys(kept).length) cleaned[tierKey] = kept;
+  }
+  return cleaned;
+}
+
 export type PackageTagRecord = {
   id: string;
   key: string;

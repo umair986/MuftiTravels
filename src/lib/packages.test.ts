@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cardPrice, packageMetaDescription } from "./packages";
+import { cleanTierHotels, withPackageHotels } from "./taxonomy";
 
 // Keys in the order Postgres returns jsonb: by length, so "Quad" before
 // "Double" whatever their prices — the order the old card logic trusted.
@@ -82,4 +83,34 @@ test("packageMetaDescription: never exceeds 160 characters", () => {
     currency: "INR",
   });
   assert.ok(description.length <= 160, `${description.length} characters`);
+});
+
+test("withPackageHotels: a package's hotel overrides its tier, blanks fall back", () => {
+  const registry = [
+    { id: "1", key: "deluxe", name: "Deluxe", sort_order: 1, makkah_hotel: "Old", makkah_distance: "500 m", madinah_distance: "100 m" },
+    { id: "2", key: "budget", name: "Budget", sort_order: 0, makkah_distance: "1500 m" },
+  ];
+  const seen = withPackageHotels(registry, {
+    deluxe: { makkah_hotel: "Waha Deafah", madinah_distance: "  " },
+  });
+  assert.equal(seen[0].makkah_hotel, "Waha Deafah");
+  assert.equal(seen[0].makkah_distance, "500 m");
+  assert.equal(seen[0].madinah_distance, "100 m");
+  assert.equal(seen[1], registry[1]);
+  // A row read before migration 032 has no overrides at all.
+  assert.equal(withPackageHotels(registry, undefined), registry);
+});
+
+test("cleanTierHotels: trims, drops blanks and tiers the package no longer prices", () => {
+  assert.deepEqual(
+    cleanTierHotels(
+      {
+        deluxe: { makkah_hotel: " Waha Deafah ", madinah_hotel: "" },
+        budget: { makkah_hotel: "Gone" },
+        gold: { makkah_hotel: "  " },
+      },
+      ["deluxe", "gold"],
+    ),
+    { deluxe: { makkah_hotel: "Waha Deafah" } },
+  );
 });

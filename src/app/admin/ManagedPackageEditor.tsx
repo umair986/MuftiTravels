@@ -5,10 +5,14 @@ import { useRouter } from "next/navigation";
 import { CmsPackageRecord } from "@/lib/packages";
 import { createClient } from "@/lib/supabase/client";
 import {
+  HOTEL_FIELDS,
+  cleanTierHotels,
   fetchTags,
   fetchTiers,
   tagBadgeClasses,
+  type HotelField,
   type PackageTagRecord,
+  type PackageTierHotels,
   type PackageTierRecord,
 } from "@/lib/taxonomy";
 import {
@@ -97,6 +101,11 @@ type FormState = {
    * sharing), or "" for the lowest. One string so a single select holds it.
    */
   cardPrice: string;
+  /**
+   * Migration 032: this package's hotels per tier key. A blank field shows
+   * the tier's own (from Tags & Tiers) on the site.
+   */
+  tierHotels: PackageTierHotels;
 };
 
 const emptyForm: FormState = {
@@ -122,6 +131,7 @@ const emptyForm: FormState = {
   flightRouting: "",
   flightVia: "",
   cardPrice: "",
+  tierHotels: {},
 };
 
 /** Joins tier key and sharing label; neither can contain a line break. */
@@ -172,6 +182,7 @@ function formToImported(form: FormState): ImportedPackage {
       .split("\n")
       .map((item) => item.trim())
       .filter(Boolean),
+    tierHotels: form.tierHotels,
   };
 }
 
@@ -213,6 +224,7 @@ function applyImported(form: FormState, data: ImportedPackage): FormState {
     };
   }
   if (data.features !== undefined) next.features = data.features.join("\n");
+  if (data.tierHotels !== undefined) next.tierHotels = data.tierHotels;
   if (data.prices !== undefined) {
     const start = Math.max(0, ...form.prices.map((row) => row.id)) + 1;
     next.prices = data.prices.map((row, index) => ({
@@ -327,6 +339,7 @@ export default function ManagedPackageEditor({
                     packageRecord.card_price_sharing,
                   )
                 : "",
+            tierHotels: packageRecord.tier_hotels ?? {},
           };
           setForm(loaded);
           setSavedForm(loaded);
@@ -561,6 +574,15 @@ export default function ManagedPackageEditor({
               };
             })()
           : {}),
+        // Likewise migration 032.
+        ...("tier_hotels" in record
+          ? {
+              tier_hotels: cleanTierHotels(
+                form.tierHotels,
+                Object.keys(nextPrices),
+              ),
+            }
+          : {}),
         // Likewise migration 027.
         ...("card_price_tier" in record
           ? (() => {
@@ -637,6 +659,7 @@ export default function ManagedPackageEditor({
           current={formToImported(form)}
           hasCityColumns={"departure_city" in record}
           hasFlightColumns={"departure_dates" in record}
+          hasHotelColumn={"tier_hotels" in record}
           onClose={() => setIsImporting(false)}
           onApply={(data) => {
             setForm((current) => applyImported(current, data));
@@ -871,6 +894,14 @@ export default function ManagedPackageEditor({
             />
           )}
         </section>
+        {record && "tier_hotels" in record && (
+          <HotelFields
+            rows={form.prices}
+            tiers={tiers}
+            value={form.tierHotels}
+            onChange={(next) => updateField("tierHotels", next)}
+          />
+        )}
         <label className="space-y-1.5 font-body text-sm font-semibold text-[#06131D] sm:col-span-2">
           Features (one per line)
           <textarea
@@ -1282,6 +1313,92 @@ function FlightFields({
               className="block w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-normal outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
             />
           </label>
+        )}
+      </div>
+    </section>
+  );
+}
+
+const HOTEL_LABELS: Record<HotelField, string> = {
+  makkah_hotel: "Makkah hotel",
+  makkah_distance: "Distance to Haram",
+  madinah_hotel: "Madinah hotel",
+  madinah_distance: "Distance to Masjid an-Nabawi",
+};
+
+/**
+ * This package's hotels, one block per tier it is priced in (migration 032).
+ * The placeholder is the tier's own value from Tags & Tiers, which is what the
+ * site shows while the field is blank — so a package only states what its
+ * flyer says, and changing it never touches another package.
+ */
+function HotelFields({
+  rows,
+  tiers,
+  value,
+  onChange,
+}: {
+  rows: PriceRow[];
+  tiers: PackageTierRecord[];
+  value: PackageTierHotels;
+  onChange: (next: PackageTierHotels) => void;
+}) {
+  const tierKeys = [...new Set(rows.map((row) => row.tier).filter(Boolean))];
+
+  function setField(tierKey: string, field: HotelField, text: string) {
+    onChange({ ...value, [tierKey]: { ...value[tierKey], [field]: text } });
+  }
+
+  return (
+    <section className="rounded-xl border border-[#06131D]/10 bg-[#FAF8F5] p-4 sm:col-span-2">
+      <h4 className="font-display text-2xl font-semibold text-[#06131D]">
+        Hotels
+      </h4>
+      <p className="mt-1 font-body text-xs text-[#526168]">
+        For this package only. Leave a field blank to show the tier&apos;s
+        usual value from Tags &amp; Tiers (shown greyed out).
+      </p>
+      <div className="mt-4 space-y-3">
+        {tierKeys.map((tierKey) => {
+          const tier = tiers.find((item) => item.key === tierKey);
+          return (
+            <div
+              key={tierKey}
+              className="rounded-lg border border-stone-200 bg-white p-3"
+            >
+              <p className="font-body text-sm font-bold text-[#06131D]">
+                {tier?.name ?? tierKey}
+              </p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-[2fr_1fr_2fr_1fr]">
+                {HOTEL_FIELDS.map((field) => (
+                  <label
+                    key={field}
+                    className="space-y-1 font-body text-xs font-semibold text-[#526168]"
+                  >
+                    {HOTEL_LABELS[field]}
+                    <input
+                      value={value[tierKey]?.[field] ?? ""}
+                      onChange={(event) =>
+                        setField(tierKey, field, event.target.value)
+                      }
+                      placeholder={
+                        tier?.[field] ||
+                        (field.endsWith("distance") ? "e.g. 500 m" : "")
+                      }
+                      maxLength={120}
+                      className="block w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-normal text-[#06131D] outline-none placeholder:text-stone-400 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {!tierKeys.length && (
+          <p className="rounded-lg border border-dashed border-stone-300 p-4 text-center font-body text-xs text-[#526168]">
+            Add a price first — hotels are entered for each tier the package
+            is priced in.
+          </p>
         )}
       </div>
     </section>

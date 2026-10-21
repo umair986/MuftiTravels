@@ -7,6 +7,8 @@
  * in lib/packages.ts turns a CMS record into `PackageData` for the detail page.
  */
 
+import type { PackageTierHotels } from "@/lib/taxonomy";
+
 export interface Badge {
   text: string;
   color: string;
@@ -46,4 +48,6 @@ export interface PackageData {
   /** From the package's details; 0 when the admin has not filled it in. */
   makkahNights?: number;
   madinahNights?: number;
+  /** Migration 032: this package's hotels per tier, over the tier's own. */
+  tierHotels?: PackageTierHotels;
 }

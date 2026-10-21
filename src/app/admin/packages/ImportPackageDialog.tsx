@@ -22,6 +22,7 @@ export default function ImportPackageDialog({
   current,
   hasCityColumns,
   hasFlightColumns,
+  hasHotelColumn,
   onApply,
   onClose,
 }: {
@@ -30,6 +31,7 @@ export default function ImportPackageDialog({
   current: ImportedPackage;
   hasCityColumns: boolean;
   hasFlightColumns: boolean;
+  hasHotelColumn: boolean;
   onApply: (data: ImportedPackage) => void;
   onClose: () => void;
 }) {
@@ -39,9 +41,14 @@ export default function ImportPackageDialog({
   const result = useMemo(
     () =>
       text.trim()
-        ? parsePackageImport(text, { tiers, hasCityColumns, hasFlightColumns })
+        ? parsePackageImport(text, {
+            tiers,
+            hasCityColumns,
+            hasFlightColumns,
+            hasHotelColumn,
+          })
         : null,
-    [text, tiers, hasCityColumns, hasFlightColumns],
+    [text, tiers, hasCityColumns, hasFlightColumns, hasHotelColumn],
   );
   const changes =
     result?.ok ? importChanges(current, result.data, tiers) : [];
@@ -213,9 +220,10 @@ export default function ImportPackageDialog({
                   The form already matches — nothing would change.
                 </p>
               )}
-              {result.data.prices && (
+              {(result.data.prices || result.data.tierHotels) && (
                 <p className="mt-2 font-body text-xs text-[#526168]">
-                  Imported prices replace every price row in the form.
+                  Imported prices and hotels replace the ones in the form.
+                  Hotels go on this package only — the tiers are not changed.
                 </p>
               )}
             </div>
@@ -225,14 +233,6 @@ export default function ImportPackageDialog({
                 tone="amber"
                 title="Not imported — fill these in by hand"
                 items={result.warnings}
-              />
-            )}
-            {result.hotelNotes.length > 0 && (
-              <Notes
-                tone="stone"
-                title="Hotels on the flyer differ from the tiers"
-                footer="Hotels belong to the tier and are shared by every package in it, so the import does not change them. Update them in Tags & Tiers if the flyer is right."
-                items={result.hotelNotes}
               />
             )}
             {result.notes && (

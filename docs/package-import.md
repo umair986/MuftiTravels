@@ -36,11 +36,16 @@ it is. Prices are the exception in kind, not in rule: when the JSON has a
 `prices` list, it replaces the whole table, because a flyer is the full price
 list and merging would leave last month's rows beside this month's.
 
-**4. Hotels are compared, not imported.** Hotel name and distance are a tier
-fact on `package_tiers` (monthly-packages.md Decision 13), shared by every
-package in the tier. Writing the flyer's Budget hotel onto the Budget tier would
-rewrite every Budget package on the site. The preview lists where the flyer and
-the tier disagree; the admin updates Tags & Tiers if the flyer is right.
+**4. Hotels go on the package, never the tier.** The first version only
+compared the flyer's hotels with the tier's, because hotel name and distance
+were a tier fact (monthly-packages.md Decision 13). On the first real flyer
+every tier "differed" — the hotel moves with the supplier and the month, which
+the tier cannot express without rewriting every other package in it. Migration
+032 adds `packages.tier_hotels`: per tier key, the four hotel fields, each
+falling back to the tier when blank (`withPackageHotels()`). The import writes
+there, replacing the package's set like it replaces prices. Stars and highlights
+stay tier-only. *Rejected:* moving the columns off `package_tiers` — every live
+package would lose its hotels until re-entered.
 
 **5. The prompt names the live tiers.** `packageImportPrompt()` is built from
 the tiers loaded in the editor, so ChatGPT maps "Super Deluxe Package" onto what
@@ -60,4 +65,4 @@ example.json" returns. Fields: `name`, `description`, `category`,
 `madinah_nights`, `destinations`, `valid_month`, `valid_until_month`
 (`YYYY-MM`), `departure_dates` (`YYYY-MM-DD`), `airline`, `flight_routing`
 (`direct` / `via` / null), `flight_via`, `prices` (`{ tier, sharing, amount }`),
-`hotels` (compared only), `features`, `notes` (shown only).
+`hotels` (onto this package, per tier), `features`, `notes` (shown only).

@@ -11,15 +11,18 @@
  * so every value is checked here and anything doubtful becomes a warning
  * rather than a guess — an amount like "1,62.786" is skipped, not "fixed".
  *
- * Hotels are deliberately NOT imported. They are a tier fact on
- * package_tiers (monthly-packages.md Decision 13), shared by every package in
- * the tier, so writing a flyer's hotel onto "Budget" would rewrite every
- * Budget package. They are compared against the tier and reported instead.
+ * Hotels are imported onto the PACKAGE (tier_hotels, migration 032), never
+ * onto the tier: a tier is shared by every package in it, and the hotel moves
+ * with the supplier and the month.
  */
 
 import { PACKAGE_CATEGORIES } from "./categoryFields";
 import { DEPARTURE_CITIES } from "./departures";
-import type { PackageTierRecord } from "./taxonomy";
+import {
+  HOTEL_FIELDS,
+  type PackageTierHotels,
+  type PackageTierRecord,
+} from "./taxonomy";
 
 /** What an import may set. Absent means "keep what the form has". */
 export type ImportedPackage = {
@@ -45,6 +48,8 @@ export type ImportedPackage = {
   /** Replaces the whole price table. `tier` is a tier KEY. Rupees. */
   prices?: ImportedPrice[];
   features?: string[];
+  /** This package's hotels per tier key; replaces the whole set. */
+  tierHotels?: PackageTierHotels;
 };
 
 export type ImportedPrice = { tier: string; sharing: string; amount: number };
@@ -55,27 +60,19 @@ export type ImportResult =
       data: ImportedPackage;
       /** Values that were in the JSON but could not be used. */
       warnings: string[];
-      /** Where the flyer's hotels differ from the tier's. Nothing is changed. */
-      hotelNotes: string[];
       /** The JSON's free-text `notes`, shown and never imported. */
       notes: string;
     }
   | { ok: false; error: string };
 
 export type ImportOptions = {
-  tiers: Pick<
-    PackageTierRecord,
-    | "key"
-    | "name"
-    | "makkah_hotel"
-    | "madinah_hotel"
-    | "makkah_distance"
-    | "madinah_distance"
-  >[];
+  tiers: Pick<PackageTierRecord, "key" | "name">[];
   /** False for a row read before migration 026 — city and month are dropped. */
   hasCityColumns?: boolean;
   /** False for a row read before migration 028 — flights and "to" month dropped. */
   hasFlightColumns?: boolean;
+  /** False for a row read before migration 032 — hotels dropped. */
+  hasHotelColumn?: boolean;
 };
 
 /** A pasted reply is a few KB; anything far larger is not a package. */
@@ -183,12 +180,6 @@ function isMonth(value: string): boolean {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
 }
 
-function sameText(a: string | undefined, b: string | undefined): boolean {
-  const norm = (value: string | undefined) =>
-    (value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
-  return norm(a) === norm(b);
-}
-
 export function parsePackageImport(
   text: string,
   options: ImportOptions,
@@ -213,10 +204,10 @@ export function parsePackageImport(
   const input = raw as Record<string, unknown>;
   const data: ImportedPackage = {};
   const warnings: string[] = [];
-  const hotelNotes: string[] = [];
   const has = (key: string) => input[key] !== undefined && input[key] !== null;
   const hasCity = options.hasCityColumns ?? true;
   const hasFlights = options.hasFlightColumns ?? true;
+  const hasHotels = options.hasHotelColumn ?? true;
 
   if (has("version") && input.version !== 1) {
     warnings.push(`Unknown version ${String(input.version)}; read as version 1.`);
@@ -399,31 +390,35 @@ export function parsePackageImport(
     }
   }
 
-  if (has("hotels") && Array.isArray(input.hotels)) {
-    for (const row of input.hotels) {
-      if (!row || typeof row !== "object") continue;
-      const hotel = row as Record<string, unknown>;
-      const label = typeof hotel.tier === "string" ? hotel.tier : "";
-      const tier = matchTier(label, options.tiers);
-      if (!tier) {
-        if (label) hotelNotes.push(`Hotels for "${label}": no such tier.`);
-        continue;
-      }
-      const field = (key: string) =>
-        typeof hotel[key] === "string" ? (hotel[key] as string).trim() : "";
-      const pairs = [
-        ["Makkah hotel", field("makkah_hotel"), tier.makkah_hotel],
-        ["Makkah distance", field("makkah_distance"), tier.makkah_distance],
-        ["Madinah hotel", field("madinah_hotel"), tier.madinah_hotel],
-        ["Madinah distance", field("madinah_distance"), tier.madinah_distance],
-      ] as const;
-      for (const [what, flyer, current] of pairs) {
-        if (flyer && !sameText(flyer, current)) {
-          hotelNotes.push(
-            `${tier.name} — ${what}: flyer says "${flyer}", tier says "${current || "nothing"}".`,
+  if (has("hotels")) {
+    const rows = input.hotels;
+    if (!hasHotels) {
+      warnings.push("Hotels skipped: migration 032 is not applied yet.");
+    } else if (!Array.isArray(rows)) {
+      warnings.push('"hotels" should be a list of { tier, makkah_hotel, … }.');
+    } else {
+      const hotels: PackageTierHotels = {};
+      rows.forEach((row, index) => {
+        if (!row || typeof row !== "object") return;
+        const hotel = row as Record<string, unknown>;
+        const label = typeof hotel.tier === "string" ? hotel.tier.trim() : "";
+        const tier = matchTier(label, options.tiers);
+        if (!tier) {
+          warnings.push(
+            `Hotels ${index + 1}: tier "${label || "?"}" is not in Tags & Tiers, so its hotels were skipped.`,
           );
+          return;
         }
-      }
+        const own: Partial<Record<(typeof HOTEL_FIELDS)[number], string>> = {};
+        for (const field of HOTEL_FIELDS) {
+          const value = hotel[field];
+          if (typeof value === "string" && value.trim()) {
+            own[field] = value.trim().slice(0, 120);
+          }
+        }
+        if (Object.keys(own).length) hotels[tier.key] = own;
+      });
+      if (Object.keys(hotels).length) data.tierHotels = hotels;
     }
   }
 
@@ -440,7 +435,7 @@ export function parsePackageImport(
         : "Nothing to import — every field is empty.",
     };
   }
-  return { ok: true, data, warnings, hotelNotes, notes };
+  return { ok: true, data, warnings, notes };
 }
 
 /** One line of the preview: a field the import will change. */
@@ -464,6 +459,7 @@ const LABELS: [keyof ImportedPackage, string][] = [
   ["description", "Description"],
   ["prices", "Prices"],
   ["features", "Features"],
+  ["tierHotels", "Hotels"],
 ];
 
 /**
@@ -487,6 +483,17 @@ export function importChanges(
             )
             .join("\n")
         : "—";
+    }
+    if (key === "tierHotels") {
+      const lines = Object.entries(value as PackageTierHotels).map(
+        ([tierKey, own]) => {
+          const name = tiers.find((tier) => tier.key === tierKey)?.name ?? tierKey;
+          const place = (hotel?: string, distance?: string) =>
+            [hotel, distance].filter(Boolean).join(", ") || "—";
+          return `${name}: Makkah ${place(own.makkah_hotel, own.makkah_distance)} · Madinah ${place(own.madinah_hotel, own.madinah_distance)}`;
+        },
+      );
+      return lines.length ? lines.join("\n") : "—";
     }
     if (key === "departureCity") {
       return DEPARTURE_CITIES.find((city) => city.key === value)?.name ?? String(value);
@@ -593,7 +600,7 @@ Rules:
 - "departure_city": the city flown from (Ex Mumbai → "Mumbai").
 - Dates are YYYY-MM-DD; "valid_month" / "valid_until_month" are YYYY-MM — the first and last month of the departure dates.
 - "flight_routing": "direct" or "via" only if the flyer says so, else null.
-- "hotels": copy hotel names and distances per tier as printed; write distances like "500 m".
+- "hotels": hotel names and distances per tier as printed; write distances like "500 m". Use null for a hotel the flyer does not name.
 - "features": one short line per inclusion.
 - "notes": anything else important (advance, cancellation), as one sentence.
 

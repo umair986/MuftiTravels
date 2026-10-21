@@ -1,5 +1,6 @@
 import { PackageData, TierPriceMap } from "@/app/components/packageData";
 import { stayNights, type PackageDetails } from "@/lib/categoryFields";
+import type { PackageTierHotels } from "@/lib/taxonomy";
 
 export type CmsPackageRecord = {
   id: string;
@@ -57,6 +58,12 @@ export type CmsPackageRecord = {
    */
   card_price_tier?: string;
   card_price_sharing?: string;
+  /**
+   * Migration 032. This package's own hotels per tier key; blank fields fall
+   * back to the tier. Resolve through withPackageHotels() in lib/taxonomy.ts.
+   * Optional because rows read before 032 is applied lack it.
+   */
+  tier_hotels?: PackageTierHotels;
 };
 
 export type CardPrice = { tier: string; sharing: string; amount: number };
@@ -150,5 +157,6 @@ export function cmsPackageToPackageData(record: CmsPackageRecord): PackageData {
     durationNights: record.duration_nights,
     makkahNights: stayNights(record.details).makkah,
     madinahNights: stayNights(record.details).madinah,
+    tierHotels: record.tier_hotels ?? {},
   };
 }

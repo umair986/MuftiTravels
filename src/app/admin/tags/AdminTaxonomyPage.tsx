@@ -645,6 +645,11 @@ function TierHotelFields({
 
       {open && (
         <div className="mt-3 grid gap-3 rounded-lg border border-stone-200 bg-white p-3 sm:grid-cols-3">
+          <p className="font-body text-xs text-[#526168] sm:col-span-3">
+            The usual hotel for this tier. A package can name its own in its
+            editor&apos;s Hotels section; these show wherever it leaves a field
+            blank.
+          </p>
           {hasNames && (
             <label className="space-y-1 font-body text-xs font-semibold text-[#06131D] sm:col-span-2">
               Makkah hotel{" "}

@@ -20,7 +20,7 @@ import {
 } from "./packageImport";
 
 const TIERS = [
-  { key: "budget", name: "Budget", makkah_hotel: "Rawafed Al Asimah", makkah_distance: "1500 m" },
+  { key: "budget", name: "Budget" },
   { key: "economic", name: "Economic" },
   { key: "deluxe", name: "Deluxe" },
   { key: "super-deluxe", name: "Super Deluxe" },
@@ -155,13 +155,38 @@ describe("parsePackageImport", () => {
     assert.ok(result.data.prices?.length);
   });
 
-  it("reports hotels that differ from the tier, and changes nothing", () => {
+  it("puts the flyer's hotels on the package, per tier", () => {
     const result = parse(PACKAGE_IMPORT_EXAMPLE);
     assert.ok(result.ok);
-    // Budget's Makkah hotel and distance already match the flyer.
-    assert.ok(!result.hotelNotes.some((note) => /Budget — Makkah/.test(note)));
-    assert.ok(result.hotelNotes.some((note) => /Budget — Madinah hotel/.test(note)));
-    assert.ok(result.hotelNotes.some((note) => /Super Deluxe — Makkah hotel: flyer says "Elaf Diamond"/.test(note)));
+    assert.deepEqual(Object.keys(result.data.tierHotels ?? {}), [
+      "budget",
+      "economic",
+      "deluxe",
+      "super-deluxe",
+    ]);
+    assert.deepEqual(result.data.tierHotels?.["super-deluxe"], {
+      makkah_hotel: "Elaf Diamond",
+      makkah_distance: "300 m",
+      madinah_hotel: "Gulnar Taiba",
+      madinah_distance: "0 m",
+    });
+  });
+
+  it("skips hotels for an unknown tier, and all hotels before 032", () => {
+    const unknown = parse({
+      hotels: [
+        { tier: "Platinum", makkah_hotel: "X" },
+        { tier: "Budget", makkah_hotel: "Y", madinah_hotel: null },
+      ],
+    });
+    assert.ok(unknown.ok);
+    assert.deepEqual(unknown.data.tierHotels, { budget: { makkah_hotel: "Y" } });
+    assert.equal(unknown.warnings.length, 1);
+
+    const before = parse(PACKAGE_IMPORT_EXAMPLE, { hasHotelColumn: false });
+    assert.ok(before.ok);
+    assert.equal(before.data.tierHotels, undefined);
+    assert.ok(before.warnings.some((warning) => /032/.test(warning)));
   });
 
   it("refuses invalid JSON, a non-object, and an all-empty object", () => {
