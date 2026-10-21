@@ -88,6 +88,12 @@ export type InvoiceRecord = {
    * like the flights; null prints nothing. Optional: absent before 033.
    */
   travel_date?: string | null;
+  /**
+   * The invoice this one corrects (migration 034). Set on a draft; when it is
+   * issued, the database re-records that invoice's payments here and cancels
+   * it. Optional: absent before 034.
+   */
+  replaces_invoice_id?: string | null;
 
   /* `terms` is gone from this type on purpose. The column still exists and
      `select *` still returns it — migration 022 keeps it, because issued

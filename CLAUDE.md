@@ -64,7 +64,7 @@ audits *the migration files in this repo*, not the live database.
 
 ### Supabase migrations are the source of truth
 
-`supabase/migrations/NNN_name.sql`, applied in order, currently up to `033`. House style, and
+`supabase/migrations/NNN_name.sql`, applied in order, currently up to `034`. House style, and
 follow it:
 
 - Heavily commented — the comment explains *why*, including options rejected.
@@ -87,7 +87,7 @@ that — it is how the site builds without credentials.
 
 ### The finance module
 
-`docs/finance-expenses-and-invoicing.md` is the design record: ten numbered decisions, each with
+`docs/finance-expenses-and-invoicing.md` is the design record: eleven numbered decisions, each with
 the options rejected. Read it before changing anything under `/admin/invoices`, `/admin/expenses`
 or `src/lib/pdf/`. The rules that bite hardest:
 

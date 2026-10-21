@@ -11,6 +11,7 @@ import {
   FiDownload,
   FiEye,
   FiPlus,
+  FiRefreshCw,
   FiSave,
   FiSlash,
   FiTrash2,
@@ -88,6 +89,104 @@ const FIELD =
 const LABEL =
   "mb-1.5 block font-body text-xs font-semibold uppercase tracking-[0.12em] text-[#526168]";
 
+/** An invoice a draft can replace, or the one that replaced this invoice. */
+type ReissueTarget = {
+  id: string;
+  number: string | null;
+  status: InvoiceRecord["status"];
+  customer_name: string;
+  issue_date: string | null;
+  paidPaise: number;
+  paymentCount: number;
+};
+
+type Client = NonNullable<ReturnType<typeof createClient>>;
+
+/**
+ * Reissue links for one invoice (migration 034): which invoice replaced it,
+ * and — for a draft — the numbered invoices it could replace, with the money
+ * that would move. Same customer first, because a reissue is usually a copy
+ * of the bill it corrects; everyone else after, because the mistake being
+ * corrected may BE the customer's name.
+ */
+async function fetchReissueLinks(
+  supabase: Client,
+  record: InvoiceRecord,
+): Promise<{ replaceable: ReissueTarget[]; replacedBy: ReissueTarget | null }> {
+  const columns = "id, number, status, customer_name, issue_date";
+  const [{ data: byRows }, { data: candidateRows }, { data: claimedRows }] =
+    await Promise.all([
+      supabase
+        .from("invoices")
+        .select(columns)
+        .eq("replaces_invoice_id", record.id)
+        .limit(1),
+      record.status === "draft"
+        ? supabase
+            .from("invoices")
+            .select(columns)
+            .neq("status", "draft")
+            .order("issued_at", { ascending: false, nullsFirst: false })
+            .limit(60)
+        : Promise.resolve({ data: [] }),
+      supabase
+        .from("invoices")
+        .select("id, replaces_invoice_id")
+        .not("replaces_invoice_id", "is", null),
+    ]);
+
+  type Row = Omit<ReissueTarget, "paidPaise" | "paymentCount">;
+  // Taken by ANOTHER draft or invoice; this draft's own claim stays choosable.
+  const claimed = new Set(
+    ((claimedRows as { id: string; replaces_invoice_id: string }[]) ?? [])
+      .filter((row) => row.id !== record.id)
+      .map((row) => row.replaces_invoice_id),
+  );
+  const candidates = ((candidateRows as Row[]) ?? []).filter(
+    (row) => !claimed.has(row.id),
+  );
+  // This draft's own choice, even when it is older than the recent window.
+  const target = record.replaces_invoice_id;
+  if (target && !candidates.some((row) => row.id === target)) {
+    const { data: targetRow } = await supabase
+      .from("invoices")
+      .select(columns)
+      .eq("id", target)
+      .maybeSingle();
+    if (targetRow) candidates.unshift(targetRow as Row);
+  }
+  const by = ((byRows as Row[]) ?? [])[0] ?? null;
+
+  const ids = [...candidates.map((row) => row.id), ...(by ? [by.id] : [])];
+  const { data: paymentRows } = ids.length
+    ? await supabase
+        .from("invoice_payments")
+        .select("invoice_id, amount_paise")
+        .in("invoice_id", ids)
+    : { data: [] };
+  const withMoney = (row: Row): ReissueTarget => {
+    const own = (
+      (paymentRows as { invoice_id: string; amount_paise: number }[]) ?? []
+    ).filter((payment) => payment.invoice_id === row.id);
+    return {
+      ...row,
+      paidPaise: own.reduce((sum, payment) => sum + payment.amount_paise, 0),
+      paymentCount: own.length,
+    };
+  };
+
+  const name = record.customer_name.trim().toLowerCase();
+  const sameCustomer = (row: Row) =>
+    Boolean(name) && row.customer_name.trim().toLowerCase() === name;
+  return {
+    replaceable: [
+      ...candidates.filter(sameCustomer),
+      ...candidates.filter((row) => !sameCustomer(row)),
+    ].map(withMoney),
+    replacedBy: by ? withMoney(by) : null,
+  };
+}
+
 export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
   const [supabase] = useState(createClient);
   const toast = useToast();
@@ -115,6 +214,10 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
   const [issueDate, setIssueDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [travelDate, setTravelDate] = useState("");
+  // Reissue (migration 034): what a draft replaces, and the choices for it.
+  const [replacesId, setReplacesId] = useState("");
+  const [replaceable, setReplaceable] = useState<ReissueTarget[]>([]);
+  const [replacedBy, setReplacedBy] = useState<ReissueTarget | null>(null);
   const [items, setItems] = useState<EditableItem[]>([blankItem()]);
   const [discount, setDiscount] = useState("");
   const [taxMode, setTaxMode] = useState<TaxMode>("none");
@@ -146,6 +249,8 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
   const has031 = Boolean(invoice && "flights" in invoice);
   /** Same, for migration 033's `travel_date`. */
   const has033 = Boolean(invoice && "travel_date" in invoice);
+  /** And 034's `replaces_invoice_id` — the Reissue flow stays hidden until then. */
+  const has034 = Boolean(invoice && "replaces_invoice_id" in invoice);
 
   /* -------------------------------------------------------------- loading */
 
@@ -231,6 +336,12 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     setIssueDate(record.issue_date ?? todayInput());
     setDueDate(record.due_date ?? "");
     setTravelDate(record.travel_date ?? "");
+    setReplacesId(record.replaces_invoice_id ?? "");
+    if ("replaces_invoice_id" in record) {
+      const links = await fetchReissueLinks(supabase, record);
+      setReplaceable(links.replaceable);
+      setReplacedBy(links.replacedBy);
+    }
     setDiscount(
       record.discount_paise ? paiseToInputValue(record.discount_paise) : "",
     );
@@ -363,6 +474,9 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       due_date: dueDate || null,
       // Frozen at issue by guard_issued_invoice() (migration 033).
       ...(has033 ? { travel_date: travelDate || null } : {}),
+      // Only a draft may name what it replaces; guard_invoice_replaces() (034)
+      // refuses it on anything else.
+      ...(has034 && isDraft ? { replaces_invoice_id: replacesId || null } : {}),
       subtotal_paise: totals.subtotalPaise,
       discount_paise: totals.discountPaise,
       taxable_paise: totals.taxablePaise,
@@ -400,6 +514,9 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
       dueDate,
       travelDate,
       has033,
+      replacesId,
+      has034,
+      isDraft,
       totals,
       taxMode,
       taxRateBp,
@@ -659,14 +776,18 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
 
     const record = (issuedRow as InvoiceRecord) ?? null;
     let pdfStored = false;
+    // Empty unless this replaced another invoice: the database refuses
+    // payments on a draft, and a reissue's were moved here as it was issued
+    // (migration 034) — possibly settling it, which the PDF has to show.
+    const moved = record ? await fetchPayments(record.id) : [];
     if (record) {
-      // No payments can exist yet: the database refuses them on a draft.
       pdfStored = await generateAndStorePdf(
         record,
         await fetchItems(record.id),
-        [],
+        moved,
       );
     }
+    const replaced = replaceable.find((row) => row.id === replacesId);
 
     setIsIssuing(false);
     await load();
@@ -675,7 +796,18 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     // upload is reported as exactly that rather than as a failed issue — the
     // "Store PDF" button below retries it.
     if (pdfStored) {
-      toast.success(`Issued as ${number}.`);
+      toast.success(
+        `Issued as ${number}.`,
+        replaced
+          ? {
+              description: `${replaced.number ?? "The old invoice"} is cancelled${
+                moved.length
+                  ? `, and its ${moved.length} payment${moved.length === 1 ? "" : "s"} now have new receipts here`
+                  : ""
+              }.`,
+            }
+          : undefined,
+      );
     } else {
       toast.error(`Issued as ${number}, but the PDF could not be stored.`, {
         description: "Use “Store PDF” to try again.",
@@ -805,24 +937,37 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
-  /** Copies the whole document into a fresh unnumbered draft. */
-  async function duplicate() {
+  /**
+   * Copies the whole document into a fresh unnumbered draft.
+   *
+   * As a reissue, the draft also records that it replaces this invoice and
+   * keeps the due date; issuing it moves this invoice's payments across and
+   * cancels it (migration 034). As a plain duplicate it replaces nothing —
+   * a copy of a draft that replaces something must not claim it twice.
+   */
+  async function copyAsDraft(asReissue: boolean) {
     if (!supabase || !invoice) return;
     const { data: created, error: createError } = await supabase
       .from("invoices")
       .insert({
         ...buildInvoicePatch(),
         issue_date: null,
-        due_date: null,
+        due_date: asReissue ? invoice.due_date : null,
         status: "draft",
+        ...(has034
+          ? { replaces_invoice_id: asReissue ? invoice.id : null }
+          : {}),
       })
       .select("id")
       .single();
 
     if (createError || !created) {
-      toast.error("Could not duplicate this invoice.", {
-        description: createError?.message,
-      });
+      toast.error(
+        asReissue
+          ? "Could not start the reissue."
+          : "Could not duplicate this invoice.",
+        { description: createError?.message },
+      );
       return;
     }
 
@@ -845,7 +990,11 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
 
     if (rows.length) await supabase.from("invoice_items").insert(rows);
 
-    toast.success("Duplicated as a new draft.");
+    toast.success(
+      asReissue
+        ? "Corrected draft created. Fix it, then issue it."
+        : "Duplicated as a new draft.",
+    );
     router.push(`/admin/invoices/${created.id}`);
   }
 
@@ -1026,7 +1175,9 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
           <p className="font-body text-sm text-[#526168]">
             {invoice.status === "cancelled"
               ? "Cancelled invoices keep their number, so the series stays unbroken."
-              : "An issued invoice cannot be edited. Cancel and reissue, or raise a credit note."}
+              : has034
+                ? "An issued invoice cannot be edited. To correct it, use “Reissue with corrections”."
+                : "An issued invoice cannot be edited. Cancel and reissue, or raise a credit note."}
           </p>
         </div>
       )}
@@ -1613,6 +1764,53 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
 
             {/* ------------------------------------------------- actions --- */}
             <div className="rounded-2xl border border-stone-200 bg-white p-5">
+              {isDraft && has034 && (replacesId || replaceable.length > 0) && (
+                <div className="mb-4 border-b border-stone-100 pb-4">
+                  <label className="block">
+                    <span className={LABEL}>Replaces invoice</span>
+                    <select
+                      value={replacesId}
+                      onChange={(event) => {
+                        setReplacesId(event.target.value);
+                        touch();
+                      }}
+                      className={FIELD}
+                    >
+                      <option value="">Nothing — a new bill</option>
+                      {replaceable.map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {row.number ?? "—"} · {row.customer_name}
+                          {row.status === "cancelled" ? " (cancelled)" : ""}
+                          {row.paymentCount
+                            ? ` · ${row.paymentCount} payment${row.paymentCount === 1 ? "" : "s"}`
+                            : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {(() => {
+                    const target = replaceable.find(
+                      (row) => row.id === replacesId,
+                    );
+                    if (!target) return null;
+                    return (
+                      <p className="mt-2 rounded-lg bg-[#FFFCF3] p-3 font-body text-xs text-[#997A15]">
+                        Issuing this{" "}
+                        {target.status === "issued"
+                          ? `cancels ${target.number ?? "that invoice"}`
+                          : `takes over from ${target.number ?? "that invoice"}`}
+                        {target.paymentCount
+                          ? ` and moves its ${target.paymentCount} payment${
+                              target.paymentCount === 1 ? "" : "s"
+                            } (${formatRupees(target.paidPaise, { trimZeroPaise: true })}) here, with new receipt numbers.`
+                          : "."}{" "}
+                        Its old receipts stay as they were sent.
+                      </p>
+                    );
+                  })()}
+                </div>
+              )}
+
               {isDraft && (
                 <>
                   <button
@@ -1666,9 +1864,44 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
                 </button>
               )}
 
+              {!isDraft && has034 && (
+                replacedBy ? (
+                  <p className="mt-3 rounded-lg bg-stone-50 p-3 font-body text-xs text-[#526168]">
+                    {replacedBy.status === "draft"
+                      ? "A corrected draft is in progress: "
+                      : "Reissued as "}
+                    <Link
+                      href={`/admin/invoices/${replacedBy.id}`}
+                      className="font-semibold text-[#997A15] hover:underline"
+                    >
+                      {replacedBy.number ?? "open the draft"}
+                    </Link>
+                    {replacedBy.status === "draft"
+                      ? ". Issuing it moves the payments and cancels this one."
+                      : "."}
+                  </p>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void copyAsDraft(true)}
+                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#D4AF37]/60 bg-[#FFFCF3] px-4 py-2.5 font-body text-sm font-semibold text-[#997A15] transition hover:border-[#D4AF37]"
+                    >
+                      <FiRefreshCw /> Reissue with corrections
+                    </button>
+                    <p className="mt-2 font-body text-xs text-[#526168]">
+                      Opens an editable copy. Issuing it cancels this invoice
+                      and moves{" "}
+                      {paidPaise > 0 ? "its payments" : "any payments"} across
+                      as new receipts.
+                    </p>
+                  </>
+                )
+              )}
+
               <button
                 type="button"
-                onClick={() => void duplicate()}
+                onClick={() => void copyAsDraft(false)}
                 className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-stone-200 px-4 py-2.5 font-body text-sm font-semibold text-[#526168] transition hover:border-[#D4AF37] hover:text-[#997A15]"
               >
                 <FiCopy /> Duplicate as draft

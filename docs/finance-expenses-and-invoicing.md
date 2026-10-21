@@ -362,6 +362,30 @@ What the database enforces (all in 023, all tested against Postgres):
 
 ---
 
+## Decision 11 — Reissue carries the payments
+
+**Added October 2026. Migration `034_invoice_reissue.sql`.**
+
+The prompt: an issued invoice with five receipts had a mistake. "Duplicate as draft" copied the bill but not the money, because a payment belongs to the invoice it was recorded on and 023 makes its `invoice_id` immutable. Doing it by hand meant removing five payments, cancelling, issuing the copy and typing five payments in again, in exactly that order. A cancelled invoice offers no remove button, so cancelling first stranded the money, and skipping the removal counted it on two invoices.
+
+Now a draft can name the invoice it **replaces** (`invoices.replaces_invoice_id`). "Reissue with corrections" on an issued or cancelled invoice creates that draft; the "Replaces invoice" picker on any draft sets it after the fact. **Issuing the draft** runs `complete_invoice_reissue()`, an `AFTER UPDATE` trigger inside `issue_invoice()`'s transaction, which:
+
+1. re-records every payment of the old invoice on the new one, in the order received: same date, amount, method and reference, a **new** receipt number, and a note naming the old receipt;
+2. removes the old payments;
+3. cancels the old invoice "Reissued as <number>", unless it was cancelled already.
+
+Options rejected:
+
+- **Update `invoice_id` on the payments.** The receipt number `…/0041-R2` would then point at `…/0042`, and `paid_before_paise` was snapshotted against the old total. 023's rule stands: a payment is removed and recorded again.
+- **Do it from the browser.** There is no client transaction; a tab closed between "record here" and "remove there" double-counts lakhs.
+- **Move the money when the draft is created.** The customer's invoice must stand, payments and all, until its replacement has a number.
+
+Guarded in the database: only a draft may set the column, it cannot point at a draft or at itself, it is fixed once issued, and a unique index allows one replacement per invoice, so two drafts cannot race for the same payments. Deleting the draft frees the old invoice to be reissued again. Old receipt PDFs stay in storage, as every stored PDF does.
+
+Tested against Postgres (PGlite, every migration 001–034 applied): three payments move as R1–R3 with `paid_before_paise` 0 / 30,000 / 60,000, the old invoice ends cancelled and unpaid, the new one settled; a second claim, a draft target, and a post-issue change are each refused; an already-cancelled invoice gives up its payments without being cancelled twice.
+
+---
+
 ## Schema
 
 One migration, `supabase/migrations/017_finance.sql`, written in the house style — heavily commented, `if not exists` throughout, safe to run more than once.
