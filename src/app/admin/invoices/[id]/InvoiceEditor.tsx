@@ -380,9 +380,13 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
 
   /* --------------------------------------------------------------- totals */
 
+  // Only the lines save() keeps — a line with no description is dropped on
+  // save, so counting it here wrote a total the stored lines didn't add up to.
   const parsedItems = useMemo(
     () =>
-      items.map((item) => ({
+      items
+        .filter((item) => item.description.trim())
+        .map((item) => ({
         quantity: Number(item.quantity) || 0,
         unitPricePaise: parsePaise(item.unitPrice) ?? 0,
       })),
@@ -544,6 +548,16 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     const usable = items.filter((item) => item.description.trim());
     if (!usable.length) {
       setError("Add at least one line with a description.");
+      return false;
+    }
+
+    // A priced line with no description would be dropped silently, and the
+    // customer billed for less than the admin typed. Blank empty lines go.
+    const unnamed = items.findIndex(
+      (item) => !item.description.trim() && (parsePaise(item.unitPrice) ?? 0) > 0,
+    );
+    if (unnamed !== -1) {
+      setError(`Line ${unnamed + 1} has a rate but no description.`);
       return false;
     }
 
