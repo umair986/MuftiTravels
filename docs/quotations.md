@@ -2,7 +2,7 @@
 
 **Status:** Built, phases 0–6. Migration `024_quotations.sql` — **not yet applied to the live database.**
 **Written:** 3 October 2026
-**Depends on:** migrations 001–023, `public.is_admin()` (008), `public.fy_label()` and the `invoice_counters` pattern (017), `public.invoice_policy_lists()` (021), the `AdminShell` sidebar (`src/app/admin/AdminShell.tsx`)
+**Depends on:** migrations 001–023, `public.is_admin()` (008), `public.fy_label()` and the `invoice_counters` pattern (017), `public.invoice_policy_lists()` (021), the `AdminShell` sidebar (`src/app/admin/_components/AdminShell.tsx`)
 
 > This began as a decision document written before the build and is now also the record of what
 > was built, in the shape of `docs/finance-expenses-and-invoicing.md`. Where it disagrees with
@@ -1012,7 +1012,7 @@ Plus the Decision 1 grep above, which must return nothing.
 
 1. **`packages.prices` can be keyed either way.** The seed in migration 003 wrote it keyed by
    tier *display name* (`"Silver"`); migration 006 re-keys to stable keys (`silver`) and drops
-   anything it cannot match. `TierPriceMap` in `src/app/components/packageData.ts` is still
+   anything it cannot match. `TierPriceMap` in `src/types/package.ts` is still
    typed by display name and is therefore wrong about re-keyed rows. `ratesForPackage` in
    `src/lib/packages.client.ts` accepts **both** forms, preferring the stable key, and always
    reports the tier under its key with its display name resolved through

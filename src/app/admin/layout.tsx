@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AdminSessionTimeout from "./AdminSessionTimeout";
+import AdminSessionTimeout from "./_components/AdminSessionTimeout";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },

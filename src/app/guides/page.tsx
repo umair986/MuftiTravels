@@ -3,10 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { FiArrowRight, FiClock } from "react-icons/fi";
 
-import Footer from "@/app/components/Footer";
-import JsonLd from "@/app/components/JsonLd";
+import Footer from "@/components/layout/Footer";
+import JsonLd from "@/components/layout/JsonLd";
 import { GUIDES } from "@/lib/guides";
 import { breadcrumbSchema } from "@/lib/seo";
+import { formatIstLongDate } from "@/lib/dates";
 
 /**
  * /guides — the index of informational articles.
@@ -27,14 +28,6 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
-
-function formatDate(iso: string) {
-  return new Date(`${iso}T00:00:00+05:30`).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 export default function GuidesIndexPage() {
   return (
@@ -106,7 +99,7 @@ export default function GuidesIndexPage() {
                     {guide.description}
                   </p>
                   <div className="mt-auto flex items-center justify-between pt-6 font-body text-xs text-stone-500">
-                    <span>Checked {formatDate(guide.reviewed)}</span>
+                    <span>Checked {formatIstLongDate(guide.reviewed)}</span>
                     <span className="flex items-center gap-1 font-semibold text-[#997A15]">
                       Read guide
                       <FiArrowRight className="transition group-hover:translate-x-0.5" />

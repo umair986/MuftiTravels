@@ -23,9 +23,9 @@ import {
   type ContentTone,
   type SiteContentList,
 } from "@/lib/siteContent";
-import { useToast } from "../../components/ui/toast/useToast";
-import AdminLoginForm from "../AdminLoginForm";
-import AdminShell from "../AdminShell";
+import { useToast } from "../../../components/ui/toast/useToast";
+import AdminLoginForm from "../_components/AdminLoginForm";
+import AdminShell from "../_components/AdminShell";
 
 /**
  * Editor for the text every package page shares.

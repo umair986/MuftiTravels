@@ -14,7 +14,7 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import { CmsPackageRecord } from "@/lib/packages";
-import { formatRupees } from "@/lib/money";
+import { formatRupees, rupeesToPaise } from "@/lib/money";
 import {
   cityName,
   compareNewestMonthFirst,
@@ -28,7 +28,7 @@ import { createClient } from "@/lib/supabase/client";
 import AdminLoginForm from "./AdminLoginForm";
 import AdminShell from "./AdminShell";
 import CreatePackageDialog from "./CreatePackageDialog";
-import { useToast } from "../components/ui/toast/useToast";
+import { useToast } from "../../../components/ui/toast/useToast";
 
 type StatusFilter = "all" | "published" | "draft" | "expired";
 
@@ -498,7 +498,7 @@ function formatDuration(record: CmsPackageRecord) {
 function formatStartingPrice(record: CmsPackageRecord) {
   const rupees = Number(record.starting_price) || 0;
   if (rupees <= 0) return "No price";
-  return formatRupees(Math.round(rupees * 100), { trimZeroPaise: true });
+  return formatRupees(rupeesToPaise(rupees), { trimZeroPaise: true });
 }
 
 function Thumbnail({ record }: { record: CmsPackageRecord }) {

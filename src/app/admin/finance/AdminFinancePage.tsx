@@ -16,9 +16,9 @@ import {
   type MonthlyFinancials,
   type TripFinancials,
 } from "@/lib/reporting";
-import { useToast } from "../../components/ui/toast/useToast";
-import AdminLoginForm from "../AdminLoginForm";
-import AdminShell from "../AdminShell";
+import { useToast } from "../../../components/ui/toast/useToast";
+import AdminLoginForm from "../_components/AdminLoginForm";
+import AdminShell from "../_components/AdminShell";
 
 /**
  * The one screen that answers "how is the business doing".

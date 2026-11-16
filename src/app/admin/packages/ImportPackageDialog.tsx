@@ -10,7 +10,7 @@ import {
   parsePackageImport,
   type ImportedPackage,
 } from "@/lib/packageImport";
-import { useToast } from "../../components/ui/toast/useToast";
+import { useToast } from "../../../components/ui/toast/useToast";
 
 /**
  * Paste or upload the JSON ChatGPT made from a flyer, see what it would

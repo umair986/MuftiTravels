@@ -21,7 +21,7 @@
  * office where there is none.
  */
 
-import type { TierPriceMap } from "@/app/components/packageData";
+import type { TierPriceMap } from "@/types/package";
 import { FIXED_GROUP_INCLUDED_ANSWER, VISA_ANSWER } from "@/lib/categoryLanding";
 import { DEPARTURE_CITIES, cityPath, type CityKey } from "@/lib/departures";
 import { BUSINESS } from "@/lib/seo";
@@ -73,7 +73,8 @@ export function cheapestPrice(
   return best;
 }
 
-export function formatRupees(amount: number): string {
+/** Whole rupees from the catalogue, e.g. "₹95,000" — not paise; money.ts formatRupees takes paise. */
+export function formatWholeRupees(amount: number): string {
   return `₹${amount.toLocaleString("en-IN")}`;
 }
 
@@ -136,7 +137,7 @@ function cityPage(input: CityInput): CityLanding {
         ? [
             {
               question: `How much does Umrah cost from ${city}?`,
-              answer: `Our ${trip.days}-day fixed-group Umrah from ${city} starts at ${formatRupees(trip.price.amount)} per person, in the ${trip.price.tier} tier with ${ROOM_SHARING[trip.price.room] ?? trip.price.room.toLowerCase()} people sharing a room. The price rises with the hotel tier and with fewer people per room, and moves month to month with flight and hotel rates; the full price table is on the package page. Ramadan and winter departures are priced separately — call or WhatsApp us for the nearest date and today's rate.`,
+              answer: `Our ${trip.days}-day fixed-group Umrah from ${city} starts at ${formatWholeRupees(trip.price.amount)} per person, in the ${trip.price.tier} tier with ${ROOM_SHARING[trip.price.room] ?? trip.price.room.toLowerCase()} people sharing a room. The price rises with the hotel tier and with fewer people per room, and moves month to month with flight and hotel rates; the full price table is on the package page. Ramadan and winter departures are priced separately — call or WhatsApp us for the nearest date and today's rate.`,
             },
           ]
         : []),

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { FiAlertTriangle, FiArrowUpRight, FiInbox } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 import { currentIstMonth } from "@/lib/departures";
-import AdminShell from "./AdminShell";
+import AdminShell from "./_components/AdminShell";
 
 type AdminDashboardProps = {
   email: string;

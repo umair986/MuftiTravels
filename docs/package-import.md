@@ -12,7 +12,7 @@ from. The editor's **Import from flyer JSON** button replaces the retyping:
 
 Code: `src/lib/packageImport.ts` (pure parser, prompt, example — tested in
 `packageImport.test.ts`), `src/app/admin/packages/ImportPackageDialog.tsx`, and
-`applyImported` / `formToImported` in `src/app/admin/ManagedPackageEditor.tsx`.
+`applyImported` / `formToImported` in `src/app/admin/_components/ManagedPackageEditor.tsx`.
 No migration.
 
 ## Decisions

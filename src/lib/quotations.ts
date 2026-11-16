@@ -29,6 +29,7 @@ import {
   type Baggage,
   type FlightLeg,
 } from "./flights";
+import { whatsappCustomerUrl } from "./business";
 
 /* -------------------------------------------------------------------------- */
 /* Vocabulary                                                                 */
@@ -772,10 +773,6 @@ export function whatsappQuoteUrl({
   validUntil?: string | null;
   link: string;
 }): string | null {
-  const digits = (phone ?? "").replace(/\D/g, "");
-  if (digits.length < 10) return null;
-  const withCountry = digits.length === 10 ? `91${digits}` : digits;
-
   const total = formatRupees(totalPaise, { trimZeroPaise: true });
   const headline =
     perPerson && pax && pax > 1
@@ -791,7 +788,7 @@ export function whatsappQuoteUrl({
       : "This link is valid for 7 days.",
   ].join("\n\n");
 
-  return `https://wa.me/${withCountry}?text=${encodeURIComponent(message)}`;
+  return whatsappCustomerUrl(phone, message);
 }
 
 /**
@@ -991,32 +988,6 @@ export async function createInvoiceFromQuotation(
   if (linkError) return { id: invoiceId, error: linkError.message };
   return { id: invoiceId, error: null };
 }
-
-/**
- * The columns a quotation editor writes, as one object.
- *
- * Takes the resolved totals rather than computing them, so that the editor's
- * live preview and what gets saved are provably the same numbers. Omits
- * `revision`, `number`, `fy_label`, `seq`, `sent_on`, `sent_at`, `valid_until`
- * and `policy_snapshot`: all of those belong to send_quotation(), and writing
- * them from here is how the two would drift.
- */
-export type QuotationPatch = Omit<
-  QuotationRecord,
-  | "id"
-  | "number"
-  | "fy_label"
-  | "seq"
-  | "revision"
-  | "sent_on"
-  | "sent_at"
-  | "valid_until"
-  | "policy_snapshot"
-  | "pdf_path"
-  | "converted_invoice_id"
-  | "created_at"
-  | "updated_at"
->;
 
 /** The invoice row type, re-exported so the convert screen needs one import. */
 export type { InvoiceRecord };

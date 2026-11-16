@@ -17,9 +17,10 @@ import {
   type InvoiceRecord,
 } from "@/lib/invoices";
 import { formatRupees } from "@/lib/money";
-import { useToast } from "../../components/ui/toast/useToast";
-import AdminLoginForm from "../AdminLoginForm";
-import AdminShell from "../AdminShell";
+import { useToast } from "../../../components/ui/toast/useToast";
+import AdminLoginForm from "../_components/AdminLoginForm";
+import AdminShell from "../_components/AdminShell";
+import { formatShortDate } from "@/lib/dates";
 
 /**
  * The invoice list.
@@ -47,18 +48,6 @@ const FILTERS = [
 ] as const;
 
 type Filter = (typeof FILTERS)[number]["value"];
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.valueOf())
-    ? value
-    : parsed.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-}
 
 export default function AdminInvoicesPage() {
   const [supabase] = useState(createClient);
@@ -449,7 +438,7 @@ export default function AdminInvoicesPage() {
                   {invoice.number ?? "Draft"}
                 </Link>
                 <p className="font-body text-xs text-[#526168]">
-                  {formatDate(invoice.issue_date)}
+                  {formatShortDate(invoice.issue_date)}
                 </p>
                 {invoice.due_date && balance && balance.balance_paise > 0 && (
                   <p
@@ -457,7 +446,7 @@ export default function AdminInvoicesPage() {
                       balance.is_overdue ? "text-red-600" : "text-[#526168]"
                     }`}
                   >
-                    due {formatDate(invoice.due_date)}
+                    due {formatShortDate(invoice.due_date)}
                   </p>
                 )}
               </div>

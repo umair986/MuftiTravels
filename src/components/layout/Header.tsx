@@ -16,6 +16,7 @@ import {
 import { FaWhatsapp } from "react-icons/fa";
 import { CATEGORY_SLUGS } from "@/lib/categories";
 import { DEPARTURE_CITIES, cityPath } from "@/lib/departures";
+import { whatsappBusinessUrl, PHONE_TEL, PHONE_DISPLAY } from "@/lib/business";
 
 /**
  * The header's one call to action. WhatsApp is where enquiries actually get
@@ -23,7 +24,7 @@ import { DEPARTURE_CITIES, cityPath } from "@/lib/departures";
  * form is still reachable from the footer and the contact section itself.
  */
 const WHATSAPP_ENQUIRY_URL =
-  "https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20enquire%20about%20Umrah%20packages.";
+  whatsappBusinessUrl("As-salamu alaykum, I would like to enquire about Umrah packages.");
 
 /**
  * The Packages menu. Umrah is browsed by departure city because Umrah packages
@@ -258,14 +259,14 @@ const Header = () => {
               <span className="text-stone-300">Pilgrim Advisors Online</span>
             </div>
             <a
-              href="tel:+919323063712"
+              href={PHONE_TEL}
               className="flex items-center gap-1.5 text-stone-200 hover:text-[#D4AF37] transition-colors"
             >
               <FiPhone className="w-3.5 h-3.5 text-[#D4AF37]" />
-              <span className="font-medium whitespace-nowrap">+91 93230 63712</span>
+              <span className="font-medium whitespace-nowrap">{PHONE_DISPLAY}</span>
             </a>
             <a
-              href="https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20enquire%20about%20Umrah%20packages."
+              href={WHATSAPP_ENQUIRY_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors"
@@ -535,11 +536,11 @@ const Header = () => {
 
               <div className="pt-4 flex flex-col gap-3">
                 <a
-                  href="tel:+919323063712"
+                  href={PHONE_TEL}
                   className="flex items-center justify-center gap-2 py-3 rounded-xl border border-stone-700 text-stone-200 hover:bg-white/5 transition-colors font-medium text-sm"
                 >
                   <FiPhone className="text-[#D4AF37]" />
-                  <span>Call +91 93230 63712</span>
+                  <span>Call {PHONE_DISPLAY}</span>
                 </a>
                 <Link
                   href="/#contact"

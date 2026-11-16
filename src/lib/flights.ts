@@ -29,6 +29,8 @@
  * something to print.
  */
 
+import { toDateInput } from "./dates";
+
 export type FlightLeg = {
   /** "Saudi Airline". Per leg, because a return on another carrier is real. */
   airline: string;
@@ -110,12 +112,6 @@ function isoOf(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-/** Today on this device, as YYYY-MM-DD. Only ever a floor for guessing a year. */
-function localToday(): string {
-  const now = new Date();
-  return isoOf(now.getFullYear(), now.getMonth() + 1, now.getDate());
-}
-
 /** A real calendar date, so "31 Feb" is rejected rather than rolled into March. */
 function validDate(year: number, month: number, day: number): boolean {
   const date = new Date(Date.UTC(year, month - 1, day));
@@ -167,7 +163,7 @@ export function inferLegDate(text: string, onOrAfter: string): string {
     return validDate(year, month, day) ? isoOf(year, month, day) : "";
   }
 
-  const floor = ISO_DATE.test(onOrAfter) ? onOrAfter : localToday();
+  const floor = ISO_DATE.test(onOrAfter) ? onOrAfter : toDateInput();
   const start = Number(floor.slice(0, 4));
   for (let candidate = start; candidate <= start + 4; candidate += 1) {
     if (!validDate(candidate, month, day)) continue;
@@ -369,7 +365,7 @@ export function parseBaggageText(text: string): Baggage {
  */
 export function parseFlightPaste(
   text: string,
-  today: string = localToday(),
+  today: string = toDateInput(),
 ): { legs: FlightLeg[]; baggage: Baggage } {
   const legs: FlightLeg[] = [];
   let baggage: Baggage = { ...EMPTY_BAGGAGE };

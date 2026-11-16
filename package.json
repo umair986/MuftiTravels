@@ -14,12 +14,10 @@
     "sample:pdf": "esbuild scripts/render-invoice-sample.mts --bundle --platform=node --format=esm --target=node22 --jsx=automatic --external:pdfkit --external:sharp --outfile=node_modules/.cache/mt/render-sample.mjs --log-level=error && node node_modules/.cache/mt/render-sample.mjs"
   },
   "dependencies": {
-    "@headlessui/react": "^2.2.6",
     "@react-pdf/renderer": "^4.9.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
     "framer-motion": "^12.16.0",
-    "lucide-react": "^0.514.0",
     "next": "15.5.21",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

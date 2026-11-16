@@ -1,4 +1,4 @@
-import { PackageData, TierPriceMap } from "@/app/components/packageData";
+import { PackageData, TierPriceMap } from "@/types/package";
 import { stayNights, type PackageDetails } from "@/lib/categoryFields";
 import type { PackageTierHotels } from "@/lib/taxonomy";
 import { flightCarrier } from "@/lib/departures";

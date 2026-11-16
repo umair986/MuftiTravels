@@ -5,7 +5,7 @@ import { FiSave, FiTrash2, FiUpload } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 import { TAX_MODES, fyLabel, type TaxMode } from "@/lib/finance";
 import { toPdfSafeImage } from "@/lib/pdf/pdfSafeImage";
-import { useToast } from "../../../components/ui/toast/useToast";
+import { useToast } from "../../../../components/ui/toast/useToast";
 
 /**
  * The company details every invoice prints.

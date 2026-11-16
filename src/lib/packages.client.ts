@@ -28,7 +28,7 @@ import { tierName, type PackageTierRecord } from "./taxonomy";
  *
  *   { "silver": { "Quad": 110000, "Triple": 118000, "Child(6-11)": 94000 } }
  *
- * Not TierPriceMap from src/app/components/packageData.ts, which is keyed by
+ * Not TierPriceMap from src/types/package.ts, which is keyed by
  * display name ("Silver"). Migration 006 re-keyed this data to stable keys and
  * that type was never updated to match, so it is wrong about live rows — see the
  * open question in docs/quotations.md. Typing it honestly here keeps the picker

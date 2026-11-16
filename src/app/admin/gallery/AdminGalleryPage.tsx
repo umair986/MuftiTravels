@@ -29,9 +29,9 @@ import {
 type CollectionRow = GalleryCollection & {
   gallery_photos: { count: number }[];
 };
-import { useToast } from "../../components/ui/toast/useToast";
-import AdminLoginForm from "../AdminLoginForm";
-import AdminShell from "../AdminShell";
+import { useToast } from "../../../components/ui/toast/useToast";
+import AdminLoginForm from "../_components/AdminLoginForm";
+import AdminShell from "../_components/AdminShell";
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 

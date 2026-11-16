@@ -23,8 +23,8 @@ import {
   FiX,
 } from "react-icons/fi";
 
-import Footer from "@/app/components/Footer";
-import PriceChangeNote from "@/app/components/PriceChangeNote";
+import Footer from "@/components/layout/Footer";
+import PriceChangeNote from "@/components/packages/PriceChangeNote";
 import {
   CONTENT_SECTIONS,
   contentOrDefaults,
@@ -38,15 +38,17 @@ import {
   PackageData,
   PackageTier,
   SharingType,
-} from "@/app/components/packageData";
+} from "@/types/package";
 import { createClient } from "@/lib/supabase/client";
 import { tierName, withPackageHotels } from "@/lib/taxonomy";
 import { cityName, formatDepartureDates } from "@/lib/departures";
-import PackageTagBadges from "@/app/components/PackageTagBadges";
+import PackageTagBadges from "@/components/packages/PackageTagBadges";
 import TierHotels from "./TierHotels";
-import DatePicker, { localToday } from "@/app/components/ui/pickers/DatePicker";
+import DatePicker from "@/components/ui/pickers/DatePicker";
+import { toDateInput } from "@/lib/dates";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
-import { useToast } from "@/app/components/ui/toast/useToast";
+import { useToast } from "@/components/ui/toast/useToast";
+import { whatsappBusinessUrl } from "@/lib/business";
 
 
 
@@ -280,7 +282,7 @@ function DateField({ label, name }: { label: string; name: string }) {
         name={name}
         value={value}
         onChange={setValue}
-        min={localToday()}
+        min={toDateInput()}
         placeholder="Pick a date (optional)"
         boxClassName="rounded-lg border border-stone-200 bg-white px-3.5 py-3"
       />
@@ -406,7 +408,7 @@ function MobilePriceBar({
           </p>
         </a>
         <a
-          href="https://wa.me/919323063712"
+          href={whatsappBusinessUrl()}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="WhatsApp us about this package"
@@ -539,7 +541,7 @@ function PriceSelector({
           Enquire about this package <FiArrowRight />
         </button>
         <a
-          href="https://wa.me/919323063712"
+          href={whatsappBusinessUrl()}
           target="_blank"
           rel="noopener noreferrer"
           className="flex min-h-11 items-center justify-center gap-2 text-sm font-semibold text-emerald-400 transition hover:text-emerald-300"

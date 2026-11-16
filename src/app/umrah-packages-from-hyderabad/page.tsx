@@ -1,6 +1,6 @@
 import CityLandingPage, {
   cityMetadata,
-} from "@/app/components/city/CityLandingPage";
+} from "@/components/city/CityLandingPage";
 
 export function generateMetadata() {
   return cityMetadata("hyderabad");

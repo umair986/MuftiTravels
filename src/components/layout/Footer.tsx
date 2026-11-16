@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FaInstagram, FaFacebook, FaWhatsapp } from "react-icons/fa";
 import { FiPhone, FiMapPin, FiShield } from "react-icons/fi";
-import { FOUNDED_YEAR } from "@/lib/business";
+import { FOUNDED_YEAR, whatsappBusinessUrl, PHONE_TEL, PHONE_DISPLAY } from "@/lib/business";
 import { CATEGORY_SLUGS } from "@/lib/categories";
 import { DEPARTURE_CITIES, cityPath } from "@/lib/departures";
 
@@ -71,7 +71,7 @@ export default function Footer() {
                 <FaFacebook className="w-4 h-4" />
               </a>
               <a
-                href="https://wa.me/919323063712"
+                href={whatsappBusinessUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 rounded-full bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500 hover:text-white flex items-center justify-center text-emerald-400 transition-colors"
@@ -179,13 +179,13 @@ export default function Footer() {
               </p>
               <p className="flex items-center gap-2">
                 <FiPhone className="text-[#D4AF37] w-4 h-4 flex-shrink-0" />
-                <a href="tel:+919323063712" className="text-white font-semibold hover:text-[#D4AF37]">
-                  +91 93230 63712
+                <a href={PHONE_TEL} className="text-white font-semibold hover:text-[#D4AF37]">
+                  {PHONE_DISPLAY}
                 </a>
               </p>
               <p className="flex items-center gap-2">
                 <FaWhatsapp className="text-emerald-400 w-4 h-4 flex-shrink-0" />
-                <a href="https://wa.me/919323063712" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
+                <a href={whatsappBusinessUrl()} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
                   24/7 WhatsApp Hotline
                 </a>
               </p>

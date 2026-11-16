@@ -12,7 +12,8 @@ import {
   SHORT_MONTHS,
   monthCellClass,
   usePickerPopover,
-} from "./shell";
+} from "./PickerShell";
+import { toDateInput } from "@/lib/dates";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const LONG_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -55,7 +56,7 @@ export default function DatePicker({
   /** Dates to flag with a dot, e.g. ones already added to a list. */
   marked?: string[];
 }) {
-  const today = localToday();
+  const today = toDateInput();
   const selected = parseDate(value);
   const { open, setOpen, close, position, place, buttonRef, popoverRef } =
     usePickerPopover();
@@ -285,12 +286,6 @@ export default function DatePicker({
       )}
     </>
   );
-}
-
-/** Today on the device's own calendar, as `YYYY-MM-DD` — not UTC's. */
-export function localToday(): string {
-  const now = new Date();
-  return toIso(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
 function parseDate(value: string): { year: number; month: number; day: number } | null {

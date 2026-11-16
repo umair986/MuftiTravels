@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import DatePicker from "@/app/components/ui/pickers/DatePicker";
+import DatePicker from "@/components/ui/pickers/DatePicker";
 import { FiPaperclip, FiTrash2, FiX } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/finance";
@@ -10,14 +10,14 @@ import {
   RECEIPT_MIME_TYPES,
   receiptFileName,
   receiptStoragePath,
-  toDateInput,
   type ExpenseCategory,
   type ExpenseDraft,
   type ExpenseRecord,
   type Trip,
 } from "@/lib/expenses";
+import { toDateInput } from "@/lib/dates";
 import { formatRupees, paiseToInputValue, parsePaise } from "@/lib/money";
-import { useToast } from "../../components/ui/toast/useToast";
+import { useToast } from "../../../components/ui/toast/useToast";
 
 /**
  * Create or edit one expense.

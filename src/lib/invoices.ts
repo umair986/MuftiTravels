@@ -18,6 +18,7 @@ import type {
 } from "./finance";
 import { formatRupees } from "./money";
 import type { InvoicePolicyList } from "./siteContent";
+import { whatsappCustomerUrl } from "./business";
 
 export type InvoiceItemRecord = {
   id: string;
@@ -385,10 +386,6 @@ export function whatsappInvoiceUrl({
   settled?: boolean;
   link: string;
 }): string | null {
-  const digits = (phone ?? "").replace(/\D/g, "");
-  if (digits.length < 10) return null;
-  const withCountry = digits.length === 10 ? `91${digits}` : digits;
-
   const total = formatRupees(totalPaise, { trimZeroPaise: true });
   const message = [
     `As-salamu alaykum ${name || ""}`.trim() + ",",
@@ -399,7 +396,7 @@ export function whatsappInvoiceUrl({
     "This link is valid for 7 days.",
   ].join("\n\n");
 
-  return `https://wa.me/${withCountry}?text=${encodeURIComponent(message)}`;
+  return whatsappCustomerUrl(phone, message);
 }
 
 /**
@@ -428,10 +425,6 @@ export function whatsappReceiptUrl({
   balancePaise: number;
   link: string;
 }): string | null {
-  const digits = (phone ?? "").replace(/\D/g, "");
-  if (digits.length < 10) return null;
-  const withCountry = digits.length === 10 ? `91${digits}` : digits;
-
   const amount = formatRupees(amountPaise, { trimZeroPaise: true });
   const message = [
     `As-salamu alaykum ${name || ""}`.trim() + ",",
@@ -442,7 +435,7 @@ export function whatsappReceiptUrl({
     "This link is valid for 7 days.",
   ].join("\n\n");
 
-  return `https://wa.me/${withCountry}?text=${encodeURIComponent(message)}`;
+  return whatsappCustomerUrl(phone, message);
 }
 
 /**
@@ -534,4 +527,100 @@ export const GST_STATE_CODES: { code: string; name: string }[] = [
 
 export function stateNameForCode(code: string): string {
   return GST_STATE_CODES.find((entry) => entry.code === code)?.name ?? "";
+}
+
+/** An invoice a draft can replace, or the one that replaced this invoice. */
+export type ReissueTarget = {
+  id: string;
+  number: string | null;
+  status: InvoiceRecord["status"];
+  customer_name: string;
+  issue_date: string | null;
+  paidPaise: number;
+  paymentCount: number;
+};
+
+/**
+ * Reissue links for one invoice (migration 034): which invoice replaced it,
+ * and — for a draft — the numbered invoices it could replace, with the money
+ * that would move. Same customer first, because a reissue is usually a copy
+ * of the bill it corrects; everyone else after, because the mistake being
+ * corrected may BE the customer's name.
+ */
+export async function fetchReissueLinks(
+  supabase: SupabaseClient,
+  record: InvoiceRecord,
+): Promise<{ replaceable: ReissueTarget[]; replacedBy: ReissueTarget | null }> {
+  const columns = "id, number, status, customer_name, issue_date";
+  const [{ data: byRows }, { data: candidateRows }, { data: claimedRows }] =
+    await Promise.all([
+      supabase
+        .from("invoices")
+        .select(columns)
+        .eq("replaces_invoice_id", record.id)
+        .limit(1),
+      record.status === "draft"
+        ? supabase
+            .from("invoices")
+            .select(columns)
+            .neq("status", "draft")
+            .order("issued_at", { ascending: false, nullsFirst: false })
+            .limit(60)
+        : Promise.resolve({ data: [] }),
+      supabase
+        .from("invoices")
+        .select("id, replaces_invoice_id")
+        .not("replaces_invoice_id", "is", null),
+    ]);
+
+  type Row = Omit<ReissueTarget, "paidPaise" | "paymentCount">;
+  // Taken by ANOTHER draft or invoice; this draft's own claim stays choosable.
+  const claimed = new Set(
+    ((claimedRows as { id: string; replaces_invoice_id: string }[]) ?? [])
+      .filter((row) => row.id !== record.id)
+      .map((row) => row.replaces_invoice_id),
+  );
+  const candidates = ((candidateRows as Row[]) ?? []).filter(
+    (row) => !claimed.has(row.id),
+  );
+  // This draft's own choice, even when it is older than the recent window.
+  const target = record.replaces_invoice_id;
+  if (target && !candidates.some((row) => row.id === target)) {
+    const { data: targetRow } = await supabase
+      .from("invoices")
+      .select(columns)
+      .eq("id", target)
+      .maybeSingle();
+    if (targetRow) candidates.unshift(targetRow as Row);
+  }
+  const by = ((byRows as Row[]) ?? [])[0] ?? null;
+
+  const ids = [...candidates.map((row) => row.id), ...(by ? [by.id] : [])];
+  const { data: paymentRows } = ids.length
+    ? await supabase
+        .from("invoice_payments")
+        .select("invoice_id, amount_paise")
+        .in("invoice_id", ids)
+    : { data: [] };
+  const withMoney = (row: Row): ReissueTarget => {
+    const own = (
+      (paymentRows as { invoice_id: string; amount_paise: number }[]) ?? []
+    ).filter((payment) => payment.invoice_id === row.id);
+    return {
+      ...row,
+      paidPaise: own.reduce((sum, payment) => sum + payment.amount_paise, 0),
+      paymentCount: own.length,
+    };
+  };
+
+  const name = record.customer_name.trim().toLowerCase();
+  const sameCustomer = (row: Row) =>
+    Boolean(name) && row.customer_name.trim().toLowerCase() === name;
+  return {
+    replaceable: [
+      ...candidates.filter(sameCustomer),
+      ...candidates.filter((row) => !sameCustomer(row)),
+    ].map(withMoney),
+    replacedBy: by ? withMoney(by) : null,
+  };
 }

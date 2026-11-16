@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import DatePicker from "@/app/components/ui/pickers/DatePicker";
+import DatePicker from "@/components/ui/pickers/DatePicker";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -33,6 +33,7 @@ import {
   GST_STATE_CODES,
   INVOICE_LINK_TTL_SECONDS,
   blankItem,
+  fetchReissueLinks,
   invoicePdfPath,
   newId,
   stateNameForCode,
@@ -44,6 +45,7 @@ import {
   type InvoicePayment,
   type InvoiceRecord,
   type LinePreset,
+  type ReissueTarget,
 } from "@/lib/invoices";
 import {
   formatRupees,
@@ -64,11 +66,12 @@ import {
   type Baggage,
   type FlightLeg,
 } from "@/lib/flights";
-import { useToast } from "../../../components/ui/toast/useToast";
-import AdminShell from "../../AdminShell";
-import FlightsEditor from "../../FlightsEditor";
+import { useToast } from "../../../../components/ui/toast/useToast";
+import AdminShell from "../../_components/AdminShell";
+import FlightsEditor from "../../_components/FlightsEditor";
 import LinePresetPicker from "../LinePresetPicker";
 import PaymentsPanel from "./PaymentsPanel";
+import { toDateInput } from "@/lib/dates";
 
 /**
  * Draft editor and issued-invoice viewer.
@@ -88,104 +91,6 @@ const FIELD =
 
 const LABEL =
   "mb-1.5 block font-body text-xs font-semibold uppercase tracking-[0.12em] text-[#526168]";
-
-/** An invoice a draft can replace, or the one that replaced this invoice. */
-type ReissueTarget = {
-  id: string;
-  number: string | null;
-  status: InvoiceRecord["status"];
-  customer_name: string;
-  issue_date: string | null;
-  paidPaise: number;
-  paymentCount: number;
-};
-
-type Client = NonNullable<ReturnType<typeof createClient>>;
-
-/**
- * Reissue links for one invoice (migration 034): which invoice replaced it,
- * and — for a draft — the numbered invoices it could replace, with the money
- * that would move. Same customer first, because a reissue is usually a copy
- * of the bill it corrects; everyone else after, because the mistake being
- * corrected may BE the customer's name.
- */
-async function fetchReissueLinks(
-  supabase: Client,
-  record: InvoiceRecord,
-): Promise<{ replaceable: ReissueTarget[]; replacedBy: ReissueTarget | null }> {
-  const columns = "id, number, status, customer_name, issue_date";
-  const [{ data: byRows }, { data: candidateRows }, { data: claimedRows }] =
-    await Promise.all([
-      supabase
-        .from("invoices")
-        .select(columns)
-        .eq("replaces_invoice_id", record.id)
-        .limit(1),
-      record.status === "draft"
-        ? supabase
-            .from("invoices")
-            .select(columns)
-            .neq("status", "draft")
-            .order("issued_at", { ascending: false, nullsFirst: false })
-            .limit(60)
-        : Promise.resolve({ data: [] }),
-      supabase
-        .from("invoices")
-        .select("id, replaces_invoice_id")
-        .not("replaces_invoice_id", "is", null),
-    ]);
-
-  type Row = Omit<ReissueTarget, "paidPaise" | "paymentCount">;
-  // Taken by ANOTHER draft or invoice; this draft's own claim stays choosable.
-  const claimed = new Set(
-    ((claimedRows as { id: string; replaces_invoice_id: string }[]) ?? [])
-      .filter((row) => row.id !== record.id)
-      .map((row) => row.replaces_invoice_id),
-  );
-  const candidates = ((candidateRows as Row[]) ?? []).filter(
-    (row) => !claimed.has(row.id),
-  );
-  // This draft's own choice, even when it is older than the recent window.
-  const target = record.replaces_invoice_id;
-  if (target && !candidates.some((row) => row.id === target)) {
-    const { data: targetRow } = await supabase
-      .from("invoices")
-      .select(columns)
-      .eq("id", target)
-      .maybeSingle();
-    if (targetRow) candidates.unshift(targetRow as Row);
-  }
-  const by = ((byRows as Row[]) ?? [])[0] ?? null;
-
-  const ids = [...candidates.map((row) => row.id), ...(by ? [by.id] : [])];
-  const { data: paymentRows } = ids.length
-    ? await supabase
-        .from("invoice_payments")
-        .select("invoice_id, amount_paise")
-        .in("invoice_id", ids)
-    : { data: [] };
-  const withMoney = (row: Row): ReissueTarget => {
-    const own = (
-      (paymentRows as { invoice_id: string; amount_paise: number }[]) ?? []
-    ).filter((payment) => payment.invoice_id === row.id);
-    return {
-      ...row,
-      paidPaise: own.reduce((sum, payment) => sum + payment.amount_paise, 0),
-      paymentCount: own.length,
-    };
-  };
-
-  const name = record.customer_name.trim().toLowerCase();
-  const sameCustomer = (row: Row) =>
-    Boolean(name) && row.customer_name.trim().toLowerCase() === name;
-  return {
-    replaceable: [
-      ...candidates.filter(sameCustomer),
-      ...candidates.filter((row) => !sameCustomer(row)),
-    ].map(withMoney),
-    replacedBy: by ? withMoney(by) : null,
-  };
-}
 
 export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
   const [supabase] = useState(createClient);
@@ -333,7 +238,7 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
     setCustomerAddress(record.customer_address);
     setCustomerStateCode(record.customer_state_code);
     setCustomerGstin(record.customer_gstin);
-    setIssueDate(record.issue_date ?? todayInput());
+    setIssueDate(record.issue_date ?? toDateInput());
     setDueDate(record.due_date ?? "");
     setTravelDate(record.travel_date ?? "");
     setReplacesId(record.replaces_invoice_id ?? "");
@@ -771,7 +676,7 @@ export default function InvoiceEditor({ invoiceId }: { invoiceId: string }) {
 
     const { data: number, error: issueError } = await supabase.rpc(
       "issue_invoice",
-      { p_invoice: invoice.id, p_issue_date: issueDate || todayInput() },
+      { p_invoice: invoice.id, p_issue_date: issueDate || toDateInput() },
     );
 
     if (issueError) {
@@ -2004,11 +1909,4 @@ function Row({ label, value }: { label: string; value: string }) {
       <dd className="text-[#06131D]">{value}</dd>
     </div>
   );
-}
-
-function todayInput(): string {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${month}-${day}`;
 }

@@ -2,7 +2,7 @@
 
 **Status:** Built, phases 0–4. Migrations 017–019.
 **Written:** 31 August 2026
-**Depends on:** migrations 001–016, `public.is_admin()` (migration 008), the `AdminShell` sidebar (`src/app/admin/AdminShell.tsx`)
+**Depends on:** migrations 001–016, `public.is_admin()` (migration 008), the `AdminShell` sidebar (`src/app/admin/_components/AdminShell.tsx`)
 
 > This began as a decision document and is now also the record of what was built.
 > Where implementation diverged from the plan, the plan text was corrected rather

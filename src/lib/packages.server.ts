@@ -141,17 +141,6 @@ function withoutExpired(catalog: PublicCatalog): PublicCatalog {
     : { ...catalog, packages };
 }
 
-/** Published packages in one category, with the registries alongside. */
-export async function getCategoryCatalog(
-  category: string,
-): Promise<PublicCatalog> {
-  const catalog = await getPublicCatalog();
-  return {
-    ...catalog,
-    packages: catalog.packages.filter((item) => item.category === category),
-  };
-}
-
 /**
  * The city a package belonged to, for a package the public can no longer see
  * — its month is over, or it has been deleted. Null for anything else,

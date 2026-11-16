@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AdminPackageCollectionPage from "../AdminPackageCollectionPage";
+import AdminPackageCollectionPage from "../_components/AdminPackageCollectionPage";
 
 export const metadata: Metadata = {
   title: "Hajj Packages",

@@ -11,7 +11,7 @@ import {
   getPublicCatalog,
   getRetiredPackageCity,
 } from "@/lib/packages.server";
-import JsonLd from "@/app/components/JsonLd";
+import JsonLd from "@/components/layout/JsonLd";
 import { breadcrumbSchema, packageSchema } from "@/lib/seo";
 import PackageDetailPageClient from "./PackageDetailPageClient";
 

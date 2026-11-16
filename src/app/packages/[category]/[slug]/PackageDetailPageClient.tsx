@@ -1,7 +1,7 @@
 "use client";
 
-import PackageDetailExperience from "@/app/components/packages/PackageDetailExperience";
-import { CategoryType, PackageData } from "@/app/components/packageData";
+import PackageDetailExperience from "@/components/packages/PackageDetailExperience";
+import { CategoryType, PackageData } from "@/types/package";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
 import type { SiteContentList } from "@/lib/siteContent";
 

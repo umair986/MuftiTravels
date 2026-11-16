@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getGalleryCollection, getGalleryIndex } from "@/lib/gallery.server";
 import { breadcrumbSchema, galleryCollectionSchema, SITE_URL } from "@/lib/seo";
-import JsonLd from "@/app/components/JsonLd";
-import Footer from "@/app/components/Footer";
+import JsonLd from "@/components/layout/JsonLd";
+import Footer from "@/components/layout/Footer";
 import CollectionGallery from "./CollectionGallery";
 
 type RouteParams = { slug: string };

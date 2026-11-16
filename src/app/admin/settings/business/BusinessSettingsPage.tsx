@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import AdminLoginForm from "../../AdminLoginForm";
-import AdminShell from "../../AdminShell";
+import AdminLoginForm from "../../_components/AdminLoginForm";
+import AdminShell from "../../_components/AdminShell";
 import BusinessProfileForm from "./BusinessProfileForm";
 import ListsPanel from "./ListsPanel";
 

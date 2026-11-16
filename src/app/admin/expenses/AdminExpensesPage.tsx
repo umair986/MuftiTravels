@@ -25,10 +25,11 @@ import {
   type Trip,
 } from "@/lib/expenses";
 import { formatRupees, formatRupeesCompact } from "@/lib/money";
-import { useToast } from "../../components/ui/toast/useToast";
-import AdminLoginForm from "../AdminLoginForm";
-import AdminShell from "../AdminShell";
+import { useToast } from "../../../components/ui/toast/useToast";
+import AdminLoginForm from "../_components/AdminLoginForm";
+import AdminShell from "../_components/AdminShell";
 import ExpenseFormDialog from "./ExpenseFormDialog";
+import { formatShortDate } from "@/lib/dates";
 
 /**
  * The expense ledger.
@@ -40,17 +41,6 @@ import ExpenseFormDialog from "./ExpenseFormDialog";
  * period is naturally bounded, so this stays small — and when it does not,
  * EXPENSE_FETCH_CAP is reported rather than silently truncating a total.
  */
-
-function formatDate(value: string) {
-  const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.valueOf())
-    ? value
-    : parsed.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-}
 
 export default function AdminExpensesPage() {
   const [supabase] = useState(createClient);
@@ -523,7 +513,7 @@ export default function AdminExpensesPage() {
               }`}
             >
               <div className="w-24 flex-shrink-0 font-body text-xs text-[#526168]">
-                {formatDate(expense.spent_on)}
+                {formatShortDate(expense.spent_on)}
               </div>
 
               <div className="min-w-[12rem] flex-1">

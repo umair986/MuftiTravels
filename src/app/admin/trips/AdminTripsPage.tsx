@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import DatePicker from "@/app/components/ui/pickers/DatePicker";
+import DatePicker from "@/components/ui/pickers/DatePicker";
 import { FiEdit2, FiPlus, FiTrash2, FiX } from "react-icons/fi";
 import { createClient } from "@/lib/supabase/client";
 import { TRIP_STATUSES, tripStatusLabel, type TripStatus } from "@/lib/finance";
 import { SERIES, STATUS_INK, barWidth, scaleMax, type TripFinancials } from "@/lib/reporting";
 import { formatRupees } from "@/lib/money";
-import { useToast } from "../../components/ui/toast/useToast";
-import AdminLoginForm from "../AdminLoginForm";
-import AdminShell from "../AdminShell";
+import { useToast } from "../../../components/ui/toast/useToast";
+import AdminLoginForm from "../_components/AdminLoginForm";
+import AdminShell from "../_components/AdminShell";
+import { formatShortDate } from "@/lib/dates";
 
 /**
  * Departures, and whether each one made money.
@@ -36,18 +37,6 @@ type TripDraft = {
   status: TripStatus;
   notes: string;
 };
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.valueOf())
-    ? value
-    : parsed.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-}
 
 export default function AdminTripsPage() {
   const [supabase] = useState(createClient);
@@ -273,7 +262,7 @@ export default function AdminTripsPage() {
                   <p className="mt-0.5 font-body text-xs text-[#526168]">
                     {[
                       row.category,
-                      formatDate(row.departure_date),
+                      formatShortDate(row.departure_date),
                       tripStatusLabel(row.status),
                       `${row.invoice_count} ${row.invoice_count === 1 ? "invoice" : "invoices"}`,
                       `${row.expense_count} ${row.expense_count === 1 ? "expense" : "expenses"}`,

@@ -13,7 +13,7 @@ import {
   SHORT_MONTHS,
   monthCellClass,
   usePickerPopover,
-} from "./shell";
+} from "./PickerShell";
 
 /**
  * A month picker in the house style, replacing `<input type="month">`.

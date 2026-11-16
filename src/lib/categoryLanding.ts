@@ -10,7 +10,7 @@
  * them.
  */
 
-import type { CategoryType } from "@/app/components/packageData";
+import type { CategoryType } from "@/types/package";
 
 export type CategoryLanding = {
   /** <title>. Keep under ~60 characters so it is not truncated in results. */

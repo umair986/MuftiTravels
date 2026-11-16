@@ -3,12 +3,7 @@
 import Link from "next/link";
 import { FiX } from "react-icons/fi";
 import { cityKeyFromName, cityName } from "@/lib/departures";
-
-export type CatalogFilter = {
-  city: string;
-  category: string;
-  season: string;
-};
+import type { CatalogFilter } from "@/lib/cityPackages";
 
 /**
  * Shows what the visitor chose in the hero search and lets them undo it.

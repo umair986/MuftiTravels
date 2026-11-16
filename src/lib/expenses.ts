@@ -8,6 +8,7 @@
 
 import type { ExpenseCategoryKind, PaymentMethod } from "./finance";
 import { fyLabel, fyRange } from "./finance";
+import { toDateInput } from "./dates";
 
 // Re-exported so the expenses screens keep importing their types from one
 // place; the definition lives in finance.ts because invoices tag to it too.
@@ -93,13 +94,6 @@ export const EXPENSE_PERIODS = [
 ] as const;
 
 export type ExpensePeriod = (typeof EXPENSE_PERIODS)[number]["value"];
-
-/** Local-time YYYY-MM-DD. toISOString() would shift the day in IST. */
-export function toDateInput(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
 
 /**
  * The inclusive date range a period covers, or null for "all time".

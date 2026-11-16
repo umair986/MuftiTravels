@@ -14,9 +14,10 @@ import {
   type QuotationOverview,
 } from "@/lib/quotations";
 import { formatRupees } from "@/lib/money";
-import { useToast } from "../../components/ui/toast/useToast";
-import AdminLoginForm from "../AdminLoginForm";
-import AdminShell from "../AdminShell";
+import { useToast } from "../../../components/ui/toast/useToast";
+import AdminLoginForm from "../_components/AdminLoginForm";
+import AdminShell from "../_components/AdminShell";
+import { formatShortDate, daysUntil } from "@/lib/dates";
 
 /**
  * The quotation list.
@@ -48,28 +49,6 @@ type Filter = (typeof FILTERS)[number]["value"];
 
 /** A quotation worth chasing: sent, not expired, and due within three days. */
 const EXPIRING_WITHIN_DAYS = 3;
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.valueOf())
-    ? value
-    : parsed.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-}
-
-/** Whole days from today to an ISO date. Negative once it is past. */
-function daysUntil(value: string | null): number | null {
-  if (!value) return null;
-  const target = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(target.valueOf())) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.round((target.valueOf() - today.valueOf()) / 86400000);
-}
 
 export default function AdminQuotationsPage() {
   const [supabase] = useState(createClient);
@@ -468,7 +447,7 @@ export default function AdminQuotationsPage() {
                   {row.number ?? "Draft"}
                 </Link>
                 <p className="font-body text-xs text-[#526168]">
-                  {formatDate(row.sent_on ?? row.quote_date)}
+                  {formatShortDate(row.sent_on ?? row.quote_date)}
                   {row.revision > 1 ? ` · r${row.revision}` : ""}
                 </p>
                 {row.status === "sent" && row.valid_until && (
@@ -480,7 +459,7 @@ export default function AdminQuotationsPage() {
                     }`}
                   >
                     {row.is_expired
-                      ? `lapsed ${formatDate(row.valid_until)}`
+                      ? `lapsed ${formatShortDate(row.valid_until)}`
                       : days === 0
                         ? "valid today"
                         : `${days} day${days === 1 ? "" : "s"} left`}

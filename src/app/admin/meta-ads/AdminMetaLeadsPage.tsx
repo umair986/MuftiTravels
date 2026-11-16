@@ -21,14 +21,15 @@ import {
   STATUS_STYLES,
   readLeadFile,
   statusLabel,
-  whatsappUrl,
   type MetaLeadRecord,
   type MetaLeadStatus,
   type ParseResult,
 } from "@/lib/metaLeads";
-import { useToast } from "../../components/ui/toast/useToast";
-import AdminLoginForm from "../AdminLoginForm";
-import AdminShell from "../AdminShell";
+import { useToast } from "../../../components/ui/toast/useToast";
+import AdminLoginForm from "../_components/AdminLoginForm";
+import AdminShell from "../_components/AdminShell";
+import { formatShortDate } from "@/lib/dates";
+import { whatsappEnquiryReplyUrl } from "@/lib/business";
 
 const PAGE_SIZE = 25;
 /** Supabase rejects very large single inserts; 500 rows per call is comfortable. */
@@ -37,17 +38,6 @@ const INSERT_CHUNK = 500;
 const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
 
 type StatusFilter = MetaLeadStatus | "all";
-
-function formatDate(value: string) {
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.valueOf())
-    ? value
-    : parsed.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-}
 
 export default function AdminMetaLeadsPage() {
   const [leads, setLeads] = useState<MetaLeadRecord[]>([]);
@@ -693,7 +683,7 @@ function LeadCard({
   useEffect(() => setNotes(lead.admin_notes ?? ""), [lead.admin_notes]);
 
   const isDirty = notes !== (lead.admin_notes ?? "");
-  const whatsapp = whatsappUrl(lead.phone, lead.name);
+  const whatsapp = whatsappEnquiryReplyUrl(lead.phone, lead.name);
   const origin = [lead.campaign_name, lead.ad_name, lead.form_name]
     .filter(Boolean)
     .join(" · ");
@@ -716,7 +706,7 @@ function LeadCard({
             </span>
           </div>
           <p className="mt-1 font-body text-xs text-[#526168]">
-            {formatDate(lead.created_at)}
+            {formatShortDate(lead.created_at)}
             {origin && ` · ${origin}`}
           </p>
         </div>

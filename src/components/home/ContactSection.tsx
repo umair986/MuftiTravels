@@ -3,6 +3,7 @@
 import ContactForm from "./ContactForm";
 import { FiMapPin, FiPhone, FiClock } from "react-icons/fi";
 import { FaWhatsapp, FaKaaba } from "react-icons/fa";
+import { whatsappBusinessUrl, PHONE_TEL, PHONE_DISPLAY } from "@/lib/business";
 
 export default function ContactSection() {
   return (
@@ -70,7 +71,7 @@ export default function ContactSection() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <a
-                  href="tel:+919323063712"
+                  href={PHONE_TEL}
                   className="flex items-center gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-[#D4AF37]/40 transition-colors"
                 >
                   <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/20 text-[#D4AF37] flex items-center justify-center flex-shrink-0">
@@ -78,12 +79,12 @@ export default function ContactSection() {
                   </div>
                   <div>
                     <p className="text-[11px] text-stone-400 font-medium">Direct Line</p>
-                    <p className="font-bold text-white text-xs sm:text-sm">+91 93230 63712</p>
+                    <p className="font-bold text-white text-xs sm:text-sm">{PHONE_DISPLAY}</p>
                   </div>
                 </a>
 
                 <a
-                  href="https://wa.me/919323063712"
+                  href={whatsappBusinessUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors"

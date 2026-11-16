@@ -12,8 +12,8 @@ import {
 } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 
-import Footer from "@/app/components/Footer";
-import JsonLd from "@/app/components/JsonLd";
+import Footer from "@/components/layout/Footer";
+import JsonLd from "@/components/layout/JsonLd";
 import RichText from "../RichText";
 import { CITY_LANDING, type CityKey } from "@/lib/cityLanding";
 import { GUIDES, getGuide, type GuideBlock } from "@/lib/guides";
@@ -23,11 +23,13 @@ import {
   faqSchema,
   organizationSchema,
 } from "@/lib/seo";
+import { formatIstLongDate } from "@/lib/dates";
+import { whatsappBusinessUrl } from "@/lib/business";
 
 type GuideRouteParams = { slug: string };
 
 const WHATSAPP_URL =
-  "https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20have%20a%20question%20about%20Umrah%20documents.";
+  whatsappBusinessUrl("As-salamu alaykum, I have a question about Umrah documents.");
 
 // Only the slugs in lib/guides.ts exist; anything else is a 404, not a render.
 export const dynamicParams = false;
@@ -57,14 +59,6 @@ export async function generateMetadata({
       images: [{ url: guide.image.src, alt: guide.image.alt }],
     },
   };
-}
-
-function formatDate(iso: string) {
-  return new Date(`${iso}T00:00:00+05:30`).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
 }
 
 function Block({ block }: { block: GuideBlock }) {
@@ -200,7 +194,7 @@ export default async function GuidePage({
             <p className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 font-body text-xs text-stone-300">
               <span>
                 Sources checked{" "}
-                <time dateTime={guide.reviewed}>{formatDate(guide.reviewed)}</time>
+                <time dateTime={guide.reviewed}>{formatIstLongDate(guide.reviewed)}</time>
               </span>
               <span className="flex items-center gap-1">
                 <FiClock className="h-3.5 w-3.5 text-[#D4AF37]" />
@@ -314,7 +308,7 @@ export default async function GuidePage({
               Official sources
             </h2>
             <p className="mt-2 font-body text-sm text-[#526168]">
-              Checked on {formatDate(guide.reviewed)}. Government rules change —
+              Checked on {formatIstLongDate(guide.reviewed)}. Government rules change —
               confirm with these before you travel.
             </p>
             <ul className="mt-4 space-y-2">

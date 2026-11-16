@@ -189,20 +189,6 @@ function toIso(value: unknown): string | null {
   return Number.isNaN(parsed.valueOf()) ? null : parsed.toISOString();
 }
 
-/**
- * WhatsApp deep link. Digits only, so a number typed as "+91 93230 63712"
- * still opens. Bare 10-digit numbers are assumed Indian — every departure city
- * on this site is in India.
- */
-export function whatsappUrl(phone: string, name: string) {
-  const digits = (phone ?? "").replace(/\D/g, "");
-  if (digits.length < 10) return null;
-  const withCountry = digits.length === 10 ? `91${digits}` : digits;
-  const text = encodeURIComponent(
-    `As-salamu alaykum ${name || ""}, this is Mufti Travels replying to your enquiry.`.trim(),
-  );
-  return `https://wa.me/${withCountry}?text=${text}`;
-}
 
 /**
  * Turn the sheet's rows into insertable leads.

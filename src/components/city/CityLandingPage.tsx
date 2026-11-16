@@ -10,36 +10,34 @@ import {
 import { FaPlaneDeparture, FaWhatsapp } from "react-icons/fa";
 
 
-import Footer from "@/app/components/Footer";
-import JsonLd from "@/app/components/JsonLd";
-import { PackedGroup, PackedGroupGrid } from "@/app/components/PackedGroups";
-import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
-import PriceChangeNote from "@/app/components/PriceChangeNote";
+import Footer from "@/components/layout/Footer";
+import JsonLd from "@/components/layout/JsonLd";
+import { PackedGroup, PackedGroupGrid } from "@/components/packages/PackedGroups";
+import ManagedPackagesCatalog from "@/components/packages/ManagedPackagesCatalog";
+import PriceChangeNote from "@/components/packages/PriceChangeNote";
 import { CATEGORY_SLUGS } from "@/lib/categories";
 import { CATEGORY_LANDING } from "@/lib/categoryLanding";
 import {
   CITY_LANDING,
-  formatRupees,
+  formatWholeRupees,
   type CityKey,
-  type TripFacts,
 } from "@/lib/cityLanding";
 import {
-  cityFromPrice,
+  cityUmrahOffer,
   flightSummary,
   groupByMonth,
-  monthlyUmrah,
   packagesForCity,
 } from "@/lib/cityPackages";
 import { getGuide } from "@/lib/guides";
 import type { CmsPackageRecord } from "@/lib/packages";
-import { getPublicCatalog, type PublicCatalog } from "@/lib/packages.server";
-import { tierName } from "@/lib/taxonomy";
+import { getPublicCatalog } from "@/lib/packages.server";
 import {
   BUSINESS,
   breadcrumbSchema,
   faqSchema,
   organizationSchema,
 } from "@/lib/seo";
+import { whatsappBusinessUrl } from "@/lib/business";
 
 /**
  * Departure-city landing page — /umrah-packages-from-<city>, one per entry in
@@ -59,50 +57,17 @@ import {
 // Linked from every city page: the FAQ there answers "what documents" briefly.
 const documentsGuide = getGuide("umrah-documents-passport-visa-india");
 
-const WHATSAPP_URL =
-  "https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20enquire%20about%20Umrah%20from%20";
-
 // Same embed as the homepage contact section.
 const MAP_EMBED =
   "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d942.797227481456!2d72.84293416954392!3d19.05543006650086!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7c923b0543ed1%3A0x7fba5dc35363fd9a!2sNational%20Girl%27s%20High%20School%20%26%20Junior%20College!5e0!3m2!1sen!2sin!4v1749732890489!5m2!1sen!2sin";
 
-/**
- * The city's current Umrah offer: its newest month's package, and the lowest
- * price across every month still on sale — or undefined when the city has no
- * current Umrah package. Metadata and page both go through here, so the price
- * in the search snippet, the hero, the home-page card and the FAQ are always
- * one number.
- */
-function resolveCityUmrah(city: CityKey, catalog: PublicCatalog) {
-  const umrah = monthlyUmrah(catalog.packages, city);
-  const lead = umrah[0];
-  if (!lead) return undefined;
-
-  const cell = cityFromPrice(catalog.packages, city);
-  const trip: TripFacts = {
-    price: cell && {
-      amount: cell.amount,
-      room: cell.room,
-      tier: tierName(cell.tier, catalog.tiers),
-    },
-    days: lead.duration_days,
-    nights: lead.duration_nights,
-  };
-  return {
-    lead,
-    umrah,
-    href: `/packages/${CATEGORY_SLUGS["Umrah Fixed Group"]}/${lead.slug}`,
-    tierCount: Object.keys(lead.prices ?? {}).length,
-    trip,
-  };
-}
-
 export async function cityMetadata(city: CityKey): Promise<Metadata> {
   const copy = CITY_LANDING[city];
-  const cityUmrah = resolveCityUmrah(city, await getPublicCatalog());
+  const { packages, tiers } = await getPublicCatalog();
+  const cityUmrah = cityUmrahOffer(city, packages, tiers);
   const price = cityUmrah?.trip.price;
   const description = copy.metaDescription(
-    price ? formatRupees(price.amount) : undefined,
+    price ? formatWholeRupees(price.amount) : undefined,
   );
   return {
     title: copy.metaTitle,
@@ -124,10 +89,12 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
   const copy = CITY_LANDING[city];
   const catalog = await getPublicCatalog();
   const { packages, tiers, tags } = catalog;
-  const cityUmrah = resolveCityUmrah(city, catalog);
+  const cityUmrah = cityUmrahOffer(city, packages, tiers);
   const price = cityUmrah?.trip.price;
   const faqs = copy.faqs(cityUmrah?.trip);
-  const whatsapp = `${WHATSAPP_URL}${encodeURIComponent(copy.city)}.`;
+  const whatsapp = whatsappBusinessUrl(
+    `As-salamu alaykum, I would like to enquire about Umrah from ${copy.city}.`,
+  );
 
   // Newest month first; each month gets its own heading so "November 2026"
   // and "October 2026" read as two offers, packed side by side (PackedGroups).
@@ -215,7 +182,7 @@ export default async function CityLandingPage({ city }: { city: CityKey }) {
                 <span className="font-body text-sm text-stone-400">
                   From{" "}
                   <span className="font-semibold text-white">
-                    {formatRupees(price.amount)}
+                    {formatWholeRupees(price.amount)}
                   </span>{" "}
                   per person
                 </span>

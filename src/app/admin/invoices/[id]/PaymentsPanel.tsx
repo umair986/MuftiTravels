@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import DatePicker from "@/app/components/ui/pickers/DatePicker";
+import DatePicker from "@/components/ui/pickers/DatePicker";
 import { FiDownload, FiEye, FiPlus, FiTrash2 } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import { createClient } from "@/lib/supabase/client";
@@ -22,7 +22,8 @@ import {
 } from "@/lib/invoices";
 import { formatRupees, paiseToInputValue, parsePaise } from "@/lib/money";
 import { receiptFileName, renderReceiptPdf } from "@/lib/pdf/renderInvoice";
-import { useToast } from "../../../components/ui/toast/useToast";
+import { useToast } from "../../../../components/ui/toast/useToast";
+import { toDateInput, formatShortDate } from "@/lib/dates";
 
 /**
  * Payments against one invoice, and the receipt each one produces.
@@ -49,22 +50,6 @@ const LABEL =
 
 const ICON_BUTTON =
   "rounded-lg p-2 text-[#526168] transition hover:bg-[#FAF8F5] hover:text-[#997A15] disabled:opacity-40";
-
-function todayInput(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function formatDate(value: string) {
-  const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.valueOf())
-    ? value
-    : parsed.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-}
 
 function rupees(paise: number) {
   return formatRupees(paise, { trimZeroPaise: true });
@@ -103,7 +88,7 @@ export default function PaymentsPanel({
   // The payment recorded in this visit, whose receipt is offered up front.
   const [justRecorded, setJustRecorded] = useState<string | null>(null);
 
-  const [paidOn, setPaidOn] = useState(todayInput());
+  const [paidOn, setPaidOn] = useState(toDateInput());
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("bank");
   const [reference, setReference] = useState("");
@@ -150,7 +135,7 @@ export default function PaymentsPanel({
     invoice.due_date &&
       balance > 0 &&
       new Date(`${invoice.due_date}T00:00:00`) <
-        new Date(todayInput() + "T00:00:00"),
+        new Date(toDateInput() + "T00:00:00"),
   );
 
   /* ------------------------------------------------------------ writes */
@@ -424,7 +409,7 @@ export default function PaymentsPanel({
                         </span>
                       </p>
                       <p className="font-body text-xs text-[#526168]">
-                        {formatDate(payment.paid_on)} ·{" "}
+                        {formatShortDate(payment.paid_on)} ·{" "}
                         {paymentMethodLabel(payment.method)}
                         {payment.reference ? ` · ${payment.reference}` : ""}
                         {" · "}

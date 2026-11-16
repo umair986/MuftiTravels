@@ -10,10 +10,11 @@ import {
 import { FiArrowRight, FiMapPin, FiPhoneCall } from "react-icons/fi";
 
 import { CATEGORY_SLUGS } from "@/lib/categories";
-import { CITY_LANDING, formatRupees } from "@/lib/cityLanding";
+import { CITY_LANDING, formatWholeRupees } from "@/lib/cityLanding";
 import { cityFromPrice, monthlyUmrah } from "@/lib/cityPackages";
 import { DEPARTURE_CITIES, formatPeriod, type CityKey } from "@/lib/departures";
 import type { CmsPackageRecord } from "@/lib/packages";
+import { whatsappBusinessUrl } from "@/lib/business";
 
 /**
  * The home page's way into the catalogue: pick the city you fly from.
@@ -152,7 +153,7 @@ export default function DepartureCities({
           </div>
 
           <a
-            href="https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20customise%20a%20VIP%20Umrah%20package."
+            href={whatsappBusinessUrl("As-salamu alaykum, I would like to customise a VIP Umrah package.")}
             target="_blank"
             rel="noopener noreferrer"
             className="gold-gradient-bg flex flex-shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-full px-8 py-4 text-xs font-bold text-[#06131D] shadow-xl transition-all hover:brightness-110 sm:text-sm"
@@ -183,7 +184,7 @@ function PriceLine({ card, light }: { card: CityCard; light?: boolean }) {
       <span
         className={`font-display font-bold ${light ? "text-3xl text-white" : "text-xl text-[#F3E5AB]"}`}
       >
-        {formatRupees(card.price)}
+        {formatWholeRupees(card.price)}
       </span>
     </p>
   );

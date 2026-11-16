@@ -4,11 +4,11 @@ import { notFound } from "next/navigation";
 import { FiArrowRight, FiPhone } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 
-import Footer from "@/app/components/Footer";
-import JsonLd from "@/app/components/JsonLd";
-import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
-import PriceChangeNote from "@/app/components/PriceChangeNote";
-import { PackedGroup, PackedGroupGrid } from "@/app/components/PackedGroups";
+import Footer from "@/components/layout/Footer";
+import JsonLd from "@/components/layout/JsonLd";
+import ManagedPackagesCatalog from "@/components/packages/ManagedPackagesCatalog";
+import PriceChangeNote from "@/components/packages/PriceChangeNote";
+import { PackedGroup, PackedGroupGrid } from "@/components/packages/PackedGroups";
 import { groupByCity } from "@/lib/cityPackages";
 import { cityName, cityPath, type CityKey } from "@/lib/departures";
 import {
@@ -19,7 +19,8 @@ import {
 import { CATEGORY_LANDING } from "@/lib/categoryLanding";
 import { getPublicCatalog } from "@/lib/packages.server";
 import { breadcrumbSchema, faqSchema } from "@/lib/seo";
-import type { CategoryType } from "@/app/components/packageData";
+import type { CategoryType } from "@/types/package";
+import { whatsappBusinessUrl, PHONE_TEL, PHONE_DISPLAY } from "@/lib/business";
 
 /**
  * Category landing pages — /packages/hajj, /packages/ziyarat, and so on.
@@ -31,7 +32,7 @@ import type { CategoryType } from "@/app/components/packageData";
  */
 
 const WHATSAPP_URL =
-  "https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20enquire%20about%20your%20packages.";
+  whatsappBusinessUrl("As-salamu alaykum, I would like to enquire about your packages.");
 
 type CategoryRouteParams = { category: string };
 
@@ -150,10 +151,10 @@ export default async function CategoryLandingPage({
                 <FaWhatsapp className="h-4 w-4" /> Enquire on WhatsApp
               </a>
               <a
-                href="tel:+919323063712"
+                href={PHONE_TEL}
                 className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/40 px-5 py-2.5 font-body text-sm font-semibold text-[#F3E5AB] transition hover:border-[#D4AF37]"
               >
-                <FiPhone className="h-4 w-4" /> +91 93230 63712
+                <FiPhone className="h-4 w-4" /> {PHONE_DISPLAY}
               </a>
               {fromPrice ? (
                 <span className="font-body text-sm text-stone-400">

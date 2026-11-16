@@ -10,10 +10,12 @@ import {
   FiMapPin,
 } from "react-icons/fi";
 import { FaWhatsapp, FaKaaba } from "react-icons/fa";
-import CustomDropdown, { DropdownOption } from "./ui/CustomDropdown";
-import DatePicker, { localToday } from "./ui/pickers/DatePicker";
+import CustomDropdown, { DropdownOption } from "../ui/CustomDropdown";
+import DatePicker from "../ui/pickers/DatePicker";
+import { toDateInput } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/client";
-import { useToast } from "./ui/toast/useToast";
+import { useToast } from "../ui/toast/useToast";
+import { whatsappBusinessUrl } from "@/lib/business";
 
 const cityOptions: DropdownOption[] = [
   { value: "Mumbai", label: "Mumbai (Direct)", badge: "BOM" },
@@ -79,8 +81,22 @@ export default function ContactForm() {
   };
 
   const generateWhatsAppUrl = () => {
-    const text = `As-salamu alaykum Mufti Travels Team,%0A%0AI would like to enquire about an Umrah package:%0A• Name: ${formData.name || "Pilgrim"}%0A• Phone: ${formData.phone || "N/A"}%0A• Departure City: ${formData.departureCity}%0A• Package Type: ${formData.packagePreference}%0A• Passengers: ${formData.adults} Adults, ${formData.children} Children%0A• Travel Date: ${formData.date || "Next Available"}${formData.notes ? `%0A• Notes: ${encodeURIComponent(formData.notes)}` : ""}%0A%0APlease provide available dates and pricing.`;
-    return `https://wa.me/919323063712?text=${text}`;
+    return whatsappBusinessUrl(
+      [
+        "As-salamu alaykum Mufti Travels Team,",
+        "",
+        "I would like to enquire about an Umrah package:",
+        `• Name: ${formData.name || "Pilgrim"}`,
+        `• Phone: ${formData.phone || "N/A"}`,
+        `• Departure City: ${formData.departureCity}`,
+        `• Package Type: ${formData.packagePreference}`,
+        `• Passengers: ${formData.adults} Adults, ${formData.children} Children`,
+        `• Travel Date: ${formData.date || "Next Available"}`,
+        ...(formData.notes ? [`• Notes: ${formData.notes}`] : []),
+        "",
+        "Please provide available dates and pricing.",
+      ].join("\n"),
+    );
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -353,7 +369,7 @@ export default function ContactForm() {
         <DatePicker
           id="travel-date"
           value={formData.date}
-          min={localToday()}
+          min={toDateInput()}
           onChange={(date) => setFormData({ ...formData, date })}
           placeholder="Pick a date"
           boxClassName="rounded-xl border border-stone-300 bg-stone-50/50 px-3.5 py-2.5"

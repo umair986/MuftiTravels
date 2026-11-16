@@ -15,9 +15,11 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { createDraftFromLead } from "@/lib/invoices";
 import { createQuotationFromLead } from "@/lib/quotations";
-import { useToast } from "../../components/ui/toast/useToast";
-import AdminLoginForm from "../AdminLoginForm";
-import AdminShell from "../AdminShell";
+import { useToast } from "../../../components/ui/toast/useToast";
+import AdminLoginForm from "../_components/AdminLoginForm";
+import AdminShell from "../_components/AdminShell";
+import { formatShortDate } from "@/lib/dates";
+import { whatsappEnquiryReplyUrl } from "@/lib/business";
 
 type Status = "new" | "contacted" | "closed";
 
@@ -46,29 +48,6 @@ const STATUSES: { value: Status | "all"; label: string }[] = [
 ];
 
 const PAGE_SIZE = 25;
-
-function formatDate(value: string | null) {
-  if (!value) return "";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.valueOf())
-    ? value
-    : parsed.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-}
-
-/** Digits only, so a number typed as "+91 93230 63712" still opens WhatsApp. */
-function whatsappUrl(phone: string, name: string) {
-  const digits = phone.replace(/\D/g, "");
-  if (!digits) return null;
-  const withCountry = digits.length === 10 ? `91${digits}` : digits;
-  const text = encodeURIComponent(
-    `As-salamu alaykum ${name || ""}, this is Mufti Travels replying to your enquiry.`.trim(),
-  );
-  return `https://wa.me/${withCountry}?text=${text}`;
-}
 
 export default function AdminEnquiriesPage() {
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
@@ -548,7 +527,7 @@ function EnquiryCard({
   useEffect(() => setNotes(enquiry.admin_notes ?? ""), [enquiry.admin_notes]);
 
   const isDirty = notes !== (enquiry.admin_notes ?? "");
-  const whatsapp = whatsappUrl(enquiry.phone, enquiry.name);
+  const whatsapp = whatsappEnquiryReplyUrl(enquiry.phone, enquiry.name);
 
   return (
     <article className="rounded-2xl border border-[#06131D]/10 bg-white p-5 shadow-sm sm:p-6">
@@ -685,7 +664,7 @@ function EnquiryCard({
           {enquiry.preferred_date && (
             <p>
               <strong>Preferred date:</strong>{" "}
-              {formatDate(enquiry.preferred_date)}
+              {formatShortDate(enquiry.preferred_date, "")}
             </p>
           )}
           {enquiry.notes && (

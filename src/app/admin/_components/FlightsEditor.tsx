@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { FiClipboard, FiPlus, FiTrash2 } from "react-icons/fi";
-import DatePicker from "@/app/components/ui/pickers/DatePicker";
+import DatePicker from "@/components/ui/pickers/DatePicker";
 import {
   blankFlightLeg,
   FLIGHT_FIELD_MAX,

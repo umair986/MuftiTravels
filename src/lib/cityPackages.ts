@@ -39,9 +39,12 @@ export function groupByCity(packages: CmsPackageRecord[]): CityGroup[] {
  */
 
 import type { CmsPackageRecord } from "@/lib/packages";
-import { cheapestPrice, type CheapestPrice } from "@/lib/cityLanding";
+import { cheapestPrice, type CheapestPrice, type TripFacts } from "@/lib/cityLanding";
+import { CATEGORY_SLUGS } from "@/lib/categories";
+import { tierName, type PackageTierRecord } from "@/lib/taxonomy";
 import {
   DEPARTURE_CITIES,
+  cityKeyFromName,
   MONTHLY_CATEGORY,
   compareNewestMonthFirst,
   formatDepartureDates,
@@ -139,4 +142,80 @@ export function flightSummary(packages: CmsPackageRecord[]): {
     ),
   ];
   return { dates, airlines };
+}
+
+/**
+ * The city's current Umrah offer: its newest month's package, and the lowest
+ * price across every month still on sale — or undefined when the city has no
+ * current Umrah package. Metadata and page both go through here, so the price
+ * in the search snippet, the hero, the home-page card and the FAQ are always
+ * one number.
+ */
+export function cityUmrahOffer(
+  city: CityKey,
+  packages: CmsPackageRecord[],
+  tiers: PackageTierRecord[],
+) {
+  const umrah = monthlyUmrah(packages, city);
+  const lead = umrah[0];
+  if (!lead) return undefined;
+
+  const cell = cityFromPrice(packages, city);
+  const trip: TripFacts = {
+    price: cell && {
+      amount: cell.amount,
+      room: cell.room,
+      tier: tierName(cell.tier, tiers),
+    },
+    days: lead.duration_days,
+    nights: lead.duration_nights,
+  };
+  return {
+    lead,
+    umrah,
+    href: `/packages/${CATEGORY_SLUGS["Umrah Fixed Group"]}/${lead.slug}`,
+    tierCount: Object.keys(lead.prices ?? {}).length,
+    trip,
+  };
+}
+
+/** What the hero search sends to /packages. */
+export type CatalogFilter = {
+  city: string;
+  category: string;
+  season: string;
+};
+
+/** The search's query string, kept to what the catalog understands. */
+export function readCatalogFilter(
+  params: Record<string, string | string[] | undefined>,
+): CatalogFilter {
+  const one = (key: string) => {
+    const value = params[key];
+    return (Array.isArray(value) ? value[0] : value)?.slice(0, 60) ?? "";
+  };
+  return { city: one("city"), category: one("category"), season: one("season") };
+}
+
+/**
+ * Narrow the catalog to what the visitor asked for — the hero search, or the
+ * city chips on the catalogue page.
+ *
+ * City is the package's `departure_city` (migration 026), read through
+ * packageCity so a row from before the migration is still placed by its slug.
+ * It used to be a substring match on the name, which put "Umrah + Dubai" under
+ * any city whose name appeared in its description. A city value that is not
+ * one of the six ("All India", or anything typed into the URL) narrows
+ * nothing.
+ */
+export function matchPackages(
+  packages: CmsPackageRecord[],
+  filter: CatalogFilter,
+): CmsPackageRecord[] {
+  const city = cityKeyFromName(filter.city);
+  return packages.filter((item) => {
+    if (filter.category && item.category !== filter.category) return false;
+    if (city && packageCity(item) !== city) return false;
+    return true;
+  });
 }

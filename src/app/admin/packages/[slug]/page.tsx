@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AdminPackageEditPage from "../../AdminPackageEditPage";
+import AdminPackageEditPage from "../../_components/AdminPackageEditPage";
 
 export const metadata: Metadata = {
   title: "Edit package",

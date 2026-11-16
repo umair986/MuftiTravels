@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { FiArrowRight, FiShield, FiStar, FiCompass } from "react-icons/fi";
 import { FaWhatsapp, FaKaaba } from "react-icons/fa";
-import { PILGRIMS_SERVED, yearsInService } from "@/lib/business";
+import { PILGRIMS_SERVED, yearsInService, whatsappBusinessUrl } from "@/lib/business";
 
 /**
  * One job: get the visitor to a price. The primary button scrolls to the
@@ -72,7 +72,7 @@ export default function Hero() {
           </a>
 
           <a
-            href="https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20consult%20for%20an%20Umrah%20package."
+            href={whatsappBusinessUrl("As-salamu alaykum, I would like to consult for an Umrah package.")}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full sm:w-auto px-7 py-3.5 rounded-full font-semibold text-sm sm:text-base text-white bg-white/10 hover:bg-white/15 border border-[#D4AF37]/40 backdrop-blur-md transition-all duration-300 flex items-center justify-center gap-2.5"

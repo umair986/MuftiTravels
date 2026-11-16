@@ -1,15 +1,15 @@
 import { getPublicCatalog } from "@/lib/packages.server";
 import { getHomeCollections } from "@/lib/gallery.server";
 import { organizationSchema, websiteSchema } from "@/lib/seo";
-import JsonLd from "./components/JsonLd";
-import Hero from "./components/Hero";
-import WhyChooseUs from "./components/WhyChooseUs";
-import DepartureCities from "./components/DepartureCities";
-import AffiliatedPartners from "./components/AffiliatedPartners";
-import Testimonials from "./components/Testimonials";
-import GallerySection from "./components/GallerySection";
-import ContactSection from "./components/ContactSection";
-import Footer from "./components/Footer";
+import JsonLd from "../components/layout/JsonLd";
+import Hero from "../components/home/Hero";
+import WhyChooseUs from "../components/home/WhyChooseUs";
+import DepartureCities from "../components/home/DepartureCities";
+import AffiliatedPartners from "../components/home/AffiliatedPartners";
+import Testimonials from "../components/home/Testimonials";
+import GallerySection from "../components/home/GallerySection";
+import ContactSection from "../components/home/ContactSection";
+import Footer from "../components/layout/Footer";
 
 export default async function Home() {
   const [{ packages }, galleryCollections] = await Promise.all([

@@ -21,9 +21,9 @@ import {
   type PackageTierRecord,
   type TagColor,
 } from "@/lib/taxonomy";
-import { useToast } from "../../components/ui/toast/useToast";
-import AdminLoginForm from "../AdminLoginForm";
-import AdminShell from "../AdminShell";
+import { useToast } from "../../../components/ui/toast/useToast";
+import AdminLoginForm from "../_components/AdminLoginForm";
+import AdminShell from "../_components/AdminShell";
 import { revalidatePackages } from "@/lib/revalidate";
 
 type UsageMap = Record<string, string[]>;

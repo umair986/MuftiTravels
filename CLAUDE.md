@@ -29,7 +29,10 @@ which characters survive into a PDF, `departures.test.ts`, which pins when a mon
 `flights.test.ts`, which pins how a pasted airline block becomes flight legs, dates and baggage (migration 031).
 `packageImport.test.ts` pins how a ChatGPT-made flyer JSON is read into the package editor — and
 which doubtful values (a misprinted amount, an unknown tier) are skipped rather than guessed.
-`cityPackages.test.ts` pins how a category page splits its packages by departure city.
+`cityPackages.test.ts` pins how a category page splits its packages by departure city, and how
+the `/packages` search filters the catalogue. `packageForm.test.ts` pins what a package-editor
+save writes — the starting price, the end-month rule, and no column a pre-migration row lacks.
+`dates.test.ts` covers the shared date formatting and `daysUntil`.
 Don't read the absence of tests elsewhere as an invitation to skip them where they'd earn their
 keep.
 
@@ -45,6 +48,46 @@ share one codebase:
 - **The admin dashboard** (`/admin/*`) — client components talking to Supabase directly from the
   browser, wrapped in `AdminShell`.
 
+### Where code lives
+
+```
+src/
+  app/                  routes only, plus components used by a single route, kept beside it
+    admin/_components/  admin pieces shared across admin routes (AdminShell, AdminLoginForm,
+                        FlightsEditor, the package editor) — `_` keeps the folder out of routing
+  components/           public-site components shared across routes
+    layout/             Header, Footer, JsonLd, SetVh
+    home/               the home page's sections
+    packages/           package cards, catalogue, detail page, tier hotels
+    city/               the departure-city landing page
+    ui/                 primitives: dropdown, date/month pickers, toast
+  content/guides/       guide articles as typed data
+  lib/                  logic and data access, flat; *.test.ts beside the module it tests
+    pdf/  supabase/
+  types/package.ts      shared package display types (was app/components/packageData.ts)
+  middleware.ts         must be in src/ — Next ignores a root middleware.ts when the app is in src/
+scripts/                PDF checkers and sample renderers
+supabase/migrations/    the schema, applied by hand
+docs/                   design records
+```
+
+`src/lib` stays flat on purpose: its file names are cited throughout this file and `docs/`, and
+the `npm test` glob is `src/lib/*.test.ts`.
+
+**Business rules go in `src/lib`, not in components.** A rule that decides what is saved, shown
+or charged — a price, a date, a filter, a form-to-row mapping — is a pure function in `src/lib`
+with a test, and the component calls it. `packageForm.ts` (the package editor's load and save),
+`cityPackages.ts` (a city's offer, the catalogue search) and `dates.ts` (date formatting shared by
+every admin list) were pulled out of components for this reason. Use `formatShortDate` /
+`toDateInput` from `dates.ts` rather than writing another local `formatDate`.
+
+**Naming.** Component files are PascalCase (`PickerShell.tsx`); `src/lib` files and hooks are
+camelCase (`useToast.ts`). WhatsApp links are `whatsapp<Thing>Url` and all go through
+`whatsappCustomerUrl` / `whatsappBusinessUrl` in `src/lib/business.ts`, which also holds the
+office number (`PHONE_DISPLAY`, `PHONE_TEL`) — never hard-code it in a component.
+`formatRupees` (money.ts) takes **paise**; `formatWholeRupees` (cityLanding.ts) takes catalogue
+rupees. Keep the two names apart.
+
 ### There is no server-side API layer, so RLS is the entire security boundary
 
 `src/app/api/revalidate/` and `src/app/api/send-enquiry/` exist as empty directories and nothing
@@ -55,7 +98,7 @@ Every read and write goes **browser → Supabase PostgREST directly**, with
 **Anything not enforced by a Postgres policy, constraint or trigger is not enforced at all.**
 Client-side validation is advisory — an attacker uses `curl`, not the form. When adding a rule that
 matters (who may write, what a column may contain, what may not change after a state transition),
-it belongs in a migration, and the UI check is a convenience on top of it. `middleware.ts` gates
+it belongs in a migration, and the UI check is a convenience on top of it. `src/middleware.ts` gates
 `/admin` on an `admin_users` row, but that exists to give a non-admin a clear answer rather than a
 dashboard of failed queries — it is not the gate.
 
@@ -216,7 +259,7 @@ only `[label](url)` and `**bold**`, rendered as React nodes by `src/app/guides/R
   Migration 032 adds `packages.tier_hotels` (jsonb, per tier key) for the four hotel fields only,
   because the actual hotel moves with the supplier and month; a blank field falls back to the
   tier. Resolve through `withPackageHotels()` in `src/lib/taxonomy.ts`, never read either alone.
-  Rendered as tier tabs on every package page by `src/app/components/packages/TierHotels.tsx`,
+  Rendered as tier tabs on every package page by `src/components/packages/TierHotels.tsx`,
   which shares its selected tier with the price box. Flight dates and airline are per
   package; a blank `flight_routing` must never print as "Direct".
 - **Order is month, then price — never hand-set.** `compareNewestMonthFirst` sorts every public

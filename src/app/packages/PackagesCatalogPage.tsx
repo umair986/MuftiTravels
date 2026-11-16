@@ -2,19 +2,19 @@
 
 import Link from "next/link";
 import { FaKaaba, FaHotel, FaMosque, FaMoon, FaStarAndCrescent } from "react-icons/fa";
-import ManagedPackagesCatalog from "@/app/components/ManagedPackagesCatalog";
-import PriceChangeNote from "@/app/components/PriceChangeNote";
-import { PackedGroup, PackedGroupGrid } from "@/app/components/PackedGroups";
+import ManagedPackagesCatalog from "@/components/packages/ManagedPackagesCatalog";
+import PriceChangeNote from "@/components/packages/PriceChangeNote";
+import { PackedGroup, PackedGroupGrid } from "@/components/packages/PackedGroups";
 import {
   DEPARTURE_CITIES,
   cityKeyFromName,
-  packageCity,
   type CityKey,
 } from "@/lib/departures";
-import Footer from "@/app/components/Footer";
+import Footer from "@/components/layout/Footer";
 import type { CmsPackageRecord } from "@/lib/packages";
 import type { PackageTagRecord, PackageTierRecord } from "@/lib/taxonomy";
-import CatalogFilters, { type CatalogFilter } from "./CatalogFilters";
+import { matchPackages, type CatalogFilter } from "@/lib/cityPackages";
+import CatalogFilters from "./CatalogFilters";
 
 const groupDefinitions = [
   {
@@ -52,29 +52,6 @@ const groupDefinitions = [
     icon: <FaMoon />,
   },
 ];
-
-/**
- * Narrow the catalog to what the visitor asked for — the hero search, or the
- * city chips on this page.
- *
- * City is the package's `departure_city` (migration 026), read through
- * packageCity so a row from before the migration is still placed by its slug.
- * It used to be a substring match on the name, which put "Umrah + Dubai" under
- * any city whose name appeared in its description. A city value that is not
- * one of the six ("All India", or anything typed into the URL) narrows
- * nothing.
- */
-function matchPackages(
-  packages: CmsPackageRecord[],
-  filter: CatalogFilter,
-): CmsPackageRecord[] {
-  const city = cityKeyFromName(filter.city);
-  return packages.filter((item) => {
-    if (filter.category && item.category !== filter.category) return false;
-    if (city && packageCity(item) !== city) return false;
-    return true;
-  });
-}
 
 export default function PackagesCatalogPage({
   packages,

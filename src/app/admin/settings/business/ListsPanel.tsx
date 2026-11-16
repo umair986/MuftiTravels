@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { EXPENSE_CATEGORY_KINDS, type ExpenseCategoryKind } from "@/lib/finance";
 import { formatRupees, paiseToInputValue, parsePaise } from "@/lib/money";
 import type { ExpenseCategory } from "@/lib/expenses";
-import { useToast } from "../../../components/ui/toast/useToast";
+import { useToast } from "../../../../components/ui/toast/useToast";
 
 /**
  * The two admin-owned lists: expense categories, and invoice line presets.

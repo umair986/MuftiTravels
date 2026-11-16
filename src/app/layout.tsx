@@ -6,9 +6,9 @@ import {
   Playfair_Display,
   Plus_Jakarta_Sans,
 } from "next/font/google";
-import Header from "./components/header";
-import SetVh from "./components/SetVh";
-import { ToastProvider } from "./components/ui/toast/ToastProvider";
+import Header from "../components/layout/Header";
+import SetVh from "../components/layout/SetVh";
+import { ToastProvider } from "../components/ui/toast/ToastProvider";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { getGalleryIndex } from "@/lib/gallery.server";
 import { breadcrumbSchema, organizationSchema, websiteSchema } from "@/lib/seo";
-import JsonLd from "../components/JsonLd";
-import Footer from "../components/Footer";
+import JsonLd from "../../components/layout/JsonLd";
+import Footer from "../../components/layout/Footer";
 import GalleryIndex from "./GalleryIndex";
 
 export const metadata: Metadata = {

@@ -1,6 +1,6 @@
 import { FiArrowRight, FiCheck, FiMapPin, FiStar } from "react-icons/fi";
 
-import type { TierPriceMap } from "@/app/components/packageData";
+import type { TierPriceMap } from "@/types/package";
 import type { PackageTierRecord } from "@/lib/taxonomy";
 
 /**

@@ -1,4 +1,4 @@
-import type { CategoryType } from "@/app/components/packageData";
+import type { CategoryType } from "@/types/package";
 
 /**
  * The one place that maps a package category to its URL segment.

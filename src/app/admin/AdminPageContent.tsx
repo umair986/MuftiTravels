@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AdminDashboard from "./AdminDashboard";
-import AdminLoginForm from "./AdminLoginForm";
+import AdminLoginForm from "./_components/AdminLoginForm";
 
 export default function AdminPageContent() {
   const [email, setEmail] = useState<string | null>(null);

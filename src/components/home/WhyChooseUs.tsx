@@ -7,7 +7,7 @@ import {
   FaWhatsapp,
 } from "react-icons/fa";
 import { FiArrowRight } from "react-icons/fi";
-import { FOUNDED_YEAR, PILGRIMS_SERVED } from "@/lib/business";
+import { FOUNDED_YEAR, PILGRIMS_SERVED, whatsappBusinessUrl } from "@/lib/business";
 
 /**
  * The home page's one trust section, placed after the packages: by the time a
@@ -139,7 +139,7 @@ export default function WhyChooseUs() {
                 See This Month&apos;s Packages <FiArrowRight />
               </a>
               <a
-                href="https://wa.me/919323063712?text=As-salamu%20alaykum,%20I%20would%20like%20to%20consult%20for%20an%20Umrah%20package."
+                href={whatsappBusinessUrl("As-salamu alaykum, I would like to consult for an Umrah package.")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2.5 rounded-full border border-[#D4AF37]/40 bg-white/10 px-7 py-3.5 font-body text-sm font-semibold text-white transition hover:bg-white/15"

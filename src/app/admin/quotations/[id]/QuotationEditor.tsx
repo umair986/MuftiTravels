@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import DatePicker from "@/app/components/ui/pickers/DatePicker";
+import DatePicker from "@/components/ui/pickers/DatePicker";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -81,11 +81,12 @@ import {
   invoicePolicyLists,
   type SiteContentList,
 } from "@/lib/siteContent";
-import { useToast } from "../../../components/ui/toast/useToast";
-import AdminLoginForm from "../../AdminLoginForm";
-import AdminShell from "../../AdminShell";
-import FlightsEditor from "../../FlightsEditor";
+import { useToast } from "../../../../components/ui/toast/useToast";
+import AdminLoginForm from "../../_components/AdminLoginForm";
+import AdminShell from "../../_components/AdminShell";
+import FlightsEditor from "../../_components/FlightsEditor";
 import PackagePicker, { type PickedLine } from "../PackagePicker";
+import { toDateInput } from "@/lib/dates";
 
 /**
  * Edit, price and send one quotation.
@@ -111,10 +112,6 @@ const LABEL =
   "mb-1.5 block font-body text-xs font-semibold uppercase tracking-[0.12em] text-[#526168]";
 
 const CARD = "rounded-2xl border border-stone-200 bg-white p-6";
-
-function toDateInput(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
 
 /** An editable string list — inclusions and exclusions are both one of these. */
 function StringListEditor({
